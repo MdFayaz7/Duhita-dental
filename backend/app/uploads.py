@@ -4,6 +4,7 @@ Files are stored in MongoDB GridFS rather than on local disk, because hosts like
 Render's free tier wipe the disk on every restart or redeploy. Each file is served
 back at /api/files/<id>. Paths starting with /uploads/ are legacy local files.
 """
+import io
 from pathlib import Path
 
 from bson import ObjectId
@@ -14,7 +15,9 @@ from motor.motor_asyncio import AsyncIOMotorGridFSBucket
 from .config import settings
 from .db import get_db
 
-IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/avif"}
+IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/avif", "image/heic", "image/heif"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".avif", ".heic", ".heif"}
+MAX_IMAGE_EDGE = 1600  # px — sharp on any screen, light enough for phones
 PDF_TYPES = {"application/pdf"}
 FILE_PREFIX = "/api/files/"
 
@@ -30,15 +33,49 @@ async def store_bytes(data: bytes, filename: str, content_type: str, folder: str
     return f"{FILE_PREFIX}{file_id}"
 
 
+def optimise_image(data: bytes, filename: str) -> tuple[bytes, str, str]:
+    """Resize to web size, fix phone rotation, strip metadata; HEIC becomes JPEG.
+
+    Returns (bytes, content_type, filename). Transparent PNGs stay PNG.
+    """
+    from PIL import Image, ImageOps
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+    try:
+        img = Image.open(io.BytesIO(data))
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        raise HTTPException(400, "That file could not be read as an image. Please upload a JPG or PNG photo.")
+
+    img.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE))
+    stem = Path(filename).stem or "photo"
+    out = io.BytesIO()
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        img.save(out, "PNG", optimize=True)
+        return out.getvalue(), "image/png", f"{stem}.png"
+    img.convert("RGB").save(out, "JPEG", quality=82, optimize=True, progressive=True)
+    return out.getvalue(), "image/jpeg", f"{stem}.jpg"
+
+
 async def save_upload(file: UploadFile, folder: str, allowed: set[str]) -> str:
     """Validate an upload, store it in GridFS and return its public path."""
-    if file.content_type not in allowed:
-        raise HTTPException(400, f"Unsupported file type: {file.content_type}")
+    filename = file.filename or "upload"
+    content_type = file.content_type or ""
+    is_image_upload = allowed is IMAGE_TYPES
+    # Some browsers send HEIC photos with an empty or generic type — trust the extension there.
+    if content_type not in allowed and not (is_image_upload and Path(filename).suffix.lower() in IMAGE_EXTENSIONS):
+        kind = "a JPG, PNG, WebP or HEIC photo" if is_image_upload else "a PDF"
+        raise HTTPException(400, f"Unsupported file type ({content_type or 'unknown'}). Please upload {kind}.")
+
     data = await file.read()
     size_mb = len(data) / (1024 * 1024)
     if size_mb > settings.max_upload_mb:
         raise HTTPException(400, f"File is {size_mb:.1f} MB — the limit is {settings.max_upload_mb} MB.")
-    return await store_bytes(data, file.filename or "upload", file.content_type, folder)
+
+    if is_image_upload:
+        data, content_type, filename = optimise_image(data, filename)
+    return await store_bytes(data, filename, content_type, folder)
 
 
 def file_id_from_path(public_path: str | None) -> ObjectId | None:

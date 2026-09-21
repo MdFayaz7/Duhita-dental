@@ -127,7 +127,7 @@ function DoctorModal({ doctor, onClose, onSaved }) {
           <label className="flex items-center gap-3 rounded-xl border border-dashed border-white/15 px-4 py-3 cursor-pointer hover:border-white/30">
             <FiUpload className="text-white/50" />
             <span className="text-[13.5px] text-white/60">{file ? file.name : 'Choose a photo'}</span>
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            <input type="file" accept="image/*,.heic,.heif" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </label>
         </Field>
         <label className="flex items-center gap-2.5 text-[14px] text-white/70">

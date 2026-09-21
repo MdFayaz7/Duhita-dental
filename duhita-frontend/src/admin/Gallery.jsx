@@ -83,7 +83,7 @@ export default function GalleryAdmin() {
         <Button onClick={() => fileRef.current?.click()} disabled={busy}>
           <FiUploadCloud /> {busy ? 'Uploading…' : 'Upload photos'}
         </Button>
-        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+        <input ref={fileRef} type="file" accept="image/*,.heic,.heif" multiple className="hidden"
           onChange={(e) => { upload([...e.target.files]); e.target.value = ''; }} />
       </PageHead>
       <ErrorNote>{error}</ErrorNote>

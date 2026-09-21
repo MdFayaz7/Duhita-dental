@@ -40,8 +40,12 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_rejected_origins(request: Request, call_next):
-    """Make CORS failures self-explaining in the server log."""
+    """Make CORS failures self-explaining in the server log; keep JSON reads fresh."""
     response = await call_next(request)
+    path = request.url.path
+    if request.method == "GET" and path.startswith("/api/") and not path.startswith("/api/files/"):
+        # Admin edits must show up on the next page view — never serve a cached list.
+        response.headers["Cache-Control"] = "no-store"
     if request.method == "OPTIONS" and response.status_code == 400:
         origin = request.headers.get("origin")
         print(f"[cors] rejected origin {origin!r} — add it to CORS_ORIGINS (allowed now: {settings.origins})")

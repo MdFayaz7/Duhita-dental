@@ -16,22 +16,23 @@ const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/
 export const apiFileUrl = (path) =>
   path?.startsWith('/api/files/') || path?.startsWith('/uploads/') ? `${BASE}${path}` : path;
 
-const requests = new Map();
+const FRESH_MS = 20_000;
+const requests = new Map(); // path -> { at, promise }
 
 function getJson(path) {
-  if (!requests.has(path)) {
-    const request = fetch(`${BASE}${path}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .catch((err) => {
-        requests.delete(path); // allow a retry on the next page view
-        throw err;
-      });
-    requests.set(path, request);
-  }
-  return requests.get(path);
+  const hit = requests.get(path);
+  if (hit && Date.now() - hit.at < FRESH_MS) return hit.promise;
+  const promise = fetch(`${BASE}${path}`, { cache: 'no-store' })
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .catch((err) => {
+      requests.delete(path); // allow a retry on the next page view
+      throw err;
+    });
+  requests.set(path, { at: Date.now(), promise });
+  return promise;
 }
 
 /** useLiveList('/api/research', mapItem, fallbackList) */

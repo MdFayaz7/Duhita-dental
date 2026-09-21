@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import PageHero from '../components/PageHero';
 import Gallery from '../components/Gallery';
+import OurDoctors from '../components/OurDoctors';
 import ContactSection from '../components/ContactSection';
 import Icon from '../components/Icons';
 import useSeo from '../hooks/useSeo';
@@ -118,19 +119,7 @@ export default function About() {
         </div>
       </section>
 
-      <section className="section-y bg-white">
-        <div className="container-x grid gap-8 md:gap-10 md:grid-cols-[300px_1fr] items-center text-center md:text-left">
-          <div className="reveal card w-[190px] sm:w-[240px] md:w-[300px] mx-auto md:mx-0 aspect-[4/5] overflow-hidden img-well"><img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover object-top" /></div>
-          <div className="reveal">
-            <h2 className="text-[27px] sm:text-[33px] md:text-[44px]">Led by {doctor.name}</h2>
-            <p className="mt-4 leading-relaxed max-w-2xl">
-              Our founder is an M.D.S oral &amp; maxillofacial surgeon with over 30 years of clinical experience. He
-              personally reviews treatment plans and performs all surgical and implant procedures at the clinic.
-            </p>
-            <Link to="/about/dr-nalluru-sasidhar" className="btn btn-outline mt-7">Read Full Profile</Link>
-          </div>
-        </div>
-      </section>
+      <OurDoctors />
       <ContactSection />
     </>
   );
