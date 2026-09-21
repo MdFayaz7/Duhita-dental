@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FiX, FiChevronLeft, FiChevronRight, FiMaximize2 } from 'react-icons/fi';
-import { galleryImages } from '../data/gallery';
+import { useGalleryImages } from '../data/gallery';
 
 const AUTOPLAY_MS = 3500;
 
@@ -80,7 +80,7 @@ function Lightbox({ images, index, onClose, onNav }) {
 }
 
 export default function Gallery({ id, category, heading, children, className = 'bg-ivory', layout = 'slider' }) {
-  const images = useMemo(() => galleryImages.filter((g) => g.category === category), [category]);
+  const images = useGalleryImages(category);
   const [lightbox, setLightbox] = useState(null);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);

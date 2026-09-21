@@ -4,7 +4,8 @@ import PageHero from '../components/PageHero';
 import ContactSection from '../components/ContactSection';
 import { Chip } from '../components/Form';
 import useSeo from '../hooks/useSeo';
-import { research } from '../data/research';
+import { research as builtInResearch } from '../data/research';
+import { apiFileUrl, useLiveList } from '../lib/content';
 import { site } from '../data/site';
 
 const ALL = 'All';
@@ -41,9 +42,11 @@ export default function Research() {
     'Research papers, case studies and publications from the team at Duhita Multispeciality Dental Centre, Vijayawada.',
   );
 
+  const research = useLiveList('/api/research', (p) => ({ ...p, file: apiFileUrl(p.file) }), builtInResearch);
+
   const categories = useMemo(
     () => [ALL, ...new Set(research.map((p) => p.category).filter(Boolean))],
-    [],
+    [research],
   );
   const [active, setActive] = useState(ALL);
   const papers = active === ALL ? research : research.filter((p) => p.category === active);

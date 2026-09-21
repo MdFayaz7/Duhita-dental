@@ -5,9 +5,10 @@
  * Full-resolution originals are kept in /original-photos/gallery/.
  */
 import { clinicFiles, campFiles } from 'virtual:gallery';
+import { apiFileUrl, useLiveList } from '../lib/content';
 
 /** Optional captions, keyed by file name. Anything not listed falls back to the default below. */
-const captions = {
+export const captions = {
   'clinic-01.jpg': 'Treatment room with digital imaging setup',
   'clinic-02.jpg': 'Dental chair with chair-side monitor',
   'clinic-03.jpg': 'Consultation and treatment room',
@@ -52,7 +53,7 @@ const captions = {
   'camp-21.jpg': 'Free dental check-up at a departmental camp',
 };
 
-const fallback = {
+export const fallback = {
   clinic: 'Duhita Multispeciality Dental Centre, Vijayawada',
   infrastructure: 'Inside Duhita Multispeciality Dental Centre, Vijayawada',
   camps: 'Free dental camp by Duhita Dental, Vijayawada',
@@ -73,3 +74,16 @@ export const galleryImages = [
   ...build(clinicFiles.slice(GALLERY_COUNT), 'clinic', 'clinic'),
   ...build(campFiles, 'camps', 'camps'),
 ];
+
+/** Gallery photos managed in the admin dashboard, with the built-in set as fallback. */
+export function useGalleryImages(category) {
+  return useLiveList(
+    `/api/gallery?category=${category}`,
+    (img) => ({
+      src: apiFileUrl(img.src),
+      category,
+      caption: img.caption || captions[img.source_name] || fallback[category],
+    }),
+    galleryImages.filter((g) => g.category === category),
+  );
+}
