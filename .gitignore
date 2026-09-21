@@ -1,0 +1,25 @@
+# ---- dependencies & builds ----
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+
+# ---- secrets: never commit ----
+.env
+.env.*
+!.env.example
+
+# ---- runtime uploads (served by the API; re-created by `python -m app.seed --gallery`) ----
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# ---- large originals & unused backups (kept locally only) ----
+duhita-frontend/original-photos/
+duhita-frontend/public/images/_old-renders/
+
+# ---- OS / editor ----
+.DS_Store
+.vscode/
+.idea/
+*.log
