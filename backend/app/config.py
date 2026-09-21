@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 720
 
     cors_origins: str = "http://localhost:5180,http://localhost:5173"
+    # Optional: also allow Vercel preview URLs, e.g. https://duhita-dental-git-xyz.vercel.app
+    cors_origin_regex: str = ""
     public_base_url: str = "http://localhost:8000"
     upload_dir: str = "uploads"
     max_upload_mb: int = 15

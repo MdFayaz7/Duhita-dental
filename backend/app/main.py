@@ -9,7 +9,7 @@ from pymongo.errors import PyMongoError
 
 from .config import settings
 from .db import ensure_indexes
-from .routers import appointments, auth, doctors, gallery, patients, research, schedule, stats
+from .routers import appointments, auth, doctors, files, gallery, patients, research, schedule, stats
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins,
+    allow_origin_regex=settings.cors_origin_regex or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,7 +40,7 @@ app.add_middleware(
 
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
-for router in (auth, patients, appointments, schedule, doctors, research, gallery, stats):
+for router in (auth, patients, appointments, schedule, doctors, research, gallery, files, stats):
     app.include_router(router.router)
 
 

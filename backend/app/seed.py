@@ -4,7 +4,6 @@
     python -m app.seed --gallery  # also import public/images/gallery/* from the frontend
 """
 import asyncio
-import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,31 +44,30 @@ async def seed_doctors(db):
 
 
 async def seed_gallery(db):
-    """Copy the frontend's gallery files into uploads/ and index them."""
-    mapping = {"clinic": ("clinic", 8), "infrastructure": ("clinic", None), "camps": ("camps", None)}
-    for category, (folder, limit) in mapping.items():
-        source = FRONTEND / "images" / "gallery" / folder
-        if not source.exists():
-            print(f"skip {category}: {source} not found")
-            continue
-        files = sorted(p for p in source.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"})
-        files = files[:limit] if limit else (files[8:] if category == "infrastructure" else files)
-        target = Path(settings.upload_dir) / "gallery" / category
-        target.mkdir(parents=True, exist_ok=True)
+    """Load the frontend's gallery photos into GridFS (idempotent: skips files already imported)."""
+    import mimetypes
+
+    from .uploads import store_bytes
+
+    source = FRONTEND / "images" / "gallery"
+    clinic = sorted(p for p in (source / "clinic").glob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"})
+    camps = sorted(p for p in (source / "camps").glob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"})
+    # Matches the website: first 8 clinic photos are Infrastructure, the rest the Clinic Gallery.
+    groups = {"infrastructure": clinic[:8], "clinic": clinic[8:], "camps": camps}
+
+    for category, files in groups.items():
+        added = 0
         for order, path in enumerate(files):
-            dest = target / path.name
-            if not dest.exists():
-                shutil.copy2(path, dest)
-            src = f"/uploads/gallery/{category}/{path.name}"
-            await db.gallery.update_one(
-                {"src": src},
-                {"$setOnInsert": {
-                    "category": category, "caption": "", "src": src,
-                    "order": order, "created_at": datetime.now(timezone.utc),
-                }},
-                upsert=True,
-            )
-        print(f"{category}: {len(files)} images")
+            if await db.gallery.find_one({"category": category, "source_name": path.name}):
+                continue
+            content_type = mimetypes.guess_type(path.name)[0] or "image/jpeg"
+            src = await store_bytes(path.read_bytes(), path.name, content_type, "gallery")
+            await db.gallery.insert_one({
+                "category": category, "caption": "", "src": src, "source_name": path.name,
+                "order": order, "created_at": datetime.now(timezone.utc),
+            })
+            added += 1
+        print(f"{category}: {len(files)} photos ({added} newly imported)")
 
 
 async def main():

@@ -54,7 +54,8 @@ async function request(path, { method = 'GET', body, form, auth = true } = {}) {
 
 export const api = {
   base: BASE,
-  url: (path) => (path?.startsWith('/uploads') ? `${BASE}${path}` : path),
+  /** Files stored by the API (GridFS or legacy /uploads) live on the API host, not the website. */
+  url: (path) => (path?.startsWith('/api/files/') || path?.startsWith('/uploads/') ? `${BASE}${path}` : path),
 
   login: (username, password) => request('/api/auth/login', { method: 'POST', body: { username, password }, auth: false }),
   me: () => request('/api/auth/me'),

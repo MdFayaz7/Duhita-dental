@@ -1,0 +1,32 @@
+# Render Blueprint — creates the Duhita Dental API.
+# Render dashboard → New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: duhita-dental-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: singapore            # closest Render region to Vijayawada
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: MONGO_URI              # paste your Atlas connection string when prompted
+        sync: false
+      - key: MONGO_DB
+        value: duhita_dental
+      - key: ADMIN_USERNAME
+        value: DuhitaAdmin
+      - key: ADMIN_PASSWORD         # choose a strong password when prompted
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true         # Render creates a long random secret for you
+      - key: JWT_EXPIRE_MINUTES
+        value: "720"
+      - key: CORS_ORIGINS           # your Vercel URL, e.g. https://duhita-dental.vercel.app
+        sync: false
+      - key: CORS_ORIGIN_REGEX      # lets Vercel preview deployments call the API too
+        value: ^https://duhita-dental(-[a-z0-9-]+)?\.vercel\.app$

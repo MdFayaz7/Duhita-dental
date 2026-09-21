@@ -67,5 +67,5 @@ async def delete_image(image_id: str):
     doc = await get_db().gallery.find_one_and_delete({"_id": ObjectId(image_id)})
     if not doc:
         raise HTTPException(404, "Image not found.")
-    delete_upload(doc.get("src"))
+    await delete_upload(doc.get("src"))
     return {"ok": True}

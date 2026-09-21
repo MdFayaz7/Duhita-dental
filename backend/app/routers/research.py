@@ -64,7 +64,7 @@ async def update_paper(
 
     if file:
         changes["file"] = await save_upload(file, "research", PDF_TYPES)
-        delete_upload(current.get("file"))
+        await delete_upload(current.get("file"))
     if not changes:
         raise HTTPException(400, "Nothing to update.")
 
@@ -79,5 +79,5 @@ async def delete_paper(paper_id: str):
     doc = await get_db().research.find_one_and_delete({"_id": ObjectId(paper_id)})
     if not doc:
         raise HTTPException(404, "Paper not found.")
-    delete_upload(doc.get("file"))
+    await delete_upload(doc.get("file"))
     return {"ok": True}

@@ -34,7 +34,7 @@ async def upload_photo(doctor_id: str, file: UploadFile = File(...)):
     if not current:
         raise HTTPException(404, "Doctor not found.")
     path = await save_upload(file, "doctors", IMAGE_TYPES)
-    delete_upload(current.get("photo"))
+    await delete_upload(current.get("photo"))
     res = await db.doctors.find_one_and_update(
         {"_id": ObjectId(doctor_id)}, {"$set": {"photo": path}}, return_document=True
     )
@@ -56,5 +56,5 @@ async def delete_doctor(doctor_id: str):
     doc = await get_db().doctors.find_one_and_delete({"_id": ObjectId(doctor_id)})
     if not doc:
         raise HTTPException(404, "Doctor not found.")
-    delete_upload(doc.get("photo"))
+    await delete_upload(doc.get("photo"))
     return {"ok": True}

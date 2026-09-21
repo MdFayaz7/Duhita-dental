@@ -23,3 +23,6 @@ duhita-frontend/public/images/_old-renders/
 .vscode/
 .idea/
 *.log
+
+# ---- local tooling ----
+.claude/
