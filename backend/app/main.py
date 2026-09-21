@@ -38,6 +38,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def log_rejected_origins(request: Request, call_next):
+    """Make CORS failures self-explaining in the server log."""
+    response = await call_next(request)
+    if request.method == "OPTIONS" and response.status_code == 400:
+        origin = request.headers.get("origin")
+        print(f"[cors] rejected origin {origin!r} — add it to CORS_ORIGINS (allowed now: {settings.origins})")
+    return response
+
+
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
 for router in (auth, patients, appointments, schedule, doctors, research, gallery, files, stats):

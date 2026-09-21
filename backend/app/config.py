@@ -25,7 +25,8 @@ class Settings(BaseSettings):
 
     @property
     def origins(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        # Forgive the usual copy-paste slips: spaces, quotes and a trailing slash.
+        return [o.strip().strip('"\'').rstrip("/") for o in self.cors_origins.split(",") if o.strip()]
 
 
 @lru_cache
