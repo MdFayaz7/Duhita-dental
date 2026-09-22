@@ -180,21 +180,6 @@ body {
   }
 }
 
-/* Hero image — slow cinematic zoom-out, then a gentle continuous drift */
-@keyframes hero-zoom {
-  from { transform: scale(1.14); }
-  to { transform: scale(1); }
-}
-@keyframes hero-drift {
-  0%, 100% { transform: scale(1) translate3d(0, 0, 0); }
-  50% { transform: scale(1.05) translate3d(-1.2%, -0.8%, 0); }
-}
-.hero-media {
-  animation: hero-zoom 2.8s cubic-bezier(0.22, 1, 0.36, 1) both, hero-drift 24s ease-in-out 2.8s infinite;
-  will-change: transform;
-  transform-origin: 70% 50%;
-}
-
 @keyframes gallery-fade {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
@@ -204,7 +189,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-media,
   .gallery-fade {
     animation: none;
   }
