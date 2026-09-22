@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from ..db import get_db, serialize
 from ..models import FeedbackUpdate
 from ..security import current_admin
-from ..uploads import VIDEO_TYPES, delete_upload, save_upload
+from ..videos import cloud_enabled, delete_video, save_video, size_limit_mb
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
@@ -22,7 +22,11 @@ async def list_clips():
 async def list_all_clips():
     """Admin view, including hidden clips."""
     cursor = get_db().feedback.find().sort([("order", 1), ("created_at", -1)])
-    return {"items": [serialize(d) for d in await cursor.to_list(100)]}
+    return {
+        "items": [serialize(d) for d in await cursor.to_list(100)],
+        "max_mb": size_limit_mb(),
+        "cdn": cloud_enabled(),
+    }
 
 
 @router.post("", status_code=201, dependencies=[Depends(current_admin)])
@@ -32,11 +36,11 @@ async def upload_clip(
     file: UploadFile = File(...),
 ):
     db = get_db()
-    src = await save_upload(file, "feedback", VIDEO_TYPES)
+    stored = await save_video(file)
     doc = {
         "patient_name": patient_name.strip(),
         "caption": caption.strip(),
-        "src": src,
+        **stored,
         "active": True,
         "order": await db.feedback.count_documents({}),
         "created_at": datetime.now(timezone.utc),
@@ -71,5 +75,5 @@ async def delete_clip(clip_id: str):
     doc = await get_db().feedback.find_one_and_delete({"_id": ObjectId(clip_id)})
     if not doc:
         raise HTTPException(404, "Clip not found.")
-    await delete_upload(doc.get("src"))
+    await delete_video(doc)
     return {"ok": True}

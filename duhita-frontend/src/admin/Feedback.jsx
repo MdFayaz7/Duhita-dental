@@ -4,19 +4,18 @@ import { api } from './api';
 import { PageHead } from './AdminLayout';
 import { Button, EmptyState, ErrorNote, Field, Modal, Panel, Skeleton, inputClass, useConfirm, useToast } from './ui';
 
-const MAX_MB = 60;
-
 export default function FeedbackAdmin() {
   const toast = useToast();
   const confirm = useConfirm();
   const [items, setItems] = useState(null);
+  const [limits, setLimits] = useState({ max_mb: 20, cdn: false });
   const [error, setError] = useState('');
   const [uploads, setUploads] = useState([]); // [{ name, progress, error }]
   const [editing, setEditing] = useState(null);
   const fileRef = useRef(null);
 
   const load = useCallback(() => {
-    api.feedback().then((d) => setItems(d.items)).catch((e) => { setError(e.message); setItems([]); });
+    api.feedback().then((d) => { setItems(d.items); if (d.max_mb) setLimits({ max_mb: d.max_mb, cdn: !!d.cdn }); }).catch((e) => { setError(e.message); setItems([]); });
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -27,8 +26,8 @@ export default function FeedbackAdmin() {
     let done = 0;
     for (const [i, file] of videos.entries()) {
       const setRow = (patch) => setUploads((rows) => rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
-      if (file.size > MAX_MB * 1024 * 1024) {
-        setRow({ error: `Too large (${(file.size / 1048576).toFixed(0)} MB — max ${MAX_MB} MB)` });
+      if (file.size > limits.max_mb * 1024 * 1024) {
+        setRow({ error: `Too large (${(file.size / 1048576).toFixed(0)} MB — max ${limits.max_mb} MB). Please compress it first.` });
         continue;
       }
       const fd = new FormData();
@@ -97,8 +96,11 @@ export default function FeedbackAdmin() {
       <ErrorNote>{error}</ErrorNote>
 
       <Panel className="p-4 mb-5 text-[13.5px] text-[var(--a-muted)] leading-relaxed">
-        <strong className="text-[var(--a-text)]">Best results:</strong> portrait 9:16 clips, MP4 format, under {MAX_MB} MB and 30–60 seconds.
-        On iPhone, set Camera → Formats → <em>Most Compatible</em> so clips save as MP4 and play in every browser.
+        <strong className="text-[var(--a-text)]">Best results:</strong> portrait 9:16 clips, MP4 format, 30–60 seconds, under {limits.max_mb} MB.
+        {limits.cdn
+          ? ' Clips are compressed and served from a fast video CDN automatically.'
+          : ' Smaller clips load faster for patients — export at 720p (WhatsApp-quality is fine) before uploading.'}
+        {' '}On iPhone, set Camera → Formats → <em>Most Compatible</em> so clips save as MP4 and play in every browser.
       </Panel>
 
       {uploads.length > 0 && (
@@ -139,7 +141,7 @@ export default function FeedbackAdmin() {
               {items.map((clip, index) => (
                 <Panel key={clip.id} className="overflow-hidden">
                   <div className="relative aspect-[9/16] bg-black">
-                    <video src={`${api.url(clip.src)}#t=0.5`} preload="metadata" muted playsInline controls
+                    <video src={`${api.url(clip.src)}#t=0.5`} poster={clip.poster || undefined} preload={clip.poster ? 'none' : 'metadata'} muted playsInline controls
                       className="absolute inset-0 w-full h-full object-cover" />
                     {clip.active === false && (
                       <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11.5px]">

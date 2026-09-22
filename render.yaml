@@ -30,3 +30,5 @@ services:
         sync: false
       - key: CORS_ORIGIN_REGEX      # lets Vercel preview deployments call the API too
         value: ^https://duhita-dental(-[a-z0-9-]+)?\.vercel\.app$
+      - key: CLOUDINARY_URL         # optional: cloudinary://<key>:<secret>@<cloud> — fast, compressed feedback videos
+        sync: false

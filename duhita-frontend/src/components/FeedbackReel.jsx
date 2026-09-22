@@ -1,73 +1,78 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FiChevronLeft, FiChevronRight, FiPause, FiPlay, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import { FiAlertCircle, FiChevronLeft, FiChevronRight, FiPause, FiPlay, FiRotateCw, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import { apiFileUrl, useLiveList } from '../lib/content';
 
-const toClip = (c) => ({ ...c, src: apiFileUrl(c.src) });
+const toClip = (c) => ({ ...c, src: apiFileUrl(c.src), poster: c.poster || '' });
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
  * Patient feedback videos (portrait 9:16), managed in Admin → Patient Feedback.
- * Plays one clip after another like stories: muted autoplay while on screen,
- * tap to pause, unmute once and it stays unmuted for the following clips.
+ *
+ * Only one <video> ever exists, and it gets its source only when the section
+ * nears the screen — the rest of the page never waits on video. Clips play one
+ * after another; the playlist beside the player uses still posters, not videos.
  */
 export default function FeedbackReel() {
   const clips = useLiveList('/api/feedback', toClip, []);
   const [index, setIndex] = useState(0);
   const [muted, setMuted] = useState(true);
   const [paused, setPaused] = useState(prefersReducedMotion);
-  const [inView, setInView] = useState(false);
+  const [near, setNear] = useState(false); // close enough to start loading
+  const [inView, setInView] = useState(false); // visible enough to play
+  const [status, setStatus] = useState('loading'); // loading | playing | error
   const [progress, setProgress] = useState(0);
   const sectionRef = useRef(null);
   const videoRef = useRef(null);
+  const skipTimer = useRef(null);
 
   const count = clips.length;
-  const go = useCallback((delta) => {
+  const clip = count ? clips[index % count] : null;
+
+  const select = useCallback((i) => {
+    clearTimeout(skipTimer.current);
     setProgress(0);
-    setIndex((i) => (i + delta + count) % count);
+    setStatus('loading');
+    setIndex(((i % count) + count) % count);
   }, [count]);
 
-  // Keep the index valid if clips are removed in the admin
   useEffect(() => { if (index >= count && count) setIndex(0); }, [count, index]);
+  useEffect(() => () => clearTimeout(skipTimer.current), []);
 
-  // Only play while the reel is on screen and the tab is visible — saves data and battery
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return undefined;
-    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.35 });
-    io.observe(el);
+    const nearIo = new IntersectionObserver(([e]) => e.isIntersecting && setNear(true), { rootMargin: '300px 0px' });
+    const viewIo = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.4 });
+    nearIo.observe(el);
+    viewIo.observe(el);
     const onVisibility = () => document.hidden && videoRef.current?.pause();
     document.addEventListener('visibilitychange', onVisibility);
-    return () => { io.disconnect(); document.removeEventListener('visibilitychange', onVisibility); };
+    return () => { nearIo.disconnect(); viewIo.disconnect(); document.removeEventListener('visibilitychange', onVisibility); };
   }, [count]);
 
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
     v.muted = muted;
-    if (inView && !paused) {
-      v.play().catch((err) => {
-        // Only a policy block means "can't autoplay" — show the play button then.
-        // AbortError just means a newer load/pause interrupted this attempt; the next run retries.
-        if (err?.name === 'NotAllowedError') setPaused(true);
-      });
+    if (inView && !paused && status !== 'error') {
+      v.play().catch((err) => { if (err?.name === 'NotAllowedError') setPaused(true); });
+    } else {
+      v.pause();
     }
-    else v.pause();
-  }, [index, inView, paused, muted, count]);
+  }, [index, inView, paused, muted, status, near]);
 
   if (!count) return null;
 
-  const clip = clips[index % count];
-  const prev = clips[(index - 1 + count) % count];
-  const next = clips[(index + 1) % count];
-
-  const Peek = ({ item, delta, side }) =>
-    count > 1 && (
-      <button onClick={() => go(delta)} aria-label={delta < 0 ? 'Previous clip' : 'Next clip'}
-        className={`hidden md:block absolute top-1/2 -translate-y-1/2 ${side} w-[200px] aspect-[9/16] rounded-[22px] overflow-hidden bg-ink/80 opacity-45 hover:opacity-70 transition-opacity scale-[0.86]`}>
-        <video key={item.id} src={`${item.src}#t=0.1`} preload="metadata" muted playsInline className="no-zoom w-full h-full object-cover pointer-events-none" />
-      </button>
-    );
+  const onError = () => {
+    setStatus('error');
+    if (count > 1) skipTimer.current = setTimeout(() => select(index + 1), 4000);
+  };
+  const retry = () => {
+    clearTimeout(skipTimer.current);
+    setStatus('loading');
+    videoRef.current?.load();
+  };
 
   return (
     <section ref={sectionRef} className="bg-ivory section-y" aria-labelledby="feedback-heading">
@@ -77,34 +82,43 @@ export default function FeedbackReel() {
           <p className="mt-4 leading-relaxed">In their own words — patients share their experience of treatment at Duhita Dental.</p>
         </div>
 
-        <div className="relative mt-10 flex items-center justify-center min-h-[420px]">
-          <Peek item={prev} delta={-1} side="left-[calc(50%-400px)]" />
-          <Peek item={next} delta={1} side="right-[calc(50%-400px)]" />
-
-          <figure className="relative w-[min(340px,82vw)] aspect-[9/16] rounded-[24px] overflow-hidden bg-ink shadow-[0_30px_60px_-25px_rgba(16,24,40,0.55)]">
+        <div className={`mt-10 md:mt-12 grid gap-6 md:gap-10 justify-center items-center ${count > 1 ? 'md:grid-cols-[minmax(0,340px)_minmax(0,420px)]' : ''}`}>
+          {/* Player */}
+          <figure className="relative mx-auto w-[min(340px,84vw)] aspect-[9/16] rounded-[26px] overflow-hidden bg-[#0f1720] shadow-[0_30px_60px_-25px_rgba(16,24,40,0.55)] ring-1 ring-black/5">
+            {clip.poster && (
+              <img src={clip.poster} alt="" aria-hidden="true" loading="lazy"
+                className="no-zoom absolute inset-0 w-full h-full object-cover" />
+            )}
             <video
               key={clip.id}
               ref={videoRef}
-              src={clip.src}
+              src={near ? (clip.poster ? clip.src : `${clip.src}#t=0.1`) : undefined}
+              poster={clip.poster || undefined}
               playsInline
               muted={muted}
-              preload="auto"
+              preload={near ? 'auto' : 'none'}
+              onLoadStart={() => setStatus('loading')}
+              onWaiting={() => setStatus('loading')}
+              onPlaying={() => setStatus('playing')}
               onCanPlay={(e) => {
-                // A play() issued before the clip had loaded can be discarded by the browser — start it once it's ready.
+                if (status !== 'playing' && e.currentTarget.paused) setStatus('ready');
                 if (inView && !paused && e.currentTarget.paused) e.currentTarget.play().catch(() => {});
               }}
+              onTimeUpdate={(e) => {
+                const v = e.currentTarget;
+                setProgress(v.duration ? v.currentTime / v.duration : 0);
+              }}
+              onEnded={() => (count > 1 ? select(index + 1) : (videoRef.current.currentTime = 0, videoRef.current.play()))}
+              onError={onError}
               onClick={() => setPaused((p) => !p)}
-              onTimeUpdate={(e) => setProgress(e.currentTarget.duration ? e.currentTarget.currentTime / e.currentTarget.duration : 0)}
-              onEnded={() => (count > 1 ? go(1) : (videoRef.current.currentTime = 0, videoRef.current.play()))}
-              onError={() => count > 1 && setTimeout(() => go(1), 800)}
               className="no-zoom absolute inset-0 w-full h-full object-cover cursor-pointer"
             />
 
-            {/* stories-style progress, one segment per clip */}
+            {/* stories-style progress */}
             <div className="absolute inset-x-3 top-3 flex gap-1.5" aria-hidden="true">
               {clips.map((c, i) => (
-                <span key={c.id} className="h-[3px] flex-1 rounded-full bg-white/35 overflow-hidden">
-                  <span className="block h-full bg-white transition-[width] duration-300 ease-linear"
+                <span key={c.id} className="h-[3px] flex-1 rounded-full bg-white/30 overflow-hidden">
+                  <span className="block h-full bg-white"
                     style={{ width: `${i < index ? 100 : i === index ? progress * 100 : 0}%` }} />
                 </span>
               ))}
@@ -121,11 +135,35 @@ export default function FeedbackReel() {
               </button>
             </div>
 
-            {paused && (
+            {muted && status === 'playing' && (
+              <button onClick={() => setMuted(false)}
+                className="absolute left-1/2 -translate-x-1/2 top-[18%] inline-flex items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-[13px] text-white backdrop-blur-sm">
+                <FiVolume2 /> Tap for sound
+              </button>
+            )}
+
+            {status === 'loading' && !paused && (
+              <span className="absolute inset-0 m-auto w-12 h-12 rounded-full border-[3px] border-white/25 border-t-white animate-spin" role="status" aria-label="Loading video" />
+            )}
+
+            {paused && status !== 'error' && (
               <button onClick={() => setPaused(false)} aria-label="Play video"
                 className="absolute inset-0 m-auto w-16 h-16 grid place-items-center rounded-full bg-white/90 text-ink shadow-lg">
                 <FiPlay className="w-7 h-7 translate-x-0.5" />
               </button>
+            )}
+
+            {status === 'error' && (
+              <div className="absolute inset-0 grid place-items-center bg-black/60 p-6 text-center text-white">
+                <div>
+                  <FiAlertCircle className="mx-auto w-8 h-8 text-white/80" />
+                  <p className="mt-3 text-[15px]">This video couldn’t load.</p>
+                  {count > 1 && <p className="mt-1 text-[13px] text-white/70">Moving to the next one…</p>}
+                  <button onClick={retry} className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] text-ink">
+                    <FiRotateCw /> Try again
+                  </button>
+                </div>
+              </div>
             )}
 
             {(clip.patient_name || clip.caption) && (
@@ -135,21 +173,51 @@ export default function FeedbackReel() {
               </figcaption>
             )}
           </figure>
-        </div>
 
-        {count > 1 && (
-          <div className="mt-7 flex items-center justify-center gap-4">
-            <button onClick={() => go(-1)} aria-label="Previous clip"
-              className="w-12 h-12 rounded-full border border-slate text-slate grid place-items-center hover:bg-slate hover:text-white transition-colors">
-              <FiChevronLeft className="w-5 h-5" />
-            </button>
-            <span className="text-[14px] text-ink tabular-nums w-16 text-center">{index + 1} / {count}</span>
-            <button onClick={() => go(1)} aria-label="Next clip"
-              className="w-12 h-12 rounded-full border border-slate text-slate grid place-items-center hover:bg-slate hover:text-white transition-colors">
-              <FiChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-        )}
+          {/* Playlist */}
+          {count > 1 && (
+            <div className="min-w-0">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-[13px] uppercase tracking-[0.14em] text-slate">
+                  Clip <span className="tabular-nums text-ink">{index + 1}</span> of {count}
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={() => select(index - 1)} aria-label="Previous clip"
+                    className="w-11 h-11 rounded-full border border-slate/40 text-ink grid place-items-center hover:bg-ink hover:text-white hover:border-ink transition-colors">
+                    <FiChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => select(index + 1)} aria-label="Next clip"
+                    className="w-11 h-11 rounded-full border border-slate/40 text-ink grid place-items-center hover:bg-ink hover:text-white hover:border-ink transition-colors">
+                    <FiChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <ol className="mt-4 flex md:flex-col gap-3 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 md:max-h-[520px] md:overflow-y-auto">
+                {clips.map((c, i) => {
+                  const active = i === index;
+                  return (
+                    <li key={c.id} className="snap-start shrink-0 w-[100px] md:w-auto">
+                      <button onClick={() => select(i)} aria-current={active}
+                        className={`w-full flex flex-col md:flex-row md:items-center gap-3 rounded-2xl p-2 text-left transition-colors ${active ? 'bg-white shadow-[0_10px_30px_-18px_rgba(16,24,40,0.5)] ring-1 ring-black/5' : 'hover:bg-white/70'}`}>
+                        <span className="relative w-full md:w-[68px] aspect-[9/16] shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#1b2a38] to-[#0f1720]">
+                          {c.poster
+                            ? <img src={c.poster} alt="" loading="lazy" className="no-zoom w-full h-full object-cover" />
+                            : <span className="absolute inset-0 grid place-items-center text-white/85"><FiPlay className="w-5 h-5" /></span>}
+                          {active && <span className="absolute inset-0 ring-2 ring-inset ring-slate rounded-xl" />}
+                        </span>
+                        <span className="min-w-0 px-1 md:px-0">
+                          <span className="block text-[14px] text-ink truncate">{c.patient_name || `Patient story ${i + 1}`}</span>
+                          <span className="block text-[12.5px] text-slate truncate">{active ? (paused ? 'Paused' : 'Now playing') : c.caption || 'Tap to watch'}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

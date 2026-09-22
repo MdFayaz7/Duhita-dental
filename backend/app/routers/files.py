@@ -13,7 +13,7 @@ RANGE = re.compile(r"bytes=(\d*)-(\d*)")
 CHUNK = 256 * 1024
 
 
-@router.get("/{file_id}")
+@router.api_route("/{file_id}", methods=["GET", "HEAD"])
 async def get_file(file_id: str, request: Request):
     """Serve a stored file. Supports byte ranges, which iPhone Safari requires to play video."""
     try:
@@ -45,6 +45,8 @@ async def get_file(file_id: str, request: Request):
         headers["Content-Range"] = f"bytes {start}-{end}/{size}"
 
     headers["Content-Length"] = str(end - start + 1 if size else 0)
+    if request.method == "HEAD":
+        return Response(status_code=status, media_type=content_type, headers=headers)
     stream.seek(start)
 
     async def body():

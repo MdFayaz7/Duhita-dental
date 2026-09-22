@@ -22,7 +22,12 @@ class Settings(BaseSettings):
     public_base_url: str = "http://localhost:8000"
     upload_dir: str = "uploads"
     max_upload_mb: int = 15
-    max_video_mb: int = 60
+    max_video_mb: int = 100
+    # Without Cloudinary, clips are streamed by this server itself — keep them small.
+    max_local_video_mb: int = 20
+    # Optional video CDN (cloudinary://<key>:<secret>@<cloud>). Clips then load fast
+    # everywhere and are compressed automatically; without it they are kept in MongoDB.
+    cloudinary_url: str = ""
 
     @property
     def origins(self) -> list[str]:

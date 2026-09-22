@@ -23,7 +23,7 @@ const SOCIALS = [
 function Hero() {
   return (
     <section className="relative isolate overflow-hidden min-h-[calc(100svh-124px)] lg:min-h-[calc(100svh-76px)] flex flex-col bg-ink">
-      <HeroMedia alt="Smiling patient with a sparkling tooth jewel in the dental chair at Duhita Dental, Vijayawada" />
+      <HeroMedia alt="Smiling patient in the dental chair at Duhita Dental, Vijayawada" />
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/60 via-black/45 to-black/70 md:bg-gradient-to-r md:from-[rgba(8,14,22,0.86)] md:via-[rgba(8,14,22,0.6)] md:via-40% md:to-transparent md:to-72%" />
 
       <div className="flex-1 flex items-center px-[18px] md:px-10 xl:px-16 pt-12 sm:pt-16 pb-8">
