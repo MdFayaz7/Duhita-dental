@@ -25,6 +25,7 @@ async def overview():
         "patients_this_week": await db.patients.count_documents({"created_at": {"$gte": datetime.fromisoformat(week_ago)}}),
         "doctors": await db.doctors.count_documents({"active": True}),
         "research": await db.research.count_documents({}),
+        "feedback": await db.feedback.count_documents({}),
         "gallery": {
             "clinic": await db.gallery.count_documents({"category": "clinic"}),
             "infrastructure": await db.gallery.count_documents({"category": "infrastructure"}),

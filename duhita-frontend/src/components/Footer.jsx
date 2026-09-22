@@ -48,7 +48,7 @@ export default function Footer() {
               <li><Link to="/about/clinic-gallery">Clinic Gallery</Link></li>
               <li><Link to="/about/reviews">Reviews</Link></li>
               <li><Link to="/about/our-research">Our Research</Link></li>
-              <li><Link to="/services/community-service">Free Dental Camps</Link></li>
+              <li><Link to="/services/community-dentistry">Free Dental Camps</Link></li>
               <li><Link to="/patient-info">For Patients</Link></li>
               <li><Link to="/contact">Contact</Link></li>
             </ul>

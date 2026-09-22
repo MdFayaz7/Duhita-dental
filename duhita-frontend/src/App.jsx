@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 
@@ -12,7 +12,7 @@ const Research = lazy(() => import('./pages/Research'));
 const Services = lazy(() => import('./pages/Services'));
 const ServiceCategory = lazy(() => import('./pages/ServiceCategory'));
 const Treatment = lazy(() => import('./pages/Treatment'));
-const CommunityService = lazy(() => import('./pages/CommunityService'));
+const CommunityDentistry = lazy(() => import('./pages/CommunityDentistry'));
 const PatientInfo = lazy(() => import('./pages/PatientInfo'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Register = lazy(() => import('./pages/Register'));
@@ -31,6 +31,7 @@ const AdminSettings = lazy(() => import('./admin/Settings'));
 const AdminDoctors = lazy(() => import('./admin/Doctors'));
 const AdminResearch = lazy(() => import('./admin/Research'));
 const AdminGallery = lazy(() => import('./admin/Gallery'));
+const AdminFeedback = lazy(() => import('./admin/Feedback'));
 
 const Loading = () => <div className="min-h-[60vh]" aria-busy="true" />;
 
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="doctors" element={<AdminDoctors />} />
             <Route path="research" element={<AdminResearch />} />
             <Route path="gallery/:category" element={<AdminGallery />} />
+            <Route path="feedback" element={<AdminFeedback />} />
           </Route>
 
           <Route element={<Layout />}>
@@ -59,7 +61,8 @@ export default function App() {
             <Route path="about/reviews" element={<Reviews />} />
             <Route path="about/our-research" element={<Research />} />
             <Route path="services" element={<Services />} />
-            <Route path="services/community-service" element={<CommunityService />} />
+            <Route path="services/community-dentistry" element={<CommunityDentistry />} />
+            <Route path="services/community-service" element={<Navigate to="/services/community-dentistry" replace />} />
             <Route path="services/:category" element={<ServiceCategory />} />
             <Route path="services/:category/:treatment" element={<Treatment />} />
             <Route path="patient-info" element={<PatientInfo />} />

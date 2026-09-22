@@ -34,7 +34,8 @@ Uploaded files live in `backend/uploads/` and are served from `/uploads/...`.
 - `POST /api/patients` — register a patient, returns the new patient ID
 - `GET  /api/patients/lookup/{patient_id}` — fills the booking form
 - `POST /api/appointments` — request an appointment
-- `GET  /api/doctors`, `GET /api/research`, `GET /api/gallery?category=clinic`
+- `GET  /api/doctors`, `GET /api/research`, `GET /api/gallery?category=clinic`, `GET /api/feedback`
+- `GET  /api/files/{id}` — stored photos, PDFs and videos (supports byte ranges for video streaming)
 - `GET  /api/health`
 
 ## Admin endpoints (Bearer token from `POST /api/auth/login`)

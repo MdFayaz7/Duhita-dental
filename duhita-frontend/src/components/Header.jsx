@@ -53,8 +53,8 @@ function Dropdown({ item }) {
             </div>
           ))}
           <div className="flex flex-col justify-end gap-3">
-            <Link to="/services/community-service" className="block text-[14px] font-semibold text-ink hover:text-slate">
-              Community Service
+            <Link to="/services/community-dentistry" className="block text-[14px] font-semibold text-ink hover:text-slate">
+              Community Dentistry
               <span className="block text-[13px] font-normal text-body mt-1">Free dental camps</span>
             </Link>
             <Link to="/services" className="btn btn-outline">View All Services</Link>
@@ -147,7 +147,7 @@ export default function Header() {
                   ? categories
                       .map((c) => ({ label: c.name, to: `/services/${c.slug}` }))
                       .concat(
-                        { label: 'Community Service (Free Dental Camps)', to: '/services/community-service' },
+                        { label: 'Community Dentistry (Free Dental Camps)', to: '/services/community-dentistry' },
                         { label: 'All Services', to: '/services' },
                       )
                   : item.children;

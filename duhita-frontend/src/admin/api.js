@@ -52,6 +52,31 @@ async function request(path, { method = 'GET', body, form, auth = true } = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+/** POST a FormData with upload progress (fetch can't report upload progress). */
+export function uploadWithProgress(path, form, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${BASE}${path}`);
+    const token = getToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText || '{}'); } catch { /* non-JSON */ }
+      if (xhr.status === 401) {
+        setToken(null);
+        location.assign('/admin/login');
+        return reject(new ApiError('Session expired. Please sign in again.', 401));
+      }
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(data);
+      const detail = Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail;
+      reject(new ApiError(detail || `Upload failed (${xhr.status})`, xhr.status));
+    };
+    xhr.onerror = () => reject(new ApiError('Network error — check your connection and try again.', 0));
+    xhr.send(form);
+  });
+}
+
 export const api = {
   base: BASE,
   /** Files stored by the API (GridFS or legacy /uploads) live on the API host, not the website. */
@@ -95,4 +120,10 @@ export const api = {
   updateImage: (id, body) => request(`/api/gallery/${id}`, { method: 'PATCH', body }),
   deleteImage: (id) => request(`/api/gallery/${id}`, { method: 'DELETE' }),
   reorderImages: (ids) => request('/api/gallery/reorder', { method: 'POST', body: ids }),
+
+  feedback: () => request('/api/feedback/all'),
+  uploadFeedback: (form, onProgress) => uploadWithProgress('/api/feedback', form, onProgress),
+  updateFeedback: (id, body) => request(`/api/feedback/${id}`, { method: 'PATCH', body }),
+  reorderFeedback: (ids) => request('/api/feedback/reorder', { method: 'POST', body: ids }),
+  deleteFeedback: (id) => request(`/api/feedback/${id}`, { method: 'DELETE' }),
 };

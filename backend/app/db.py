@@ -27,6 +27,7 @@ async def ensure_indexes() -> None:
     await db.gallery.create_index([("category", 1), ("order", 1)])
     await db.research.create_index("created_at")
     await db.doctors.create_index("order")
+    await db.feedback.create_index([("order", 1), ("created_at", -1)])
 
 
 def serialize(doc: dict | None) -> dict | None:

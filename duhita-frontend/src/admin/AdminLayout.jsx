@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiGrid, FiCalendar, FiClock, FiUsers, FiUserCheck, FiFileText, FiImage, FiLayers,
-  FiHeart, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiX,
+  FiHeart, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiX, FiVideo,
 } from 'react-icons/fi';
 import { api, getToken, setToken } from './api';
 import { AdminProviders, cx } from './ui';
@@ -23,7 +23,8 @@ const GROUPS = [
     items: [
       { to: '/admin/gallery/clinic', label: 'Clinic Gallery', icon: FiImage },
       { to: '/admin/gallery/infrastructure', label: 'Infrastructure', icon: FiLayers },
-      { to: '/admin/gallery/camps', label: 'Dental Camps', icon: FiHeart },
+      { to: '/admin/gallery/camps', label: 'Community Dentistry', icon: FiHeart },
+      { to: '/admin/feedback', label: 'Patient Feedback', icon: FiVideo },
       { to: '/admin/research', label: 'Research Papers', icon: FiFileText },
     ],
   },

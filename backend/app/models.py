@@ -119,6 +119,13 @@ class ResearchIn(BaseModel):
 GalleryCategory = Literal["clinic", "infrastructure", "camps"]
 
 
+class FeedbackUpdate(BaseModel):
+    patient_name: str | None = None
+    caption: str | None = None
+    active: bool | None = None
+    order: int | None = None
+
+
 class GalleryUpdate(BaseModel):
     caption: str | None = None
     category: GalleryCategory | None = None

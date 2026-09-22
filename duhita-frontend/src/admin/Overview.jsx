@@ -129,6 +129,7 @@ export default function Overview() {
                 [FiImage, 'Clinic gallery', stats.gallery.clinic, '/admin/gallery/clinic'],
                 [FiImage, 'Infrastructure gallery', stats.gallery.infrastructure, '/admin/gallery/infrastructure'],
                 [FiImage, 'Dental camp gallery', stats.gallery.camps, '/admin/gallery/camps'],
+                [FiFileText, 'Patient feedback videos', stats.feedback ?? 0, '/admin/feedback'],
                 [FiFileText, 'Research papers', stats.research, '/admin/research'],
               ].map(([Icon, label, count, to]) => (
                 <li key={label}>

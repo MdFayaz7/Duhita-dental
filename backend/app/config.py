@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     public_base_url: str = "http://localhost:8000"
     upload_dir: str = "uploads"
     max_upload_mb: int = 15
+    max_video_mb: int = 60
 
     @property
     def origins(self) -> list[str]:

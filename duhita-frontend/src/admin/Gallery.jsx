@@ -8,7 +8,7 @@ import { Button, EmptyState, ErrorNote, Field, IconButton, Modal, Panel, Skeleto
 const META = {
   clinic: { title: 'Clinic Gallery', where: 'About → Clinic Gallery page' },
   infrastructure: { title: 'Infrastructure Gallery', where: 'About → Our Infrastructure section' },
-  camps: { title: 'Dental Camp Gallery', where: 'Services → Community Service page' },
+  camps: { title: 'Dental Camp Gallery', where: 'Services → Community Dentistry page' },
 };
 
 export default function GalleryAdmin() {

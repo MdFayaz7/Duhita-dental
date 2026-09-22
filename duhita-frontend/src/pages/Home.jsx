@@ -3,6 +3,7 @@ import { FiPhone, FiUserPlus, FiCalendar, FiHome } from 'react-icons/fi';
 import { FaFacebookF, FaInstagram, FaWhatsapp } from 'react-icons/fa';
 import { GoogleG } from '../components/GoogleReviews';
 import useSeo from '../hooks/useSeo';
+import HeroMedia from '../components/HeroMedia';
 import { site } from '../data/site';
 
 const heroActions = [
@@ -22,13 +23,8 @@ const SOCIALS = [
 function Hero() {
   return (
     <section className="relative isolate overflow-hidden min-h-[calc(100svh-124px)] lg:min-h-[calc(100svh-76px)] flex flex-col bg-ink">
-      <picture>
-        <source srcSet="/images/hero-smile.webp" type="image/webp" />
-        <img src="/images/hero-smile.jpg" alt="Smiling patient in the dental chair at Duhita Dental, Vijayawada"
-          width="1870" height="841" fetchPriority="high"
-          className="hero-media absolute inset-0 -z-10 w-full h-full object-cover object-[76%_center]" />
-      </picture>
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/60 via-black/45 to-black/70 md:bg-none md:bg-gradient-to-r md:from-black/75 md:via-black/45 md:to-black/10" />
+      <HeroMedia alt="Smiling patient with a sparkling tooth jewel in the dental chair at Duhita Dental, Vijayawada" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/60 via-black/45 to-black/70 md:bg-gradient-to-r md:from-[rgba(8,14,22,0.86)] md:via-[rgba(8,14,22,0.6)] md:via-40% md:to-transparent md:to-72%" />
 
       <div className="flex-1 flex items-center px-[18px] md:px-10 xl:px-16 pt-12 sm:pt-16 pb-8">
         <div className="max-w-[640px] text-white">

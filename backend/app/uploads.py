@@ -19,6 +19,8 @@ IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/avif", "image/hei
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".avif", ".heic", ".heif"}
 MAX_IMAGE_EDGE = 1600  # px — sharp on any screen, light enough for phones
 PDF_TYPES = {"application/pdf"}
+VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
+VIDEO_EXTENSIONS = {".mp4", ".webm", ".mov", ".m4v"}
 FILE_PREFIX = "/api/files/"
 
 
@@ -63,15 +65,22 @@ async def save_upload(file: UploadFile, folder: str, allowed: set[str]) -> str:
     filename = file.filename or "upload"
     content_type = file.content_type or ""
     is_image_upload = allowed is IMAGE_TYPES
-    # Some browsers send HEIC photos with an empty or generic type — trust the extension there.
-    if content_type not in allowed and not (is_image_upload and Path(filename).suffix.lower() in IMAGE_EXTENSIONS):
-        kind = "a JPG, PNG, WebP or HEIC photo" if is_image_upload else "a PDF"
+    is_video_upload = allowed is VIDEO_TYPES
+    suffix = Path(filename).suffix.lower()
+    # Some browsers send HEIC photos / MOV clips with an empty or generic type — trust the extension there.
+    trusted_by_extension = (is_image_upload and suffix in IMAGE_EXTENSIONS) or (is_video_upload and suffix in VIDEO_EXTENSIONS)
+    if content_type not in allowed and not trusted_by_extension:
+        kind = ("a JPG, PNG, WebP or HEIC photo" if is_image_upload
+                else "an MP4, MOV or WebM video" if is_video_upload else "a PDF")
         raise HTTPException(400, f"Unsupported file type ({content_type or 'unknown'}). Please upload {kind}.")
+    if is_video_upload and content_type not in VIDEO_TYPES:
+        content_type = {".webm": "video/webm", ".mov": "video/quicktime"}.get(suffix, "video/mp4")
 
     data = await file.read()
     size_mb = len(data) / (1024 * 1024)
-    if size_mb > settings.max_upload_mb:
-        raise HTTPException(400, f"File is {size_mb:.1f} MB — the limit is {settings.max_upload_mb} MB.")
+    limit = settings.max_video_mb if is_video_upload else settings.max_upload_mb
+    if size_mb > limit:
+        raise HTTPException(400, f"File is {size_mb:.1f} MB — the limit is {limit} MB.")
 
     if is_image_upload:
         data, content_type, filename = optimise_image(data, filename)

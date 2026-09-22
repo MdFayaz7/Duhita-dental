@@ -49,14 +49,14 @@ export default function Services() {
           ))}
 
           <article className="reveal card card-hover flex flex-col group">
-            <Link to="/services/community-service" className="block aspect-[4/3] overflow-hidden">
+            <Link to="/services/community-dentistry" className="block aspect-[4/3] overflow-hidden">
               <img src="/images/gallery/camps/camp-06.jpg" alt="Free dental camp by Duhita Dental in Vijayawada"
                 className="w-full h-full object-cover" loading="lazy" />
             </Link>
             <div className="p-6 sm:p-7 flex flex-col flex-1">
               <Icon name="comfort" className="w-9 h-9 text-ink" />
               <h2 className="text-[24px] sm:text-[26px] mt-4 leading-tight">
-                <Link to="/services/community-service">Community Service</Link>
+                <Link to="/services/community-dentistry">Community Dentistry</Link>
               </h2>
               <p className="mt-3 text-[14.5px] leading-relaxed">
                 Free dental camps taking screenings and oral health awareness to schools, workplaces and villages.
@@ -68,7 +68,7 @@ export default function Services() {
                   </li>
                 ))}
               </ul>
-              <Link to="/services/community-service" className="btn btn-outline mt-7 w-full sm:w-auto sm:self-start">See Our Camps</Link>
+              <Link to="/services/community-dentistry" className="btn btn-outline mt-7 w-full sm:w-auto sm:self-start">See Our Camps</Link>
             </div>
           </article>
         </div>

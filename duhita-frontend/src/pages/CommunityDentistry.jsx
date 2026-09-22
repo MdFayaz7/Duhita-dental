@@ -12,19 +12,19 @@ const pillars = [
   { icon: 'shield', title: 'Follow-Up Care', body: 'Patients needing treatment are guided to the clinic, with priority appointments.' },
 ];
 
-export default function CommunityService() {
+export default function CommunityDentistry() {
   useSeo(
-    'Free Dental Camps in Vijayawada | Community Service | Duhita Dental',
+    'Free Dental Camps in Vijayawada | Community Dentistry | Duhita Dental',
     'Duhita Multispeciality Dental Centre conducts free dental camps across Vijayawada and Krishna district — school programmes, workplace screenings and community check-ups led by Dr. Nalluru Sasidhar, M.D.S.',
   );
 
   return (
     <>
       <PageHero
-        eyebrow="Community Service"
+        eyebrow="Community Dentistry"
         title="Free Dental Camps Across Vijayawada"
         image="/images/gallery/camps/camp-06.jpg"
-        crumbs={[{ label: 'Home', to: '/' }, { label: 'Services', to: '/services' }, { label: 'Community Service' }]}
+        crumbs={[{ label: 'Home', to: '/' }, { label: 'Services', to: '/services' }, { label: 'Community Dentistry' }]}
       >
         Taking check-ups, screenings and oral health awareness to schools, workplaces and villages — because most dental
         problems are far easier to treat when they are found early.

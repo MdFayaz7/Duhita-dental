@@ -9,7 +9,7 @@ from pymongo.errors import PyMongoError
 
 from .config import settings
 from .db import ensure_indexes
-from .routers import appointments, auth, doctors, files, gallery, patients, research, schedule, stats
+from .routers import appointments, auth, doctors, feedback, files, gallery, patients, research, schedule, stats
 
 
 @asynccontextmanager
@@ -54,7 +54,7 @@ async def log_rejected_origins(request: Request, call_next):
 
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
-for router in (auth, patients, appointments, schedule, doctors, research, gallery, files, stats):
+for router in (auth, patients, appointments, schedule, doctors, research, gallery, feedback, files, stats):
     app.include_router(router.router)
 
 
