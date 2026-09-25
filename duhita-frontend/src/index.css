@@ -180,6 +180,28 @@ body {
   }
 }
 
+/* Patient feedback coverflow — active clip centre stage, neighbours stepped back */
+.reel-stage {
+  --reel-card: min(320px, 74vw);
+  width: min(100%, calc(var(--reel-card) * 2.4));
+  height: calc(var(--reel-card) * 16 / 9);
+  perspective: 1200px;
+}
+.reel-card {
+  width: var(--reel-card);
+  height: calc(var(--reel-card) * 16 / 9);
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+  will-change: transform;
+}
+.reel-stage:focus-visible {
+  outline: 2px solid var(--color-slate);
+  outline-offset: 6px;
+  border-radius: 28px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reel-card { transition: none; }
+}
+
 @keyframes gallery-fade {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
