@@ -58,7 +58,7 @@ function ReviewCard({ review, index }) {
   }, []);
 
   return (
-    <article className="snap-start shrink-0 w-[86%] sm:w-[calc((100%-20px)/2)] lg:w-[calc((100%-40px)/3)] card p-6 flex flex-col">
+    <article className="snap-start shrink-0 w-[86%] sm:w-[calc((100%-20px)/2)] lg:w-[calc((100%-40px)/3)] card p-5 sm:p-6 flex flex-col">
       <header className="flex items-center gap-3.5">
         <span className="w-12 h-12 shrink-0 rounded-full grid place-items-center text-white text-[20px] font-medium"
           style={{ background: AVATAR_COLORS[index % AVATAR_COLORS.length] }} aria-hidden="true">
@@ -79,12 +79,12 @@ function ReviewCard({ review, index }) {
       </p>
       <div className="flex flex-wrap gap-x-4 mt-1.5">
         {clamped && (
-          <button onClick={() => setExpanded((e) => !e)} className="text-[14px] text-body hover:text-ink">
+          <button onClick={() => setExpanded((e) => !e)} className="inline-flex items-center min-h-[40px] sm:min-h-0 text-[14px] text-body hover:text-ink">
             {expanded ? 'Read less' : 'Read more'}
           </button>
         )}
         {review.translation && (
-          <button onClick={() => setShowTranslation((t) => !t)} className="text-[14px] text-[#1a73e8] hover:underline">
+          <button onClick={() => setShowTranslation((t) => !t)} className="inline-flex items-center min-h-[40px] sm:min-h-0 text-[14px] text-[#1a73e8] hover:underline">
             {showTranslation ? 'See original (Telugu)' : 'See translation (English)'}
           </button>
         )}
@@ -149,15 +149,15 @@ export default function GoogleReviews() {
           </div>
         </div>
 
-        <div ref={track} className="slider-track no-scrollbar mt-12 flex gap-5 overflow-x-auto reveal"
+        <div ref={track} className="slider-track no-scrollbar mt-8 sm:mt-12 flex gap-4 sm:gap-5 overflow-x-auto reveal"
           onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
           onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} onTouchStart={() => setPaused(true)}>
           {googleReviews.map((r, i) => <ReviewCard key={r.author} review={r} index={i} />)}
           <a href={googlePlace.url} target="_blank" rel="noreferrer"
-            className="snap-start shrink-0 w-[86%] sm:w-[calc((100%-20px)/2)] lg:w-[calc((100%-40px)/3)] bg-slate text-white p-7 rounded-[18px] flex flex-col justify-between group min-h-[280px]">
+            className="snap-start shrink-0 w-[86%] sm:w-[calc((100%-20px)/2)] lg:w-[calc((100%-40px)/3)] bg-slate text-white p-6 sm:p-7 rounded-[18px] flex flex-col justify-between group min-h-[260px] sm:min-h-[280px]">
             <GoogleG className="w-10 h-10 bg-white rounded-full p-1.5" />
             <div>
-              <p className="font-display text-[30px] leading-tight">{googlePlace.rating.toFixed(1)} out of 5</p>
+              <p className="font-display text-[26px] sm:text-[30px] leading-tight">{googlePlace.rating.toFixed(1)} out of 5</p>
               <p className="mt-2 text-white/80 text-[15px]">from {googlePlace.total} patient reviews on Google</p>
               <span className="mt-6 inline-flex items-center gap-2 text-[15px] font-medium">
                 Read all reviews <FiArrowUpRight className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />

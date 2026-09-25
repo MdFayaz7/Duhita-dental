@@ -34,7 +34,7 @@ export default function HomeService() {
         For patients who cannot easily visit the clinic, our team brings essential dental care home — across Vijayawada.
       </PageHero>
       <section className="section-y bg-white">
-        <div className="container-x grid gap-12 lg:grid-cols-2 lg:gap-20">
+        <div className="container-x grid gap-9 lg:grid-cols-2 lg:gap-20">
           <div className="reveal prose-duhita">
             <h2 className="!mt-0">What We Can Do at Home</h2>
             <ul>{services.map((s) => <li key={s}>{s}</li>)}</ul>
@@ -46,8 +46,8 @@ export default function HomeService() {
           <div className="reveal prose-duhita">
             <h2 className="!mt-0">Who It Is For</h2>
             <ul>{whoFor.map((s) => <li key={s}>{s}</li>)}</ul>
-            <div className="not-prose mt-8 bg-ivory p-7">
-              <p className="font-display text-[24px] text-ink">Request a home visit</p>
+            <div className="not-prose mt-7 sm:mt-8 bg-ivory rounded-2xl p-5 sm:p-7">
+              <p className="font-display text-[21px] sm:text-[24px] text-ink">Request a home visit</p>
               <p className="mt-2 text-[14.5px]">Call or WhatsApp us with the patient’s name, address and concern. We will confirm a visit time.</p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <a href={`tel:${site.phone}`} className="btn btn-solid !py-3"><FiPhone /> Call {site.phoneDisplay}</a>

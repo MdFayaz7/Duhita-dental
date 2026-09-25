@@ -9,7 +9,7 @@ import { site } from '../data/site';
 
 /** Thumb-reach action bar for phones: call, WhatsApp, book — always one tap away. */
 function MobileActionBar() {
-  const item = 'flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[11.5px] font-medium min-h-[56px]';
+  const item = 'flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[12px] font-medium min-h-[58px] active:bg-black/5';
   return (
     <nav aria-label="Quick contact"
       className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex bg-white border-t border-line shadow-[0_-4px_16px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)]">
@@ -45,8 +45,10 @@ export default function Layout() {
     <>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] bg-white p-2">Skip to content</a>
       <Header />
-      <main id="main" className="pb-[calc(56px+env(safe-area-inset-bottom))] lg:pb-0"><Outlet /></main>
+      <main id="main"><Outlet /></main>
       {!isHome && <Footer />}
+      {/* clears the fixed action bar at the bottom of every page */}
+      <div aria-hidden="true" className="lg:hidden h-[calc(58px+env(safe-area-inset-bottom))]" />
       <MobileActionBar />
       <a href={site.whatsapp} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"
         className="hidden lg:grid fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-[#25d366] text-white place-items-center shadow-lg hover:scale-105 transition-transform">

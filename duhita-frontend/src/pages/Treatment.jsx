@@ -37,11 +37,11 @@ export default function Treatment() {
       </PageHero>
 
       <section className="section-y bg-white">
-        <div className="container-x grid gap-14 lg:grid-cols-[1fr_320px] lg:gap-20 items-start">
+        <div className="container-x grid gap-10 lg:grid-cols-[1fr_320px] lg:gap-20 items-start">
           <article className="prose-duhita max-w-3xl">
-            {t.intro.map((p) => <p key={p.slice(0, 20)} className="text-[17px]">{p}</p>)}
-            <figure className="my-10 card img-well p-3 flex justify-center">
-              <img src={t.image} alt={`${t.title} at Duhita Dental Vijayawada`} className="max-h-[520px] w-auto max-w-full object-contain" />
+            {t.intro.map((p) => <p key={p.slice(0, 20)} className="text-[16px] sm:text-[17px]">{p}</p>)}
+            <figure className="my-7 sm:my-10 card img-well p-3 flex justify-center">
+              <img src={t.image} alt={`${t.title} at Duhita Dental Vijayawada`} className="max-h-[320px] sm:max-h-[520px] w-auto max-w-full object-contain" />
             </figure>
             {t.sections.map((s) => (
               <div key={s.h}>

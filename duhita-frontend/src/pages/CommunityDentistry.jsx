@@ -31,7 +31,7 @@ export default function CommunityDentistry() {
       </PageHero>
 
       <section className="section-y bg-white">
-        <div className="container-x grid gap-12 lg:grid-cols-2 lg:gap-20 items-start">
+        <div className="container-x grid gap-9 lg:grid-cols-2 lg:gap-20 items-start">
           <div className="reveal prose-duhita">
             <h2 className="!mt-0">Dentistry Beyond the Clinic</h2>
             <p>
@@ -62,7 +62,7 @@ export default function CommunityDentistry() {
       </Gallery>
 
       <section className="bg-slate text-white py-16 md:py-20">
-        <div className="container-x flex flex-col lg:flex-row lg:items-center gap-8 justify-between">
+        <div className="container-x flex flex-col lg:flex-row lg:items-center gap-6 sm:gap-8 justify-between">
           <div className="max-w-2xl">
             <h2 className="!text-white text-[25px] sm:text-[30px] md:text-[40px] leading-[1.15]">Want a dental camp at your school or workplace?</h2>
             <p className="mt-4 text-white/85 leading-relaxed">

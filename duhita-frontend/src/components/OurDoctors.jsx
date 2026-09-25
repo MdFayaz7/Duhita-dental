@@ -34,7 +34,7 @@ export default function OurDoctors() {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {doctors.map((d) => {
             const isFounder = /sasidhar/i.test(d.name);
             const meta = [d.speciality, d.experience_years ? `${d.experience_years}+ years` : null].filter(Boolean).join(' · ');

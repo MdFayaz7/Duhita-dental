@@ -117,7 +117,7 @@ export default function BookAppointment() {
       </PageHero>
 
       <section className="section-y bg-ivory">
-        <div className="container-x grid grid-cols-1 gap-10 lg:grid-cols-[1fr_340px] lg:gap-14 items-start [&>*]:min-w-0">
+        <div className="container-x grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px] lg:gap-14 items-start [&>*]:min-w-0">
           {booked ? (
             <div className="card p-7 sm:p-10 md:p-12 text-center gallery-fade">
               <FiCheckCircle className="w-14 h-14 mx-auto text-slate" />
@@ -149,7 +149,7 @@ export default function BookAppointment() {
               <div role="tablist" aria-label="Patient type" className="grid grid-cols-2 bg-ivory p-1 rounded-full mb-8">
                 {[['existing', 'Registered patient'], ['new', 'New to Duhita']].map(([id, label]) => (
                   <button key={id} role="tab" aria-selected={mode === id} onClick={() => setMode(id)}
-                    className={`rounded-full py-2.5 text-[14px] font-medium transition-colors ${mode === id ? 'bg-slate text-white shadow' : 'text-ink hover:bg-white/60'}`}>
+                    className={`rounded-full min-h-[44px] sm:min-h-0 py-2.5 text-[14px] font-medium transition-colors ${mode === id ? 'bg-slate text-white shadow' : 'text-ink hover:bg-white/60'}`}>
                     {label}
                   </button>
                 ))}

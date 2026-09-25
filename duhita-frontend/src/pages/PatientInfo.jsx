@@ -67,7 +67,7 @@ export default function PatientInfo() {
         <div className="container-x grid gap-5 md:grid-cols-2">
           {blocks.map((b) => (
             <div key={b.id} id={b.id} className="reveal card p-6 sm:p-8 md:p-10 scroll-mt-32">
-              <h2 className="text-[30px]">{b.title}</h2>
+              <h2 className="text-[24px] sm:text-[30px]">{b.title}</h2>
               <ul className="prose-duhita mt-5">{b.body.map((l) => <li key={l}>{l}</li>)}</ul>
             </div>
           ))}

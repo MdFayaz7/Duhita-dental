@@ -6,7 +6,7 @@ export default function MapSection() {
       <iframe
         title="Duhita Dental on Google Maps"
         src={site.mapEmbed}
-        className="w-full h-[420px] md:h-[560px] border-0 grayscale-[30%]"
+        className="w-full h-[300px] sm:h-[420px] md:h-[560px] border-0 grayscale-[30%]"
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
       />

@@ -27,7 +27,7 @@ export default function About() {
       </PageHero>
 
       <section className="section-y bg-white">
-        <div className="container-x grid gap-12 lg:grid-cols-2 lg:gap-20 items-center">
+        <div className="container-x grid gap-9 lg:grid-cols-2 lg:gap-20 items-center">
           <div className="reveal prose-duhita">
             <h2 className="!mt-0">Our Story</h2>
             <p>
@@ -44,11 +44,11 @@ export default function About() {
               costs. No pressure, no unnecessary procedures — just the care you would want for your own family.
             </p>
           </div>
-          <dl className="reveal grid grid-cols-2 gap-4">
+          <dl className="reveal grid grid-cols-2 gap-3 sm:gap-4">
             {stats.map((s) => (
-              <div key={s.label} className="bg-ivory p-8">
-                <dt className="font-display text-[44px] text-slate leading-none">{s.value}</dt>
-                <dd className="mt-3 text-[14px]">{s.label}</dd>
+              <div key={s.label} className="bg-ivory rounded-2xl sm:rounded-none p-5 sm:p-8">
+                <dt className="font-display text-[32px] sm:text-[44px] text-slate leading-none">{s.value}</dt>
+                <dd className="mt-2 sm:mt-3 text-[13.5px] sm:text-[14px]">{s.label}</dd>
               </div>
             ))}
           </dl>
@@ -58,11 +58,13 @@ export default function About() {
       <section className="section-y bg-mist">
         <div className="container-x">
           <h2 className="text-[28px] sm:text-[34px] md:text-[48px] reveal">Our Journey</h2>
-          <ol className="mt-12 grid gap-6 md:grid-cols-4">
+          <ol className="mt-8 sm:mt-12 grid gap-5 sm:gap-6 md:grid-cols-4">
             {milestones.map((m) => (
-              <li key={m.year} className="reveal border-t border-slate/40 pt-6">
-                <p className="font-display text-[34px] text-slate">{m.year}</p>
-                <p className="mt-3 text-[14.5px] leading-relaxed">{m.text}</p>
+              <li key={m.year}
+                className="reveal relative pl-6 border-l-2 border-slate/25 pb-1 md:pl-0 md:pb-0 md:border-l-0 md:border-t md:border-slate/40 md:pt-6">
+                <span aria-hidden="true" className="md:hidden absolute -left-[7px] top-1.5 w-3 h-3 rounded-full bg-slate ring-4 ring-mist" />
+                <p className="font-display text-[26px] sm:text-[34px] text-slate leading-none">{m.year}</p>
+                <p className="mt-2.5 sm:mt-3 text-[14.5px] leading-relaxed">{m.text}</p>
               </li>
             ))}
           </ol>
@@ -72,11 +74,11 @@ export default function About() {
       <section className="section-y bg-ivory">
         <div className="container-x">
           <h2 className="text-[28px] sm:text-[34px] md:text-[48px] reveal max-w-xl">What Makes Our Care Different</h2>
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 sm:mt-12 grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
             {whyChoose.map((w) => (
-              <div key={w.title} className="reveal card p-6 sm:p-8">
+              <div key={w.title} className="reveal card p-5 sm:p-8">
                 <Icon name={w.icon} className="w-10 h-10 text-slate" />
-                <h3 className="text-[24px] mt-5">{w.title}</h3>
+                <h3 className="text-[21px] sm:text-[24px] mt-4 sm:mt-5">{w.title}</h3>
                 <p className="mt-3 text-[14.5px] leading-relaxed">{w.body}</p>
               </div>
             ))}
@@ -90,24 +92,24 @@ export default function About() {
       </Gallery>
 
       <section className="section-y bg-mist">
-        <div className="container-x grid gap-12 lg:grid-cols-2 lg:gap-20 items-center">
+        <div className="container-x grid gap-9 lg:grid-cols-2 lg:gap-20 items-center">
           <div className="reveal">
             <h2 className="text-[28px] sm:text-[34px] md:text-[48px] leading-[1.1]">Technology</h2>
             <p className="mt-5 leading-relaxed">
               We keep investing in proven dental technology so diagnosis is more accurate, procedures are quicker and recovery is
               more comfortable for every patient.
             </p>
-            <ul className="mt-8 space-y-5">
+            <ul className="mt-6 sm:mt-8 space-y-4 sm:space-y-5">
               {technology.map((t) => (
-                <li key={t.strong} className="text-[16px] leading-relaxed text-ink">
+                <li key={t.strong} className="text-[15.5px] sm:text-[16px] leading-relaxed text-ink">
                   <strong className="font-semibold">{t.strong}</strong> {t.rest}
                 </li>
               ))}
-              <li className="text-[16px] leading-relaxed text-ink">
+              <li className="text-[15.5px] sm:text-[16px] leading-relaxed text-ink">
                 <strong className="font-semibold">Rotary endodontics and apex location</strong> for faster, more comfortable root
                 canal treatment — often completed in a single sitting.
               </li>
-              <li className="text-[16px] leading-relaxed text-ink">
+              <li className="text-[15.5px] sm:text-[16px] leading-relaxed text-ink">
                 <strong className="font-semibold">Autoclave sterilisation with sealed pouches</strong> and single-use disposables
                 at every chair, every time.
               </li>

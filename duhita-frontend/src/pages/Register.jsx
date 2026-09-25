@@ -87,7 +87,7 @@ export default function Register() {
       </PageHero>
 
       <section className="section-y bg-ivory">
-        <div className="container-x grid grid-cols-1 gap-10 lg:grid-cols-[1fr_340px] lg:gap-14 items-start [&>*]:min-w-0">
+        <div className="container-x grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px] lg:gap-14 items-start [&>*]:min-w-0">
           {patientId ? (
             <div className="card p-7 sm:p-10 md:p-12 text-center gallery-fade">
               <FiCheckCircle className="w-14 h-14 mx-auto text-slate" />

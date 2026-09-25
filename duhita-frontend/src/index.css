@@ -17,6 +17,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* anchors land below the sticky header instead of under it */
+  scroll-padding-top: 84px;
 }
 
 body {
@@ -406,10 +408,90 @@ main img:not(.no-zoom):not(.hero-media):hover {
 .slider-track {
   -webkit-overflow-scrolling: touch;
 }
+/* On phones the carousels run to both screen edges, so the next card peeks in */
+@media (max-width: 767px) {
+  .slider-track {
+    margin-inline: -16px;
+    padding-inline: 16px;
+    scroll-padding-inline: 16px;
+    scroll-snap-type: x mandatory;
+  }
+}
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   scrollbar-width: none;
+}
+
+/* ---------------------------------------------------------------
+   Phones. Everything here is scoped to <768px, so the desktop
+   layout, type scale and spacing stay exactly as they are.
+   --------------------------------------------------------------- */
+@media (max-width: 767px) {
+  body {
+    font-size: 15.5px;
+    line-height: 1.65;
+  }
+  .container-x {
+    padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+  }
+  .section-y {
+    padding-block: 44px;
+  }
+  /* headings break on sensible words instead of leaving one word alone */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p,
+  li {
+    text-wrap: pretty;
+  }
+  .card {
+    border-radius: 16px;
+  }
+  .btn {
+    min-height: 48px;
+    font-size: 15px;
+  }
+  .prose-duhita h2 {
+    font-size: 27px;
+    margin: 34px 0 12px;
+  }
+  .prose-duhita h3 {
+    font-size: 20px;
+    margin: 26px 0 8px;
+  }
+  .prose-duhita p,
+  .prose-duhita li {
+    line-height: 1.7;
+  }
+  /* long addresses, emails and links wrap instead of widening the page */
+  a[href^="mailto:"],
+  a[href^="http"] {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Touch feedback: taps should feel like an app, since there is no hover state */
+@media (hover: none) {
+  .btn:active,
+  .card-hover:active {
+    transform: scale(0.985);
+  }
+  .btn,
+  .card-hover {
+    transition: transform 0.12s ease, background 0.25s, color 0.25s, border-color 0.25s;
+  }
+}
+
+/* Touch screens have no hover, so anything that only appears on hover is shown outright */
+@media (hover: none) {
+  .touch-reveal {
+    opacity: 1;
+    transform: none;
+  }
 }

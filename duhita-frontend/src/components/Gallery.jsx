@@ -129,7 +129,7 @@ export default function Gallery({ id, category, heading, children, className = '
                 aria-label={`Open photo ${i + 1} of ${images.length}: ${img.caption}`}
                 className="reveal group relative aspect-[4/3] overflow-hidden rounded-[18px] bg-mist text-left shadow-[0_10px_30px_-20px_rgba(16,24,40,0.5)]">
                 <img src={img.src} alt={img.caption} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 p-4 pt-12 bg-gradient-to-t from-black/75 to-transparent text-white text-[13.5px] leading-snug opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-300">
+                <span className="touch-reveal pointer-events-none absolute inset-x-0 bottom-0 p-4 pt-12 bg-gradient-to-t from-black/75 to-transparent text-white text-[13.5px] leading-snug opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-300">
                   {img.caption}
                 </span>
                 <FiMaximize2 className="pointer-events-none absolute top-3 right-3 w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -185,7 +185,7 @@ export default function Gallery({ id, category, heading, children, className = '
               className="group relative shrink-0 w-[88%] sm:w-[calc((100%-16px)/1.6)] lg:w-[calc((100%-16px)/2.4)] aspect-[4/3] overflow-hidden rounded-[18px] bg-mist text-left shadow-[0_10px_30px_-20px_rgba(16,24,40,0.5)]"
             >
               <img src={img.src} alt={img.caption} loading="lazy" draggable="false" className="absolute inset-0 w-full h-full object-cover" />
-              <span className="pointer-events-none absolute inset-x-0 bottom-0 p-4 pt-12 bg-gradient-to-t from-black/70 to-transparent text-white text-[13.5px] leading-snug opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0 transition-all duration-300">
+              <span className="touch-reveal pointer-events-none absolute inset-x-0 bottom-0 p-4 pt-12 bg-gradient-to-t from-black/70 to-transparent text-white text-[13.5px] leading-snug opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0 transition-all duration-300">
                 {img.caption}
               </span>
               <FiMaximize2 className="pointer-events-none absolute top-3 right-3 w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -27,7 +27,7 @@ export default function ServiceCategory() {
       </PageHero>
 
       <section className="section-y bg-white">
-        <div className="container-x grid gap-12 lg:grid-cols-[1.3fr_1fr] lg:gap-20 items-start">
+        <div className="container-x grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:gap-20 items-start">
           <div className="reveal prose-duhita">
             <h2 className="!mt-0">About {c.name}</h2>
             <p>{c.intro}</p>
@@ -45,14 +45,14 @@ export default function ServiceCategory() {
       <section className="section-y bg-ivory">
         <div className="container-x">
           <h2 className="text-[27px] sm:text-[33px] md:text-[44px] reveal">Treatments We Offer</h2>
-          <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
             {c.treatments.map((t) => (
               <Link key={t.slug} to={`/services/${c.slug}/${t.slug}`} className="reveal card card-hover group flex flex-col">
-                <div className="aspect-[4/3] img-well p-3">
+                <div className="aspect-[16/10] sm:aspect-[4/3] img-well p-3">
                   <img src={t.image} alt={t.title} className="w-full h-full object-contain" loading="lazy" />
                 </div>
-                <div className="p-6 flex flex-col flex-1">
-                  <h3 className="text-[24px] leading-tight">{t.title}</h3>
+                <div className="p-5 sm:p-6 flex flex-col flex-1">
+                  <h3 className="text-[21px] sm:text-[24px] leading-tight">{t.title}</h3>
                   <p className="mt-3 text-[14px] leading-relaxed flex-1">{t.excerpt}</p>
                   <span className="mt-5 inline-flex items-center gap-1.5 text-[14px] text-ink">
                     Learn more <FiChevronRight className="group-hover:translate-x-1 transition-transform" />
