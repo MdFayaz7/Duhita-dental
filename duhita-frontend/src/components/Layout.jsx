@@ -1,30 +1,10 @@
 import { useEffect } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { FaWhatsapp } from 'react-icons/fa';
-import { FiPhone, FiCalendar } from 'react-icons/fi';
 import Header from './Header';
 import Footer from './Footer';
 import useReveal from '../hooks/useReveal';
 import { site } from '../data/site';
-
-/** Thumb-reach action bar for phones: call, WhatsApp, book — always one tap away. */
-function MobileActionBar() {
-  const item = 'flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[12px] font-medium min-h-[58px] active:bg-black/5';
-  return (
-    <nav aria-label="Quick contact"
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex bg-white border-t border-line shadow-[0_-4px_16px_rgba(0,0,0,0.08)] pb-[env(safe-area-inset-bottom)]">
-      <a href={`tel:${site.phone}`} className={`${item} text-ink`}>
-        <FiPhone className="w-[18px] h-[18px]" /> Call
-      </a>
-      <a href={site.whatsapp} target="_blank" rel="noreferrer" className={`${item} text-ink border-x border-line`}>
-        <FaWhatsapp className="w-[18px] h-[18px] text-[#25d366]" /> WhatsApp
-      </a>
-      <Link to="/patients/book-appointment" className={`${item} bg-slate text-white`}>
-        <FiCalendar className="w-[18px] h-[18px]" /> Book
-      </Link>
-    </nav>
-  );
-}
 
 export default function Layout() {
   const { pathname, hash } = useLocation();
@@ -47,11 +27,9 @@ export default function Layout() {
       <Header />
       <main id="main"><Outlet /></main>
       {!isHome && <Footer />}
-      {/* clears the fixed action bar at the bottom of every page */}
-      <div aria-hidden="true" className="lg:hidden h-[calc(58px+env(safe-area-inset-bottom))]" />
-      <MobileActionBar />
       <a href={site.whatsapp} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"
-        className="hidden lg:grid fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-[#25d366] text-white place-items-center shadow-lg hover:scale-105 transition-transform">
+        className="hidden lg:grid fixed bottom-5 right-4 lg:right-5 z-40 w-[52px] h-[52px] lg:w-14 lg:h-14 rounded-full bg-[#25d366] text-white place-items-center shadow-lg hover:scale-105 transition-transform"
+        style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
         <FaWhatsapp className="w-7 h-7" />
       </a>
     </>

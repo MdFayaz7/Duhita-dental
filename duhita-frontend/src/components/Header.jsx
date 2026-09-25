@@ -140,7 +140,7 @@ export default function Header() {
       {/* Mobile drawer */}
       {open && (
         <div className="lg:hidden absolute inset-x-0 top-full h-[calc(100dvh-4.5rem)] bg-ivory overflow-y-auto overscroll-contain border-t border-black/5">
-          <nav className="container-x py-3 pb-[calc(96px+env(safe-area-inset-bottom))]" aria-label="Mobile">
+          <nav className="container-x py-6" aria-label="Mobile">
             <ul className="divide-y divide-black/10">
               {menu.map((item) => {
                 const subs = item.mega
@@ -156,7 +156,7 @@ export default function Header() {
                     {subs ? (
                       <>
                         <button
-                          className="w-full flex items-center justify-between min-h-[54px] py-3 text-[17px] text-ink"
+                          className="w-full flex items-center justify-between py-3 text-[17px] text-ink"
                           onClick={() => setExpanded(expanded === item.label ? null : item.label)}
                           aria-expanded={expanded === item.label}
                         >
@@ -164,26 +164,23 @@ export default function Header() {
                           <FiChevronDown className={`transition-transform ${expanded === item.label ? 'rotate-180' : ''}`} />
                         </button>
                         {expanded === item.label && (
-                          <ul className="pb-3 grid gap-1">
+                          <ul className="pb-3 pl-3 space-y-2.5">
                             {subs.map((s) => (
                               <li key={s.to}>
-                                <Link to={s.to}
-                                  className="flex items-center min-h-[46px] px-3 rounded-xl bg-white/70 text-[15px] text-body active:bg-white">
-                                  {s.label}
-                                </Link>
+                                <Link to={s.to} className="text-[15px] text-body">{s.label}</Link>
                               </li>
                             ))}
                           </ul>
                         )}
                       </>
                     ) : (
-                      <Link to={item.to} className="flex items-center min-h-[54px] py-3 text-[17px] text-ink">{item.label}</Link>
+                      <Link to={item.to} className="block py-3 text-[17px] text-ink">{item.label}</Link>
                     )}
                   </li>
                 );
               })}
             </ul>
-            <div className="mt-7 grid gap-3">
+            <div className="mt-8 grid gap-3">
               <a href={`tel:${site.phone}`} className="btn btn-solid">Call {site.phoneDisplay}</a>
               <Link to="/patients/book-appointment" className="btn btn-outline">Book An Appointment</Link>
             </div>
