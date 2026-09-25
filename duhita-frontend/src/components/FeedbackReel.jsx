@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { FiAlertCircle, FiChevronLeft, FiChevronRight, FiPause, FiPlay, FiRotateCw, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import { apiFileUrl, useLiveList } from '../lib/content';
 
-const toClip = (c) => ({ ...c, src: apiFileUrl(c.src), poster: c.poster || '' });
+const toClip = (c) => ({ ...c, src: apiFileUrl(c.src), poster: apiFileUrl(c.poster) || '' });
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -226,19 +226,21 @@ export default function FeedbackReel() {
                     )}
                   </>
                 ) : (
-                  // Neighbour: a still card that brings its clip forward when tapped
+                  // Neighbour: the clip's cover frame, brought forward when tapped
                   <button onClick={() => !dragged() && select(i)} tabIndex={-1}
                     className="absolute inset-0 w-full h-full bg-gradient-to-br from-[#24384a] to-[#0f1720]"
                     aria-label={`Play ${c.patient_name || `patient story ${i + 1}`}`}>
-                    {c.poster && <img src={c.poster} alt="" loading="lazy" className="no-zoom w-full h-full object-cover" />}
-                    <span className="absolute inset-0 grid content-center justify-items-center gap-3 p-4 text-white">
-                      <span className="w-14 h-14 grid place-items-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur-sm">
+                    {c.poster && <img src={c.poster} alt="" loading="lazy" className="no-zoom absolute inset-0 w-full h-full object-cover" />}
+                    <span className="absolute inset-0 grid place-items-center text-white">
+                      <span className="w-14 h-14 grid place-items-center rounded-full bg-black/35 ring-1 ring-white/40 backdrop-blur-sm">
                         <FiPlay className="w-6 h-6 translate-x-0.5" />
                       </span>
-                      <span className="text-[14px] font-medium text-center line-clamp-2">{c.patient_name || `Patient story ${i + 1}`}</span>
-                      {c.caption && <span className="text-[12px] text-white/70 text-center line-clamp-1">{c.caption}</span>}
                     </span>
-                    <span className="absolute inset-0 bg-ivory/20" />
+                    <span className="absolute inset-x-0 bottom-0 p-3 pt-10 bg-gradient-to-t from-black/75 to-transparent text-left text-white">
+                      <span className="block text-[13.5px] font-medium line-clamp-1">{c.patient_name || `Patient story ${i + 1}`}</span>
+                      {c.caption && <span className="block text-[12px] text-white/75 line-clamp-1">{c.caption}</span>}
+                    </span>
+                    <span className="absolute inset-0 bg-ivory/15" />
                   </button>
                 )}
 

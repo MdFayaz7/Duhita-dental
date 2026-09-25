@@ -141,7 +141,7 @@ export default function FeedbackAdmin() {
               {items.map((clip, index) => (
                 <Panel key={clip.id} className="overflow-hidden">
                   <div className="relative aspect-[9/16] bg-black">
-                    <video src={`${api.url(clip.src)}#t=0.5`} poster={clip.poster || undefined} preload={clip.poster ? 'none' : 'metadata'} muted playsInline controls
+                    <video src={`${api.url(clip.src)}#t=0.5`} poster={api.url(clip.poster) || undefined} preload={clip.poster ? 'none' : 'metadata'} muted playsInline controls
                       className="absolute inset-0 w-full h-full object-cover" />
                     {clip.active === false && (
                       <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11.5px]">
