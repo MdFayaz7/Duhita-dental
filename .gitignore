@@ -18,6 +18,11 @@ backend/uploads/*
 duhita-frontend/original-photos/
 duhita-frontend/public/images/_old-renders/
 
+# ---- mobile app build output ----
+patient-app/.expo/
+patient-app/android/
+patient-app/ios/
+
 # ---- OS / editor ----
 .DS_Store
 .vscode/

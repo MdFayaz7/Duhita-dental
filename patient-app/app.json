@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "Duhita Dental",
+    "slug": "dental-ai-assistant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/clinic-logo.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dentalai.assistant",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F3EFEC",
+        "foregroundImage": "./assets/clinic-logo.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.dentalai.assistant"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/clinic-logo.png",
+          "imageWidth": 200,
+          "backgroundColor": "#F3EFEC"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-asset",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Duhita AI needs the microphone so you can talk to her."
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Duhita Dental uses your photos so you can add a profile picture and your dental records.",
+          "cameraPermission": "Duhita Dental uses the camera so you can photograph a report or X-ray."
+        }
+      ]
+    ],
+    "scheme": "dentalai",
+    "androidStatusBar": {
+      "backgroundColor": "#F3EFEC",
+      "barStyle": "dark-content",
+      "translucent": false
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content"
+    }
+  }
+}

@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Duhita AI Avatar</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: radial-gradient(circle at 50% 42%, #e6f7fa 0%, #cfeef4 48%, #eef8fb 100%); }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #unlock { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); display: none; border: 0; border-radius: 16px;
+    padding: 8px 14px; font: 600 13px system-ui, sans-serif; color: #fff; background: #0e9aa7; box-shadow: 0 2px 10px #0003; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="unlock">🔊 Tap to enable her voice</button>
+<script type="module">
+// Duhita AI 2.5D talking avatar.
+// The portrait is warped in a WebGL shader: the jaw and lower lip drop, the upper lip lifts,
+// the mouth widens or rounds, the inner mouth (teeth, tongue) shows through, the eyelids blink
+// and the head sways. The mouth is driven by HeadAudio (audio → visemes, any language).
+import { HeadAudio } from 'https://cdn.jsdelivr.net/gh/met4citizen/HeadAudio@0.1.0-alpha/dist/headaudio.min.mjs';
+
+const HA = 'https://cdn.jsdelivr.net/gh/met4citizen/HeadAudio@0.1.0-alpha/dist/';
+const params = new URLSearchParams(location.search);
+// external=1: the host app plays the audio and streams lip-sync values in (web build; avoids iframe autoplay blocks).
+const EXTERNAL = params.get('external') === '1';
+const post = (msg) => {
+  const s = JSON.stringify(msg);
+  if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(s);
+  else if (window.parent !== window) window.parent.postMessage(s, '*');
+};
+
+// ---------- WebGL ----------
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+
+const VS = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
+// All landmark coordinates are pixels of the 450×450 portrait.
+const FS = `
+precision highp float;
+uniform sampler2D uTex;
+uniform vec2 uCanvas, uOrigin;
+uniform float uScale, uOpen, uWide, uRound, uBlink, uBrow, uTilt;
+uniform vec2 uHead;
+
+const vec2 MOUTH = vec2(226.0, 187.0);
+const float HALFW = 21.5;
+const vec2 EYE_L = vec2(193.5, 141.0);
+const vec2 EYE_R = vec2(257.0, 141.0);
+const vec2 EYE_RAD = vec2(20.5, 15.0);
+const vec2 PIVOT = vec2(226.0, 262.0);
+
+vec4 tex(vec2 p) {
+  vec2 uv = p / 450.0;
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return vec4(0.0);
+  return texture2D(uTex, uv);
+}
+
+// Eyelids: upper and lower lids close over the eye (flat skin tone taken from above the eye),
+// meeting on a gently curved lash line.
+bool eyelid(vec2 p, vec2 c, out vec4 col) {
+  vec2 e = (p - c) / EYE_RAD;
+  float r = dot(e, e);
+  if (uBlink < 0.02 || r > 1.3) return false;
+  float curve = 0.22 * (1.0 - e.x * e.x);
+  float upper = mix(-1.15, 0.3, uBlink) + curve;
+  float lower = mix(1.15, 0.3, uBlink) + curve;
+  if (e.y > upper && e.y < lower) return false;
+  vec4 skin = tex(vec2(c.x, c.y - 22.0));
+  bool isUpper = e.y <= upper;
+  // soft shading towards the lid edge
+  float edgeDist = isUpper ? upper - e.y : e.y - lower;
+  skin.rgb *= 1.06 * (0.9 + 0.1 * smoothstep(0.0, 0.8, edgeDist));
+  float lash = isUpper ? 1.0 - smoothstep(0.0, 0.16, edgeDist) : 0.0;
+  col = mix(skin, vec4(0.06, 0.03, 0.04, 1.0), lash * smoothstep(0.35, 0.6, uBlink));
+  col = mix(tex(p), col, 1.0 - smoothstep(1.0, 1.3, r));
+  return true;
+}
+
+void main() {
+  vec2 p = (vec2(gl_FragCoord.x, uCanvas.y - gl_FragCoord.y) - uOrigin) / uScale;
+
+  // Head sway / tilt / nod (everything above the neck; the body stays put).
+  float mh = 1.0 - smoothstep(232.0, 272.0, p.y);
+  float a = -uTilt * mh;
+  vec2 d = p - PIVOT;
+  p = PIVOT + vec2(cos(a) * d.x - sin(a) * d.y, sin(a) * d.x + cos(a) * d.y) - uHead * mh;
+
+  // Eyebrow raise.
+  p.y += uBrow * 2.2 * exp(-pow((p.y - 116.0) / 9.0, 2.0)) * exp(-pow((p.x - 226.0) / 62.0, 2.0));
+
+  vec4 lidCol;
+  if (eyelid(p, EYE_L, lidCol) || eyelid(p, EYE_R, lidCol)) { gl_FragColor = lidCol; return; }
+
+  // Mouth.
+  float dx = p.x - MOUTH.x;
+  float dy = p.y - MOUTH.y;
+  float hw = HALFW * (1.0 + 0.2 * uWide - 0.3 * uRound);
+  float near = exp(-(dx * dx) / (36.0 * 36.0) - (dy * dy) / (18.0 * 18.0));
+  float sx = 1.0 + (0.18 * uWide - 0.24 * uRound) * near;
+  float srcx = MOUTH.x + dx / sx;
+  float ndx = dx / hw;
+  float prof = sqrt(max(0.0, 1.0 - ndx * ndx));
+  prof = pow(prof, 0.8);
+  float drop = 10.0 * uOpen;
+  float gapLo = drop * prof;
+  float gapUp = 1.8 * uOpen * prof;
+  float jawX = exp(-(dx * dx) / (50.0 * 50.0));
+
+  vec2 src = vec2(srcx, p.y);
+  bool inGap = false;
+  if (dy > 0.0) {
+    if (dy < gapLo) inGap = true;
+    else {
+      float t = smoothstep(0.0, 12.0, dy - gapLo);
+      src.y = p.y - mix(gapLo, drop * jawX, t) * (1.0 - smoothstep(20.0, 52.0, dy));
+    }
+  } else {
+    if (-dy < gapUp) inGap = true;
+    else src.y = p.y + gapUp * exp(-pow((-dy - gapUp) / 6.0, 2.0));
+  }
+
+  if (inGap) {
+    float yTop = MOUTH.y - gapUp;
+    float h = gapUp + gapLo;
+    float v = (p.y - yTop) / max(h, 0.001);
+    vec3 col = mix(vec3(0.36, 0.07, 0.09), vec3(0.16, 0.02, 0.04), v);
+    float teeth = (1.0 - smoothstep(0.24, 0.34, v)) * (1.0 - smoothstep(0.7, 0.92, abs(ndx))) * smoothstep(1.5, 3.5, h);
+    col = mix(col, vec3(0.97, 0.95, 0.91), teeth);
+    float tongue = smoothstep(0.6, 0.82, v) * (1.0 - smoothstep(0.35, 0.7, abs(ndx)));
+    col = mix(col, vec3(0.74, 0.3, 0.33), tongue * 0.85);
+    float edge = smoothstep(0.0, 0.8, min(p.y - yTop, MOUTH.y + gapLo - p.y)) * smoothstep(0.0, 0.15, 1.0 - abs(ndx));
+    gl_FragColor = mix(tex(vec2(srcx, MOUTH.y)), vec4(col, 1.0), edge);
+    return;
+  }
+  gl_FragColor = tex(src);
+}`;
+
+function shader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, shader(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'a');
+gl.enableVertexAttribArray(loc);
+gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = Object.fromEntries(
+  ['uTex', 'uCanvas', 'uOrigin', 'uScale', 'uOpen', 'uWide', 'uRound', 'uBlink', 'uBrow', 'uTilt', 'uHead'].map((n) => [n, gl.getUniformLocation(prog, n)]),
+);
+
+const img = new Image();
+img.src = params.get('img') || './avatar.png';
+await img.decode();
+gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.uniform1i(U.uTex, 0);
+
+// Frame the portrait: face slightly above centre, arms may crop at the bottom.
+const ZOOM = Number(params.get('zoom') ?? 1.18);
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.width = Math.round(innerWidth * dpr);
+  canvas.height = Math.round(innerHeight * dpr);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  const scale = (Math.min(canvas.width, canvas.height * 1.05) / 450) * ZOOM;
+  gl.uniform2f(U.uCanvas, canvas.width, canvas.height);
+  gl.uniform1f(U.uScale, scale);
+  gl.uniform2f(U.uOrigin, canvas.width / 2 - 225 * scale, canvas.height * 0.44 - 170 * scale);
+}
+addEventListener('resize', resize);
+resize();
+
+// ---------- Animation state ----------
+const vis = {}; // live viseme weights from HeadAudio
+const s = { open: 0, wide: 0, round: 0, blink: 0, brow: 0, tilt: 0, hx: 0, hy: 0, level: 0 };
+let speaking = false;
+let listening = false;
+let nextBlink = performance.now() + 1500;
+let blinkT = -1;
+let last = performance.now();
+
+// Smooth pseudo-random motion.
+const noise = (t, a, b) => Math.sin(t * a) * 0.6 + Math.sin(t * b + 1.7) * 0.4;
+const approach = (cur, target, rate, dt) => cur + (target - cur) * (1 - Math.exp(-rate * dt));
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (!EXTERNAL) headaudio?.update(dt * 1000);
+  const t = now / 1000;
+
+  // Mouth targets from visemes (+ loudness so quiet frames close the mouth).
+  const v = (k) => vis[k] || 0;
+  const vOpen = v('viseme_aa') * 1.0 + v('viseme_O') * 0.8 + v('viseme_E') * 0.6 + v('viseme_I') * 0.45 + v('viseme_U') * 0.45 +
+    (v('viseme_DD') + v('viseme_kk') + v('viseme_nn') + v('viseme_RR') + v('viseme_CH') + v('viseme_SS') + v('viseme_TH')) * 0.3;
+  const closed = v('viseme_PP') + v('viseme_sil');
+  // Loudness gives the syllable rhythm, visemes give the shape (vowels open wider, P/B/M close).
+  const amp = Math.min(1, Math.max(0, (s.level - 0.012) * 5.5));
+  const byAudio = amp * (0.55 + 0.6 * Math.min(1, vOpen * 1.5));
+  const openTarget = speaking ? Math.max(0, Math.min(1, Math.max(byAudio, vOpen * 1.3) - closed * 0.9)) : 0;
+  // Loudness drives nods/brows; fall back to viseme energy if the analyser reads nothing.
+  const loud = speaking ? Math.min(1, Math.max(s.level * 7, vOpen)) : 0;
+  s.open = approach(s.open, openTarget, openTarget > s.open ? 28 : 18, dt);
+  s.wide = approach(s.wide, speaking ? Math.min(1, (v('viseme_E') + v('viseme_I') + v('viseme_SS')) * 1.4) : 0.1, 14, dt);
+  s.round = approach(s.round, speaking ? Math.min(1, (v('viseme_O') + v('viseme_U') * 1.3) * 1.4) : 0, 14, dt);
+
+  // Blinks: random, sometimes double.
+  if (blinkT < 0 && now > nextBlink) blinkT = 0;
+  if (blinkT >= 0) {
+    blinkT += dt;
+    const d = 0.16;
+    s.blink = blinkT < d / 2 ? blinkT / (d / 2) : Math.max(0, 1 - (blinkT - d / 2) / (d / 2));
+    if (blinkT > d) {
+      blinkT = -1;
+      s.blink = 0;
+      nextBlink = now + (Math.random() < 0.15 ? 180 : 2200 + Math.random() * 3800);
+    }
+  }
+
+  // Head: idle drift, livelier while speaking, attentive tilt while listening; nods follow loudness.
+  const motion = speaking ? 1.6 : 0.8;
+  const nod = speaking ? loud * 2.2 : 0;
+  s.hx = approach(s.hx, noise(t, 0.37, 0.61) * 2.2 * motion, 3, dt);
+  s.hy = approach(s.hy, noise(t, 0.29, 0.83) * 1.2 * motion - nod + Math.sin(t * 1.6) * 0.5, 6, dt);
+  s.tilt = approach(s.tilt, noise(t, 0.23, 0.47) * 0.014 * motion + (listening ? 0.035 : 0), 3, dt);
+  s.brow = approach(s.brow, (speaking ? loud * 0.8 : 0) + (listening ? 0.6 : 0), 6, dt);
+
+  if (window.__force) Object.assign(s, window.__force); // debug: pin animation values
+  gl.uniform1f(U.uOpen, s.open);
+  gl.uniform1f(U.uWide, s.wide);
+  gl.uniform1f(U.uRound, s.round);
+  gl.uniform1f(U.uBlink, s.blink);
+  gl.uniform1f(U.uBrow, s.brow);
+  gl.uniform1f(U.uTilt, s.tilt);
+  gl.uniform2f(U.uHead, s.hx, s.hy);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(frame);
+}
+
+// ---------- Audio ----------
+const ctx = new AudioContext();
+const analyser = new AnalyserNode(ctx, { fftSize: 1024 });
+const buf = new Float32Array(analyser.fftSize);
+const out = new DelayNode(ctx, { delayTime: 0.07 }); // lips lead the sound slightly, like real speech
+analyser.connect(out); // analyser sits in the playback chain so it is always processed
+out.connect(ctx.destination);
+let headaudio = null;
+let source = null;
+
+async function initHeadAudio() {
+  try {
+    // Android WebViews served over plain http have no AudioWorklet. Lip-sync then
+    // runs on loudness alone, which is why this is a quiet fallback, not an error.
+    if (!ctx.audioWorklet || typeof HeadAudio === 'undefined') throw new Error('no audio worklet');
+    await ctx.audioWorklet.addModule(HA + 'headworklet.min.mjs');
+    headaudio = new HeadAudio(ctx, { processorOptions: {}, parameterData: { vadGateActiveDb: -40, vadGateInactiveDb: -60 } });
+    await headaudio.loadModel(HA + 'model-en-mixed.bin');
+    headaudio.onvalue = (k, val) => (vis[k] = val);
+  } catch (e) {
+    headaudio = null; // loudness-only lip-sync still works
+    console.info('[avatar] viseme model unavailable, using loudness lip-sync:', e.message);
+  }
+}
+
+setInterval(() => {
+  if (EXTERNAL) return;
+  if (!speaking) return (s.level = 0);
+  // RMS of the last ~11 ms of output
+  analyser.getFloatTimeDomainData(buf);
+  let sum = 0;
+  for (const x of buf) sum += x * x;
+  s.level = Math.sqrt(sum / buf.length);
+}, 25);
+
+function stop() {
+  if (source) {
+    source.onended = null;
+    try { source.stop(); } catch {}
+    source.disconnect();
+    source = null;
+  }
+  if (speaking) {
+    speaking = false;
+    for (const k in vis) vis[k] = 0;
+    post({ type: 'done' });
+  }
+}
+
+async function speak(b64) {
+  stop();
+  if (ctx.state !== 'running') {
+    ctx.resume(); // don't block: some browsers only allow this after a tap inside this page
+    setTimeout(showUnlock, 300);
+  }
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const audio = await ctx.decodeAudioData(bytes.buffer);
+  source = new AudioBufferSourceNode(ctx, { buffer: audio });
+  source.connect(analyser);
+  if (headaudio) source.connect(headaudio);
+  source.onended = () => {
+    source = null;
+    speaking = false;
+    post({ type: 'done' });
+  };
+  speaking = true;
+  source.start();
+  post({ type: 'speaking' });
+}
+
+// Commands from the app.
+window.avatarCommand = async (cmd) => {
+  try {
+    if (cmd.type === 'drive') {
+      // Lip-sync values streamed from the host app while it plays the audio.
+      speaking = !!cmd.speaking;
+      s.level = cmd.level ?? 0;
+      for (const k in vis) vis[k] = 0;
+      Object.assign(vis, cmd.vis ?? {});
+    } else if (cmd.type === 'speak') await speak(cmd.audio);
+    else if (cmd.type === 'stop') stop();
+    else if (cmd.type === 'listening') listening = !!cmd.on;
+  } catch (e) {
+    speaking = false;
+    post({ type: 'error', message: String(e?.message || e) });
+    post({ type: 'done' });
+  }
+};
+addEventListener('message', (e) => {
+  try {
+    const cmd = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+    if (cmd?.type) window.avatarCommand(cmd);
+  } catch {}
+});
+// Browsers may block sound until the user taps inside this page; offer an explicit button then.
+const unlockBtn = document.getElementById('unlock');
+function showUnlock() {
+  unlockBtn.style.display = ctx.state === 'running' ? 'none' : 'block';
+}
+async function unlock() {
+  await ctx.resume().catch(() => {});
+  // Safari also wants a sound started inside the gesture.
+  const b = new AudioBufferSourceNode(ctx, { buffer: ctx.createBuffer(1, 1, 22050) });
+  b.connect(ctx.destination);
+  b.start();
+  showUnlock();
+}
+if (!EXTERNAL) {
+  addEventListener('pointerdown', unlock, { passive: true });
+  ctx.onstatechange = showUnlock;
+}
+if (!EXTERNAL) setTimeout(showUnlock, 1500);
+
+// ?debug=1 shows live state (useful when tuning on a device).
+if (params.has('debug')) {
+  const el = Object.assign(document.createElement('pre'), { style: 'position:absolute;left:4px;top:4px;margin:0;font:11px monospace;background:#fff9;z-index:9' });
+  document.body.append(el);
+  const errs = [];
+  addEventListener('error', (e) => errs.push(e.message));
+  addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+  setInterval(() => (el.textContent = `ctx=${ctx.state} speaking=${speaking} ha=${!!headaudio}\nopen=${s.open.toFixed(2)} lvl=${s.level.toFixed(3)} wide=${s.wide.toFixed(2)} round=${s.round.toFixed(2)}\n${errs.slice(-3).join('\n')}`), 100);
+}
+
+requestAnimationFrame(frame);
+if (!EXTERNAL) await initHeadAudio();
+post({ type: 'ready' });
+</script>
+</body>
+</html>
