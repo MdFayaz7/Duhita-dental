@@ -23,14 +23,14 @@ const SOCIALS = [
 function Hero() {
   return (
     <section className="relative isolate overflow-hidden bg-ink flex flex-col min-h-[calc(100svh-69px)] md:min-h-[calc(100svh-76px)]">
-      {/* The photo is a band on phones — so the whole scene is visible instead of a
-          tight crop — and the full-bleed backdrop from tablets up. */}
-      <div className="relative w-full h-[32svh] min-h-[180px] max-h-[290px] shrink-0 md:absolute md:inset-0 md:h-full md:max-h-none md:-z-10">
+      {/* The photo fills the whole hero: the upright 9:16 shot on phones, the
+          landscape one from tablets up. */}
+      <div className="absolute inset-0 -z-10">
         <HeroMedia alt="Smiling patient in the dental chair at Duhita Dental, Vijayawada" />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/30 to-transparent md:bg-gradient-to-r md:from-[rgba(8,14,22,0.86)] md:via-[rgba(8,14,22,0.6)] md:via-40% md:to-transparent md:to-72%" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[rgba(8,14,22,0.82)] via-[rgba(8,14,22,0.35)] via-45% to-[rgba(8,14,22,0.55)] md:bg-gradient-to-r md:from-[rgba(8,14,22,0.86)] md:via-[rgba(8,14,22,0.6)] md:via-40% md:to-transparent md:to-72%" />
       </div>
 
-      <div className="flex-1 flex items-center px-4 md:px-10 xl:px-16 pt-5 md:pt-16 pb-4 md:pb-8">
+      <div className="flex-1 flex items-start md:items-center px-4 md:px-10 xl:px-16 pt-6 md:pt-16 pb-4 md:pb-8">
         <div className="max-w-[640px] text-white">
           <p className="text-[12.5px] sm:text-[14px] font-semibold tracking-wide">{site.tagline}</p>
           <h1 className="!text-white mt-2.5 sm:mt-4 text-[27px] min-[360px]:text-[29px] min-[390px]:text-[32px] sm:text-[46px] lg:text-[64px] leading-[1.12] sm:leading-[1.08] lg:leading-[1.05]">

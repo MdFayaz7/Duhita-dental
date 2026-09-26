@@ -39,6 +39,9 @@ class AppLoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=72)
 
 
+BloodGroup = Literal["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+
+
 class AppProfileUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
     age: int | None = Field(default=None, ge=0, le=120)
@@ -46,8 +49,25 @@ class AppProfileUpdate(BaseModel):
     email: EmailStr | None = None
     address: str | None = Field(default=None, max_length=400)
     profession: str | None = Field(default=None, max_length=120)
-    conditions: list[str] | None = None
     complaint: str | None = Field(default=None, max_length=800)
+    # medical history the dentist needs to know before treating
+    conditions: list[str] | None = None
+    allergies: str | None = Field(default=None, max_length=400)
+    medications: str | None = Field(default=None, max_length=400)
+    blood_group: BloodGroup | None = None
+    emergency_contact: str | None = Field(default=None, max_length=120)
+    emergency_phone: str | None = Field(default=None, pattern=r"^$|^[6-9]\d{9}$")
+
+
+RecordKind = Literal["prescription", "xray", "report", "note"]
+
+
+class AppRecordIn(BaseModel):
+    """A document a patient adds themselves — a report from elsewhere, an old X-ray."""
+    kind: RecordKind = "report"
+    title: str = Field(min_length=2, max_length=140)
+    notes: str | None = Field(default=None, max_length=800)
+    date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 class AppPasswordIn(BaseModel):

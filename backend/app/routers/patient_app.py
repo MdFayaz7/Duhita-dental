@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from ..db import get_db, serialize
 from ..models import (
@@ -17,9 +17,11 @@ from ..models import (
     AppLoginIn,
     AppPasswordIn,
     AppProfileUpdate,
+    AppRecordIn,
     AppRegisterIn,
 )
 from ..routers.patients import _next_patient_id
+from ..uploads import IMAGE_TYPES, PDF_TYPES, delete_upload, save_upload
 from ..security import create_patient_token, current_patient, hash_password, verify_password
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -140,6 +142,78 @@ async def change_password(payload: AppPasswordIn, patient_id: str = Depends(curr
     await get_db().patients.update_one(
         {"patient_id": patient_id}, {"$set": {"password_hash": hash_password(payload.new_password)}}
     )
+    return {"ok": True}
+
+
+@router.post("/me/photo")
+async def upload_photo(file: UploadFile = File(...), patient_id: str = Depends(current_patient)):
+    """Set the patient's profile picture."""
+    doc = await _find_patient(patient_id)
+    path = await save_upload(file, "patients", IMAGE_TYPES)
+    await get_db().patients.update_one({"patient_id": patient_id}, {"$set": {"photo": path}})
+    await delete_upload(doc.get("photo"))  # the one it replaced
+    return {"photo": path}
+
+
+@router.delete("/me/photo")
+async def remove_photo(patient_id: str = Depends(current_patient)):
+    doc = await _find_patient(patient_id)
+    await get_db().patients.update_one({"patient_id": patient_id}, {"$unset": {"photo": ""}})
+    await delete_upload(doc.get("photo"))
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- records
+
+@router.get("/me/records")
+async def my_records(patient_id: str = Depends(current_patient)):
+    """Prescriptions, X-rays and reports — those the clinic adds and those the patient uploads."""
+    cursor = get_db().records.find({"patient_id": patient_id}).sort([("date", -1), ("created_at", -1)])
+    return {"items": [serialize(r) for r in await cursor.to_list(200)]}
+
+
+@router.post("/me/records", status_code=201)
+async def add_record(
+    kind: str = Form("report"),
+    title: str = Form(...),
+    notes: str = Form(""),
+    date: str = Form(""),
+    file: UploadFile | None = File(None),
+    patient_id: str = Depends(current_patient),
+):
+    payload = AppRecordIn(kind=kind, title=title, notes=notes or None, date=date or None)
+    db = get_db()
+    doc = {
+        **payload.model_dump(),
+        "patient_id": patient_id,
+        "date": payload.date or _today().strftime("%Y-%m-%d"),
+        "added_by": "patient",
+        "created_at": datetime.now(timezone.utc),
+        "file": None,
+        "file_type": None,
+    }
+    if file is not None and file.filename:
+        allowed = PDF_TYPES if (file.content_type or "").endswith("pdf") else IMAGE_TYPES
+        doc["file"] = await save_upload(file, "records", allowed)
+        doc["file_type"] = "pdf" if allowed is PDF_TYPES else "image"
+
+    result = await db.records.insert_one(doc)
+    return serialize(await db.records.find_one({"_id": result.inserted_id}))
+
+
+@router.delete("/me/records/{record_id}")
+async def delete_record(record_id: str, patient_id: str = Depends(current_patient)):
+    """A patient may remove what they added; the clinic's own entries stay."""
+    try:
+        oid = ObjectId(record_id)
+    except InvalidId:
+        raise HTTPException(404, "Record not found.")
+    doc = await get_db().records.find_one_and_delete(
+        {"_id": oid, "patient_id": patient_id, "added_by": "patient"}
+    )
+    if not doc:
+        raise HTTPException(404, "That record cannot be removed.")
+    await delete_upload(doc.get("file"))
     return {"ok": True}
 
 
