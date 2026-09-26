@@ -16,6 +16,52 @@ class Token(BaseModel):
     username: str
 
 
+# ---------- patient app (mobile) ----------
+
+PHONE = r"^[6-9]\d{9}$"
+
+
+class AppRegisterIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    phone: str = Field(pattern=PHONE)
+    password: str = Field(min_length=6, max_length=72)
+    # Optional: a patient who registered at the clinic or on the website can
+    # quote their Patient ID so the app links to that exact record.
+    patient_id: str | None = Field(default=None, max_length=20)
+    age: int | None = Field(default=None, ge=0, le=120)
+    sex: Literal["Male", "Female", "Other"] | None = None
+    email: EmailStr | None = None
+    address: str | None = Field(default=None, max_length=400)
+
+
+class AppLoginIn(BaseModel):
+    phone: str = Field(pattern=PHONE)
+    password: str = Field(min_length=1, max_length=72)
+
+
+class AppProfileUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    age: int | None = Field(default=None, ge=0, le=120)
+    sex: Literal["Male", "Female", "Other"] | None = None
+    email: EmailStr | None = None
+    address: str | None = Field(default=None, max_length=400)
+    profession: str | None = Field(default=None, max_length=120)
+    conditions: list[str] | None = None
+    complaint: str | None = Field(default=None, max_length=800)
+
+
+class AppPasswordIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=72)
+    new_password: str = Field(min_length=6, max_length=72)
+
+
+class AppBookingIn(BaseModel):
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    slot: str = Field(pattern=r"^\d{2}:\d{2}$")
+    reason: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=800)
+
+
 # ---------- patients ----------
 
 class PatientIn(BaseModel):

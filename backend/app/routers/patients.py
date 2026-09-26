@@ -41,6 +41,22 @@ async def lookup(patient_id: str):
     return {"patient_id": doc["patient_id"], "name": doc["name"], "phone": doc["phone"]}
 
 
+@router.post("/{patient_id}/reset-app-login", dependencies=[Depends(current_admin)])
+async def reset_app_login(patient_id: str):
+    """Clear a patient's app password so they can set a new one by registering again.
+
+    Used when a patient calls the clinic saying they forgot their app password.
+    """
+    res = await get_db().patients.find_one_and_update(
+        {"patient_id": patient_id.strip().upper()},
+        {"$unset": {"password_hash": ""}},
+        return_document=True,
+    )
+    if not res:
+        raise HTTPException(404, "No patient found with that ID.")
+    return {"ok": True, "patient_id": res["patient_id"], "name": res["name"]}
+
+
 @router.get("")
 async def list_patients(
     q: str | None = None,
