@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { uploadFile } from './upload';
 
@@ -14,11 +13,8 @@ export type Speech = {
 };
 
 // In dev, reach the backend on the same machine that serves the JS bundle.
-const devHost = Constants.expoConfig?.hostUri?.split(':')[0];
-// Duhita AI's own server. Falls back to a laptop on the same network in development.
-export const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ??
-  (__DEV__ && devHost ? `http://${devHost}:8787` : 'https://duhita-ai.onrender.com');
+// Duhita AI's own server. Set EXPO_PUBLIC_API_URL to point at a laptop while developing.
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://duhita-ai.onrender.com';
 const headers: Record<string, string> = process.env.EXPO_PUBLIC_APP_TOKEN
   ? { 'x-app-token': process.env.EXPO_PUBLIC_APP_TOKEN }
   : {};

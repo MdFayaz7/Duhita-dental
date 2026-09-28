@@ -48,14 +48,14 @@ export default function Footer() {
   const extra = categories.slice(3);
   return (
     <footer className="bg-slate text-white/85">
-      <div className="container-x pt-12 pb-9 sm:pt-16 sm:pb-10">
-        <div className="grid gap-10 sm:gap-12 lg:grid-cols-[1.1fr_1fr_2.4fr]">
+      <div className="container-x pt-8 pb-6 sm:pt-16 sm:pb-10">
+        <div className="grid gap-7 sm:gap-12 lg:grid-cols-[1.1fr_1fr_2.4fr]">
           <div>
             <Logo light />
-            <p className="mt-5 text-[14px] leading-relaxed text-white/70 max-w-xs">
+            <p className="mt-4 sm:mt-5 text-[13.5px] sm:text-[14px] leading-relaxed text-white/70 max-w-xs">
               Specialist dental care for families across Vijayawada since 1997 — led by an M.D.S oral &amp; maxillofacial surgeon.
             </p>
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-4 sm:mt-6">
               {[
                 [FiFacebook, site.social.facebook, 'Facebook'],
                 [FiInstagram, site.social.instagram, 'Instagram'],
@@ -69,7 +69,7 @@ export default function Footer() {
             </div>
           </div>
 
-          <ul className="space-y-3.5 text-[14px] max-sm:[&_a]:inline-block max-sm:[&_a]:py-1">
+          <ul className="space-y-2.5 sm:space-y-3.5 text-[13.5px] sm:text-[14px] max-sm:[&_a]:inline-block max-sm:[&_a]:py-0.5">
             <li className="flex gap-3"><FiMail className="mt-0.5 shrink-0" /><a href={`mailto:${site.email}`} className="hover:text-white">{site.email}</a></li>
             <li className="flex gap-3"><FiPhone className="mt-0.5 shrink-0" /><a href={`tel:${site.phone}`} className="hover:text-white">{site.phoneDisplay}</a></li>
             <li className="flex gap-3"><FiMapPin className="mt-0.5 shrink-0" /><span>{site.addressLines.join(', ')}</span></li>
@@ -79,7 +79,7 @@ export default function Footer() {
           </ul>
 
           <div>
-            <ul className="grid grid-cols-2 gap-x-4 sm:flex sm:flex-wrap sm:gap-x-6 text-[14px] font-semibold text-white mb-7 sm:mb-8 max-sm:[&_a]:inline-flex max-sm:[&_a]:items-center max-sm:[&_a]:min-h-[40px]">
+            <ul className="grid grid-cols-2 gap-x-4 sm:flex sm:flex-wrap sm:gap-x-6 text-[13.5px] sm:text-[14px] font-semibold text-white mb-5 sm:mb-8 max-sm:[&_a]:inline-flex max-sm:[&_a]:items-center max-sm:[&_a]:min-h-[38px]">
               <li><Link to="/">Home</Link></li>
               <li><Link to="/about">About</Link></li>
               <li><Link to="/about/dr-nalluru-sasidhar">Meet Dr. Sasidhar</Link></li>
@@ -99,7 +99,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 sm:mt-14 pt-6 border-t border-white/20 flex flex-col md:flex-row gap-2.5 justify-between text-[12.5px] sm:text-[13px] text-white/60">
+        <div className="mt-7 sm:mt-14 pt-4 sm:pt-6 border-t border-white/20 flex flex-col md:flex-row gap-2 sm:gap-2.5 justify-between text-[12px] sm:text-[13px] text-white/60">
           <p>© {new Date().getFullYear()} {site.fullName}, Vijayawada. All rights reserved.</p>
           <p>Serving {site.areas.slice(0, 5).join(', ')} &amp; all of Vijayawada.</p>
         </div>

@@ -94,7 +94,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-ivory border-b border-black/5">
-      <div className="container-x flex items-center justify-between py-2.5">
+      <div className="container-x flex items-center justify-between py-2 sm:py-2.5">
         <Logo />
 
         {/* Desktop */}

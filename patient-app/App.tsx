@@ -68,7 +68,7 @@ const MENU: MenuItem[] = [
 function Brand({ current, onMenu }: { current?: string; onMenu: () => void }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[s.brand, { paddingTop: insets.top + 2 }]}>
+    <View style={[s.brand, { paddingTop: insets.top }]}>
       <Image source={require('./assets/clinic-logo.png')} style={s.logo} resizeMode="contain" />
       <View style={{ flex: 1 }}>
         <Text style={s.brandName}>{clinicInfo.name}</Text>
@@ -280,17 +280,17 @@ const s = StyleSheet.create({
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    gap: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     backgroundColor: clinic.ivory,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: clinic.line,
   },
-  logo: { width: 38, height: 38, borderRadius: 8 },
-  brandName: { fontSize: 17.5, fontWeight: '800', color: clinic.ink, letterSpacing: 0.2 },
-  brandSub: { fontSize: 10, color: clinic.stone, letterSpacing: 0.7, textTransform: 'uppercase' },
-  menuBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', gap: 5 },
+  logo: { width: 32, height: 32, borderRadius: 7 },
+  brandName: { fontSize: 15.5, fontWeight: '800', color: clinic.ink, letterSpacing: 0.2 },
+  brandSub: { fontSize: 9, color: clinic.stone, letterSpacing: 0.6, textTransform: 'uppercase' },
+  menuBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', gap: 4 },
   menuLine: { width: 22, height: 2, borderRadius: 2, backgroundColor: clinic.ink },
 
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(16,24,40,0.35)' },

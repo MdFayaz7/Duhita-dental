@@ -2,14 +2,11 @@
  * The clinic's own backend (the same one the website and the admin dashboard use).
  * Public content needs no sign-in; anything under /api/app/me needs the patient's token.
  */
-import Constants from 'expo-constants';
 import { Linking } from 'react-native';
 import { uploadFile } from './upload';
 
-const devHost = Constants.expoConfig?.hostUri?.split(':')[0];
-export const CLINIC_API =
-  process.env.EXPO_PUBLIC_CLINIC_API_URL ??
-  (__DEV__ && devHost ? `http://${devHost}:8000` : 'https://duhita-dental-api.onrender.com');
+// The clinic's API. Set EXPO_PUBLIC_CLINIC_API_URL to point at a laptop while developing.
+export const CLINIC_API = process.env.EXPO_PUBLIC_CLINIC_API_URL ?? 'https://duhita-dental-api.onrender.com';
 
 export type MedicalRecord = {
   id: string;
