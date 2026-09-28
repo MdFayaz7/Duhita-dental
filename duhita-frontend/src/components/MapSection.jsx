@@ -9,6 +9,8 @@ export default function MapSection() {
         className="w-full h-[300px] sm:h-[420px] md:h-[560px] border-0 grayscale-[30%]"
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
+        allow="fullscreen"
+        allowFullScreen
       />
     </section>
   );
