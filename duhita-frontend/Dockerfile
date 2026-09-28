@@ -1,11 +1,12 @@
 # Website — Vite + React, built then served as static files by nginx.
 FROM node:22-slim AS build
 WORKDIR /app
-COPY package*.json ./
-# Not `npm ci`: Vite 8's rolldown bundler ships a native binary per platform as an
-# optional dependency, and a lockfile written on a Mac only resolves the Mac one —
-# `npm ci` would then fail to find the Linux binary inside this container. `npm
-# install` re-resolves optional deps for whatever platform it's actually running on.
+# package.json only — no lockfile. Vite 8's rolldown bundler installs a native
+# binary per OS as an optional dependency; a lockfile committed from a Mac pins
+# npm to the Mac one even under plain `npm install` (a known npm bug with
+# optional deps: https://github.com/npm/cli/issues/4828), and the Linux build
+# then can't find its binary. Resolving fresh here avoids that entirely.
+COPY package.json ./
 RUN npm install
 COPY . .
 # Baked in at build time — Vite inlines VITE_* vars into the JS bundle.
