@@ -1,0 +1,18 @@
+# Duhita AI — speech-to-text, replies, and the talking-avatar page.
+FROM node:22-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY . .
+
+EXPOSE 8787
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -fsS http://localhost:8787/health || exit 1
+
+CMD ["node", "index.js"]
