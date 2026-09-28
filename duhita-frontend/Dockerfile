@@ -2,7 +2,11 @@
 FROM node:22-slim AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Not `npm ci`: Vite 8's rolldown bundler ships a native binary per platform as an
+# optional dependency, and a lockfile written on a Mac only resolves the Mac one —
+# `npm ci` would then fail to find the Linux binary inside this container. `npm
+# install` re-resolves optional deps for whatever platform it's actually running on.
+RUN npm install
 COPY . .
 # Baked in at build time — Vite inlines VITE_* vars into the JS bundle.
 ARG VITE_API_URL
