@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { FiChevronDown, FiMenu, FiX } from 'react-icons/fi';
+import { FiChevronDown, FiMenu, FiUser, FiX } from 'react-icons/fi';
 import Logo from './Logo';
 import { site } from '../data/site';
 import { categories } from '../data/services';
+import { usePatientAuth } from '../lib/patientAuth';
 
 const menu = [
   { label: 'Home', to: '/' },
@@ -29,6 +30,7 @@ const menu = [
     ],
   },
   { label: 'Contact', to: '/contact' },
+  { label: 'Login', to: '/account', account: true },
 ];
 
 function Dropdown({ item }) {
@@ -82,6 +84,8 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const { pathname, hash } = useLocation();
+  const { patient } = usePatientAuth();
+  const accountLabel = patient ? patient.name.split(' ')[0] : 'Login';
 
   useEffect(() => {
     setOpen(false);
@@ -107,12 +111,13 @@ export default function Header() {
                     to={item.to}
                     end={item.to === '/'}
                     className={({ isActive }) =>
-                      `flex items-center gap-1 text-[15px] py-2 transition-colors ${
+                      `flex items-center gap-1.5 text-[15px] py-2 transition-colors ${
                         isActive ? 'text-ink font-medium' : 'text-body hover:text-ink'
-                      }`
+                      } ${item.account ? '!text-ink font-medium' : ''}`
                     }
                   >
-                    {item.label}
+                    {item.account && <FiUser className="w-4 h-4" />}
+                    {item.account ? accountLabel : item.label}
                     {(item.children || item.mega) && (
                       <FiChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
                     )}
@@ -174,7 +179,10 @@ export default function Header() {
                         )}
                       </>
                     ) : (
-                      <Link to={item.to} className="block py-3 text-[17px] text-ink">{item.label}</Link>
+                      <Link to={item.to} className="flex items-center gap-2 py-3 text-[17px] text-ink">
+                        {item.account && <FiUser className="w-[18px] h-[18px]" />}
+                        {item.account ? accountLabel : item.label}
+                      </Link>
                     )}
                   </li>
                 );

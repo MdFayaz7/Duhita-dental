@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
+import { PatientAuthProvider } from './lib/patientAuth';
 
 // Route-level code splitting: the landing page ships on its own, the rest load on demand.
 const About = lazy(() => import('./pages/About'));
@@ -18,6 +19,8 @@ const Contact = lazy(() => import('./pages/Contact'));
 const Register = lazy(() => import('./pages/Register'));
 const BookAppointment = lazy(() => import('./pages/BookAppointment'));
 const HomeService = lazy(() => import('./pages/HomeService'));
+const Account = lazy(() => import('./pages/Account'));
+const Assistant = lazy(() => import('./pages/Assistant'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Admin dashboard (dark theme, its own shell — no public header or footer)
@@ -37,6 +40,7 @@ const Loading = () => <div className="min-h-[60vh]" aria-busy="true" />;
 
 export default function App() {
   return (
+    <PatientAuthProvider>
     <BrowserRouter>
       <Suspense fallback={<Loading />}>
         <Routes>
@@ -70,10 +74,13 @@ export default function App() {
             <Route path="patients/register" element={<Register />} />
             <Route path="patients/book-appointment" element={<BookAppointment />} />
             <Route path="home-service" element={<HomeService />} />
+            <Route path="account" element={<Account />} />
+            <Route path="assistant" element={<Assistant />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </Suspense>
     </BrowserRouter>
+    </PatientAuthProvider>
   );
 }

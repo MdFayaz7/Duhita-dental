@@ -377,8 +377,10 @@ main img:not(.no-zoom):not(.hero-media):hover {
 /* Image wells: photos of every shape sit on a tinted panel instead of white gaps */
 .img-well {
   background: linear-gradient(180deg, #f6f3f0 0%, #ece7e2 100%);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 .eyebrow {
   font-size: 12px;
