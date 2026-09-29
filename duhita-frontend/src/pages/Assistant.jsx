@@ -125,6 +125,16 @@ export default function Assistant() {
 
   const startMic = useCallback(async () => {
     setNotice('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      // Browsers only expose the mic API on secure origins (https, or localhost). On a plain
+      // http test URL there's no permission prompt to show — this isn't a "denied" case.
+      setNotice(
+        window.isSecureContext
+          ? "This browser doesn't support voice input. Please type your message instead."
+          : 'Voice input needs a secure (https) connection — please type your message for now.',
+      );
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
