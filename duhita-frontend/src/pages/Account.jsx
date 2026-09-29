@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiCalendar, FiCamera, FiCheckCircle, FiClock, FiFile, FiImage,
-  FiLogOut, FiPlus, FiTrash2, FiX,
+  FiLogOut, FiTrash2,
 } from 'react-icons/fi';
 import { Field, Chip, invalid } from '../components/Form';
 import useSeo from '../hooks/useSeo';
 import { usePatientAuth } from '../lib/patientAuth';
 import {
-  ApiError, addRecord, bookAppointment, cancelAppointment, checkNumber, deleteRecord, fileUrl,
+  ApiError, bookAppointment, cancelAppointment, checkNumber, deleteRecord, fileUrl,
   formatDate, formatSlot, getSlots, myAppointments, myRecords, removePhoto, todayIso,
   updateProfile, uploadPhoto,
 } from '../lib/patientApi';
@@ -177,7 +177,6 @@ function Dashboard() {
   const [records, setRecords] = useState(null);
   const [editingDetails, setEditingDetails] = useState(false);
   const [editingMedical, setEditingMedical] = useState(false);
-  const [addingRecord, setAddingRecord] = useState(false);
   const bookRef = useRef(null);
 
   const load = () => {
@@ -323,13 +322,8 @@ function Dashboard() {
               ))}
               {records.length === 0 && (
                 <p className="card p-6 text-[14px]">
-                  Nothing here yet. Records the clinic files after a visit appear automatically — you can also add an old X-ray or a report from another clinic.
+                  Nothing here yet. Prescriptions, X-rays and reports the clinic files for you appear here automatically.
                 </p>
-              )}
-              {addingRecord ? (
-                <AddRecordForm token={token} onDone={() => { setAddingRecord(false); load(); }} onCancel={() => setAddingRecord(false)} />
-              ) : (
-                <button onClick={() => setAddingRecord(true)} className="btn btn-outline self-start"><FiPlus /> Add a record</button>
               )}
             </div>
           )}
@@ -632,43 +626,3 @@ function DetailsForm({ patient, token, onDone, onCancel }) {
   );
 }
 
-function AddRecordForm({ token, onDone, onCancel }) {
-  const [kind, setKind] = useState('report');
-  const [title, setTitle] = useState('');
-  const [notes, setNotes] = useState('');
-  const [file, setFile] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState('');
-
-  const save = async () => {
-    if (title.trim().length < 2) return setFailed('Please give this record a name.');
-    setBusy(true);
-    setFailed('');
-    try {
-      await addRecord(token, { kind, title: title.trim(), notes: notes.trim() || undefined, file: file || undefined });
-      onDone();
-    } catch (e) { setFailed(e.message); } finally { setBusy(false); }
-  };
-
-  return (
-    <div className="card p-5 sm:p-6 grid gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-[15px] font-semibold text-ink">Add a record</p>
-        <button onClick={onCancel} aria-label="Close" className="text-body"><FiX className="w-5 h-5" /></button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {RECORD_KINDS.map((k) => <Chip key={k.id} active={kind === k.id} onClick={() => setKind(k.id)}>{k.icon} {k.label}</Chip>)}
-      </div>
-      <Field label="Name"><input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="OPG X-ray, blood report…" /></Field>
-      <Field label="Notes (optional)"><input className="field" value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
-      <Field label="Attach a file (optional)">
-        <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)}
-          className="text-[13.5px] file:mr-3 file:rounded-full file:border-0 file:bg-mist file:px-3.5 file:py-2 file:text-[13px] file:font-semibold file:text-slate" />
-      </Field>
-      {failed && <p className="text-[13px] text-[#b42318]" role="alert">{failed}</p>}
-      <div className="flex gap-3">
-        <button onClick={save} disabled={busy} className="btn btn-solid flex-1">{busy ? 'Saving…' : 'Save record'}</button>
-      </div>
-    </div>
-  );
-}

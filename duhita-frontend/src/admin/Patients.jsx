@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FiCalendar, FiDownload, FiPhone, FiTrash2, FiUser, FiUsers } from 'react-icons/fi';
+import {
+  FiCalendar, FiDownload, FiFile, FiImage, FiPhone, FiPlus, FiTrash2, FiUser, FiUsers,
+} from 'react-icons/fi';
 import { api } from './api';
 import { PageHead } from './AdminLayout';
 import {
-  Button, Drawer, EmptyState, ErrorNote, Field, IconButton, Panel, SearchInput, Segmented, Skeleton,
-  StatusPill, Table, exportCsv, formatDateTime, formatSlot, inputClass, todayIso, useConfirm, useToast,
+  Button, Drawer, EmptyState, ErrorNote, Field, IconButton, Modal, Panel, SearchInput, Segmented,
+  Skeleton, StatusPill, Table, exportCsv, formatDateTime, formatSlot, inputClass, todayIso, useConfirm, useToast,
 } from './ui';
+
+const RECORD_KINDS = [
+  { id: 'prescription', label: 'Prescription' },
+  { id: 'xray', label: 'X-ray / scan' },
+  { id: 'report', label: 'Report' },
+  { id: 'note', label: 'Note' },
+];
 
 const SORTS = [
   { value: 'newest', label: 'Newest first' },
@@ -47,9 +56,18 @@ export default function Patients() {
   }, [load, q]);
 
   const open = async (row) => {
-    setSelected({ patient: row, appointments: null });
+    setSelected({ patient: row, appointments: null, records: null });
     try {
       setSelected(await api.patient(row.patient_id));
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+
+  const reloadSelected = async () => {
+    if (!selected?.patient) return;
+    try {
+      setSelected(await api.patient(selected.patient.patient_id));
     } catch (e) {
       toast(e.message, 'error');
     }
@@ -159,15 +177,35 @@ export default function Patients() {
         )}
       </Panel>
 
-      <PatientDrawer data={selected} onClose={() => setSelected(null)} onDelete={remove} />
+      <PatientDrawer data={selected} onClose={() => setSelected(null)} onDelete={remove} onRecordsChanged={reloadSelected} />
     </>
   );
 }
 
-function PatientDrawer({ data, onClose, onDelete }) {
+function PatientDrawer({ data, onClose, onDelete, onRecordsChanged }) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [addingRecord, setAddingRecord] = useState(false);
   const p = data?.patient;
   if (!p) return null;
   const conditions = (p.conditions || []).filter((c) => c !== 'none');
+
+  const removeRecord = async (r) => {
+    const ok = await confirm({
+      title: 'Delete record',
+      message: `Delete "${r.title}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await api.deletePatientRecord(p.patient_id, r.id);
+      toast('Record deleted');
+      onRecordsChanged();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
 
   const Row = ({ label, value }) => (
     <div className="grid grid-cols-[130px_1fr] gap-3 py-2.5 border-b border-[var(--a-border)] text-[14px]">
@@ -228,6 +266,98 @@ function PatientDrawer({ data, onClose, onDelete }) {
             </ul>
           ) : <p className="text-[14px] text-[var(--a-muted)] flex items-center gap-2"><FiUser className="w-4 h-4" /> No appointments booked yet.</p>}
       </section>
+
+      <section className="mt-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-[13px] uppercase tracking-wider text-[var(--a-muted)]">Records &amp; documents</h3>
+          <Button size="sm" variant="secondary" onClick={() => setAddingRecord(true)}><FiPlus /> Add record</Button>
+        </div>
+        {data.records === null ? <Skeleton className="h-12" />
+          : data.records?.length ? (
+            <ul className="grid gap-2">
+              {data.records.map((r) => (
+                <li key={r.id} className="flex items-center gap-3 rounded-xl bg-white/4 px-4 py-3 text-[13.5px]">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate">{r.title}</p>
+                    <p className="text-[12px] text-[var(--a-muted)]">
+                      {RECORD_KINDS.find((k) => k.id === r.kind)?.label || r.kind} · {r.date}
+                    </p>
+                  </div>
+                  {r.file && (
+                    <a href={api.url(r.file)} target="_blank" rel="noreferrer" className="text-[var(--a-accent)] shrink-0" aria-label="View file">
+                      {r.file_type === 'image' ? <FiImage className="w-4 h-4" /> : <FiFile className="w-4 h-4" />}
+                    </a>
+                  )}
+                  <IconButton label="Delete record" tone="danger" onClick={() => removeRecord(r)} className="shrink-0"><FiTrash2 className="w-4 h-4" /></IconButton>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-[14px] text-[var(--a-muted)]">No records added yet.</p>}
+      </section>
+
+      <RecordModal open={addingRecord} patientId={p.patient_id} onClose={() => setAddingRecord(false)}
+        onSaved={() => { setAddingRecord(false); onRecordsChanged(); }} />
     </Drawer>
+  );
+}
+
+function RecordModal({ open, patientId, onClose, onSaved }) {
+  const toast = useToast();
+  const blank = { kind: 'report', title: '', notes: '', date: '' };
+  const [form, setForm] = useState(blank);
+  const [file, setFile] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  useEffect(() => {
+    if (open) { setForm(blank); setFile(null); setError(''); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (form.title.trim().length < 2) return setError('Please give this record a name.');
+    setBusy(true);
+    setError('');
+    try {
+      const fd = new FormData();
+      fd.append('kind', form.kind);
+      fd.append('title', form.title.trim());
+      if (form.notes.trim()) fd.append('notes', form.notes.trim());
+      if (form.date) fd.append('date', form.date);
+      if (file) fd.append('file', file);
+      await api.addPatientRecord(patientId, fd);
+      toast('Record added');
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open={open} title="Add a record" subtitle={patientId} onClose={onClose}>
+      <form onSubmit={save} className="grid gap-4">
+        <ErrorNote>{error}</ErrorNote>
+        <Field label="Type">
+          <select value={form.kind} onChange={set('kind')} className={inputClass}>
+            {RECORD_KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+          </select>
+        </Field>
+        <Field label="Name"><input required value={form.title} onChange={set('title')} placeholder="OPG X-ray, blood report…" className={inputClass} /></Field>
+        <Field label="Date" hint="Defaults to today if left blank"><input type="date" value={form.date} onChange={set('date')} className={inputClass} /></Field>
+        <Field label="Notes (optional)"><textarea rows={3} value={form.notes} onChange={set('notes')} className={inputClass} /></Field>
+        <Field label="Attach a file (optional)">
+          <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="text-[13.5px] text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3.5 file:py-2 file:text-[13px] file:font-semibold file:text-white/80" />
+        </Field>
+        <div className="flex gap-3 pt-1">
+          <Button type="submit" disabled={busy} className="flex-1">{busy ? 'Saving…' : 'Save record'}</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

@@ -93,6 +93,8 @@ export const api = {
   patients: (params = {}) => request(`/api/patients?${new URLSearchParams(params)}`),
   patient: (patientId) => request(`/api/patients/${patientId}`),
   deletePatient: (patientId) => request(`/api/patients/${patientId}`, { method: 'DELETE' }),
+  addPatientRecord: (patientId, form) => request(`/api/patients/${patientId}/records`, { method: 'POST', form }),
+  deletePatientRecord: (patientId, recordId) => request(`/api/patients/${patientId}/records/${recordId}`, { method: 'DELETE' }),
 
   appointments: (params = {}) => request(`/api/appointments?${new URLSearchParams(params)}`),
   updateAppointment: (id, body) => request(`/api/appointments/${id}`, { method: 'PATCH', body }),

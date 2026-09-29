@@ -4,11 +4,14 @@ from zoneinfo import ZoneInfo
 
 IST = ZoneInfo("Asia/Kolkata")
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from bson import ObjectId
+from bson.errors import InvalidId
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
 from ..db import get_db, serialize
-from ..models import PatientIn
+from ..models import AppRecordIn, PatientIn
 from ..security import current_admin
+from ..uploads import IMAGE_TYPES, PDF_TYPES, delete_upload, save_upload
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
@@ -98,7 +101,12 @@ async def patient_detail(patient_id: str, _: str = Depends(current_admin)):
     if not doc:
         raise HTTPException(404, "Patient not found.")
     history = await db.appointments.find({"patient_id": doc["patient_id"]}).sort("date", -1).to_list(50)
-    return {"patient": serialize(doc), "appointments": [serialize(a) for a in history]}
+    records = await db.records.find({"patient_id": doc["patient_id"]}).sort([("date", -1), ("created_at", -1)]).to_list(200)
+    return {
+        "patient": serialize(doc),
+        "appointments": [serialize(a) for a in history],
+        "records": [serialize(r) for r in records],
+    }
 
 
 @router.delete("/{patient_id}")
@@ -106,4 +114,54 @@ async def delete_patient(patient_id: str, _: str = Depends(current_admin)):
     res = await get_db().patients.delete_one({"patient_id": patient_id})
     if not res.deleted_count:
         raise HTTPException(404, "Patient not found.")
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- records
+# The clinic files a patient's prescriptions, X-rays and reports here so they
+# show up automatically in that patient's app/website record once logged in.
+
+@router.post("/{patient_id}/records", status_code=201)
+async def add_record(
+    patient_id: str,
+    kind: str = Form("report"),
+    title: str = Form(...),
+    notes: str = Form(""),
+    date: str = Form(""),
+    file: UploadFile | None = File(None),
+    _: str = Depends(current_admin),
+):
+    db = get_db()
+    if not await db.patients.find_one({"patient_id": patient_id.upper()}, {"_id": 1}):
+        raise HTTPException(404, "Patient not found.")
+
+    payload = AppRecordIn(kind=kind, title=title, notes=notes or None, date=date or None)
+    doc = {
+        **payload.model_dump(),
+        "patient_id": patient_id.upper(),
+        "date": payload.date or datetime.now(IST).strftime("%Y-%m-%d"),
+        "added_by": "clinic",
+        "created_at": datetime.now(timezone.utc),
+        "file": None,
+        "file_type": None,
+    }
+    if file is not None and file.filename:
+        allowed = PDF_TYPES if (file.content_type or "").endswith("pdf") else IMAGE_TYPES
+        doc["file"] = await save_upload(file, "records", allowed)
+        doc["file_type"] = "pdf" if allowed is PDF_TYPES else "image"
+
+    result = await db.records.insert_one(doc)
+    return serialize(await db.records.find_one({"_id": result.inserted_id}))
+
+
+@router.delete("/{patient_id}/records/{record_id}")
+async def delete_record(patient_id: str, record_id: str, _: str = Depends(current_admin)):
+    try:
+        oid = ObjectId(record_id)
+    except InvalidId:
+        raise HTTPException(404, "Record not found.")
+    doc = await get_db().records.find_one_and_delete({"_id": oid, "patient_id": patient_id.upper()})
+    if not doc:
+        raise HTTPException(404, "Record not found.")
+    await delete_upload(doc.get("file"))
     return {"ok": True}

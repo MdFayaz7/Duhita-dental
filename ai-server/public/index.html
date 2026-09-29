@@ -19,8 +19,10 @@
 // The portrait is warped in a WebGL shader: the jaw and lower lip drop, the upper lip lifts,
 // the mouth widens or rounds, the inner mouth (teeth, tongue) shows through, the eyelids blink
 // and the head sways. The mouth is driven by HeadAudio (audio → visemes, any language).
-import { HeadAudio } from 'https://cdn.jsdelivr.net/gh/met4citizen/HeadAudio@0.1.0-alpha/dist/headaudio.min.mjs';
-
+// Loaded lazily, only when used (see initHeadAudio below) — a static top-level import would
+// evaluate the module (and its AudioWorkletNode references) immediately, which throws on
+// browsers/origins without AudioWorklet (e.g. Safari on a non-HTTPS origin) before our own
+// try/catch ever runs.
 const HA = 'https://cdn.jsdelivr.net/gh/met4citizen/HeadAudio@0.1.0-alpha/dist/';
 const params = new URLSearchParams(location.search);
 // external=1: the host app plays the audio and streams lip-sync values in (web build; avoids iframe autoplay blocks).
@@ -266,9 +268,12 @@ let source = null;
 
 async function initHeadAudio() {
   try {
-    // Android WebViews served over plain http have no AudioWorklet. Lip-sync then
-    // runs on loudness alone, which is why this is a quiet fallback, not an error.
-    if (!ctx.audioWorklet || typeof HeadAudio === 'undefined') throw new Error('no audio worklet');
+    // Android WebViews (and Safari on a non-HTTPS origin) have no AudioWorklet. Lip-sync then
+    // runs on loudness alone, which is why this is a quiet fallback, not an error. The dynamic
+    // import keeps any AudioWorkletNode reference inside HeadAudio's own module from throwing
+    // until we're inside this try — a static import would throw before we could catch it.
+    if (!ctx.audioWorklet) throw new Error('no audio worklet');
+    const { HeadAudio } = await import(HA + 'headaudio.min.mjs');
     await ctx.audioWorklet.addModule(HA + 'headworklet.min.mjs');
     headaudio = new HeadAudio(ctx, { processorOptions: {}, parameterData: { vadGateActiveDb: -40, vadGateInactiveDb: -60 } });
     await headaudio.loadModel(HA + 'model-en-mixed.bin');
