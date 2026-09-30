@@ -54,18 +54,18 @@ function Hero() {
         </div>
       </div>
 
-      <div className="container-x pb-4 sm:pb-8">
+      <div className="container-x pb-3 sm:pb-8">
         <nav aria-label="Quick actions"
-          className="bg-white rounded-2xl lg:rounded-full p-1.5 sm:p-2 grid grid-cols-4 gap-1 sm:gap-1.5 shadow-xl">
+          className="bg-white rounded-2xl lg:rounded-full p-1 sm:p-2 grid grid-cols-4 gap-1 sm:gap-1.5 shadow-xl">
           {heroActions.map(({ icon: I, label, short, href, to, primary }) => {
-            const cls = `group flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1.5 lg:gap-3 text-center lg:text-left rounded-xl lg:rounded-full px-1 sm:px-3 lg:px-4 py-2.5 lg:py-3 min-h-[62px] lg:min-h-0 transition-colors ${
+            const cls = `group flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-1 lg:gap-3 text-center lg:text-left rounded-xl lg:rounded-full px-1 sm:px-3 lg:px-4 py-2 lg:py-3 min-h-[50px] lg:min-h-0 transition-colors ${
               primary ? 'bg-slate text-white hover:bg-slate-deep' : 'text-ink hover:bg-ivory'}`;
             const body = (
               <>
-                <span className={`w-8 h-8 lg:w-9 lg:h-9 shrink-0 rounded-full grid place-items-center ${primary ? 'bg-white/15' : 'bg-mist text-slate'}`}>
-                  <I className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
+                <span className={`w-6 h-6 lg:w-9 lg:h-9 shrink-0 rounded-full grid place-items-center ${primary ? 'bg-white/15' : 'bg-mist text-slate'}`}>
+                  <I className="w-3.5 h-3.5 lg:w-[18px] lg:h-[18px]" />
                 </span>
-                <span className="text-[11px] min-[390px]:text-[12px] sm:text-[13px] lg:text-[14.5px] font-semibold leading-tight">
+                <span className="text-[10.5px] min-[390px]:text-[11.5px] sm:text-[13px] lg:text-[14.5px] font-semibold leading-tight">
                   <span className="lg:hidden">{short}</span>
                   <span className="hidden lg:inline">{label}</span>
                 </span>

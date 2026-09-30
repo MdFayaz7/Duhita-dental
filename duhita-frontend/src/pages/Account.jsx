@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  FiCalendar, FiCamera, FiCheckCircle, FiClock, FiFile, FiImage,
-  FiLogOut, FiTrash2,
+  FiActivity, FiCalendar, FiCamera, FiCheckCircle, FiChevronLeft, FiClock, FiFile, FiFolder,
+  FiHeart, FiImage, FiLogOut, FiTrash2, FiUser,
 } from 'react-icons/fi';
 import { Field, Chip, invalid } from '../components/Form';
 import useSeo from '../hooks/useSeo';
@@ -171,13 +171,33 @@ function AuthPanel() {
 
 // ---------------------------------------------------------------- dashboard
 
+const MENU = [
+  { id: 'book', label: 'Book a visit', icon: FiCalendar },
+  { id: 'appointments', label: 'My appointments', icon: FiClock },
+  { id: 'record', label: 'My dental record', icon: FiActivity },
+  { id: 'medical', label: 'Medical history', icon: FiHeart },
+  { id: 'records', label: 'Records & documents', icon: FiFolder },
+  { id: 'details', label: 'Personal details', icon: FiUser },
+];
+
+function SectionHeader({ title, onBack }) {
+  return (
+    <div className="flex items-center gap-3 mb-5">
+      <button onClick={onBack} aria-label="Back" className="w-9 h-9 shrink-0 rounded-full bg-white border border-line grid place-items-center text-ink hover:bg-mist">
+        <FiChevronLeft className="w-5 h-5" />
+      </button>
+      <h2 className="text-[20px] text-ink">{title}</h2>
+    </div>
+  );
+}
+
 function Dashboard() {
   const { token, patient, setPatient, signOut } = usePatientAuth();
+  const [view, setView] = useState('menu');
   const [appointments, setAppointments] = useState(null);
   const [records, setRecords] = useState(null);
   const [editingDetails, setEditingDetails] = useState(false);
   const [editingMedical, setEditingMedical] = useState(false);
-  const bookRef = useRef(null);
 
   const load = () => {
     myAppointments(token).then(setAppointments).catch(() => setAppointments({ upcoming: [], past: [] }));
@@ -187,172 +207,179 @@ function Dashboard() {
 
   const visits = (appointments?.past ?? []).filter((a) => a.status === 'completed');
   const next = appointments?.upcoming?.[0];
+  const back = () => setView('menu');
 
   return (
     <section className="section-y bg-ivory">
-      <div className="container-x max-w-3xl mx-auto grid gap-6">
-        {/* Patient card */}
-        <div className="bg-slate rounded-[18px] overflow-hidden text-white reveal">
-          <div className="p-6 sm:p-7 flex items-center gap-4">
-            <PhotoPicker patient={patient} token={token} onChange={setPatient} />
-            <div className="min-w-0">
-              <p className="text-[19px] font-semibold truncate">{patient.name}</p>
-              <p className="text-white/70 text-[13px] mt-0.5">
-                +91 {patient.phone}{patient.age ? ` · ${patient.age} yrs` : ''}{patient.sex ? ` · ${patient.sex}` : ''}
-              </p>
+      <div className="container-x max-w-3xl mx-auto">
+        {view === 'menu' && (
+          <div className="grid gap-6 reveal">
+            {/* Patient card */}
+            <div className="bg-slate rounded-[18px] overflow-hidden text-white">
+              <div className="p-6 sm:p-7 flex items-center gap-4">
+                <PhotoPicker patient={patient} token={token} onChange={setPatient} />
+                <div className="min-w-0">
+                  <p className="text-[19px] font-semibold truncate">{patient.name}</p>
+                  <p className="text-white/70 text-[13px] mt-0.5">
+                    +91 {patient.phone}{patient.age ? ` · ${patient.age} yrs` : ''}{patient.sex ? ` · ${patient.sex}` : ''}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-black/15 px-6 sm:px-7 py-3 flex items-center justify-between">
+                <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white/70">Patient ID</span>
+                <span className="text-[17px] font-bold tracking-wider">{patient.patient_id}</span>
+              </div>
             </div>
-          </div>
-          <div className="bg-black/15 px-6 sm:px-7 py-3 flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white/70">Patient ID</span>
-            <span className="text-[17px] font-bold tracking-wider">{patient.patient_id}</span>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <button onClick={() => bookRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="card p-5 text-center hover:-translate-y-0.5 transition-transform">
-            <FiCalendar className="w-5 h-5 mx-auto text-slate" />
-            <span className="block mt-2 text-[13.5px] font-semibold text-ink">Book a visit</span>
-          </button>
-          <a href="#appointments" className="card p-5 text-center hover:-translate-y-0.5 transition-transform">
-            <FiClock className="w-5 h-5 mx-auto text-slate" />
-            <span className="block mt-2 text-[13.5px] font-semibold text-ink">My appointments</span>
-          </a>
-        </div>
+            {next && (
+              <div className="card p-0 overflow-hidden">
+                <div className="p-5 flex items-center gap-4">
+                  <div className="w-16 rounded-xl bg-mist text-center py-2.5 shrink-0">
+                    <span className="block text-[22px] font-display leading-none text-ink">{next.date.slice(8, 10)}</span>
+                    <span className="block text-[10.5px] font-bold text-slate mt-1">{formatDate(next.date).split(', ')[0].split(' ').pop()}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[16px] font-semibold text-ink">{formatSlot(next.slot)}</p>
+                    <p className="text-[13px] text-body mt-0.5">{formatDate(next.date, true)}{next.reason ? ` · ${next.reason}` : ''}</p>
+                  </div>
+                  <span className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${next.status === 'confirmed' ? 'bg-[#e7f5ee] text-[#127a4b]' : 'bg-[#fff4e5] text-[#a15c07]'}`}>
+                    {next.status}
+                  </span>
+                </div>
+              </div>
+            )}
 
-        {/* Next visit */}
-        {appointments && next && (
-          <div className="card p-0 overflow-hidden reveal">
-            <div className="p-5 flex items-center gap-4">
-              <div className="w-16 rounded-xl bg-mist text-center py-2.5 shrink-0">
-                <span className="block text-[22px] font-display leading-none text-ink">{next.date.slice(8, 10)}</span>
-                <span className="block text-[10.5px] font-bold text-slate mt-1">{formatDate(next.date).split(', ')[0].split(' ').pop()}</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[16px] font-semibold text-ink">{formatSlot(next.slot)}</p>
-                <p className="text-[13px] text-body mt-0.5">{formatDate(next.date, true)}{next.reason ? ` · ${next.reason}` : ''}</p>
-              </div>
-              <span className={`text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full ${next.status === 'confirmed' ? 'bg-[#e7f5ee] text-[#127a4b]' : 'bg-[#fff4e5] text-[#a15c07]'}`}>
-                {next.status}
-              </span>
+            <div className="grid grid-cols-2 gap-4">
+              {MENU.map(({ id, label, icon: I }) => (
+                <button key={id} onClick={() => setView(id)}
+                  className="card p-5 text-center hover:-translate-y-0.5 transition-transform">
+                  <I className="w-5 h-5 mx-auto text-slate" />
+                  <span className="block mt-2 text-[13.5px] font-semibold text-ink">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            <button onClick={signOut} className="text-[14px] font-semibold text-[#b42318] py-2 flex items-center justify-center gap-2">
+              <FiLogOut /> Sign out
+            </button>
+          </div>
+        )}
+
+        {view === 'book' && (
+          <div className="reveal">
+            <SectionHeader title="Book a visit" onBack={back} />
+            <div className="card p-6 sm:p-7">
+              <BookForm token={token} onBooked={() => { load(); }} />
             </div>
           </div>
         )}
 
-        {/* Book a visit */}
-        <div ref={bookRef} className="card p-6 sm:p-7 scroll-mt-24 reveal">
-          <h2 className="text-[20px] text-ink">Book a visit</h2>
-          <BookForm token={token} onBooked={load} />
-        </div>
-
-        {/* Appointments */}
-        <div id="appointments" className="scroll-mt-24 reveal">
-          <h2 className="text-[20px] text-ink mb-4">My appointments</h2>
-          {!appointments ? (
-            <Loading />
-          ) : appointments.upcoming.length === 0 && appointments.past.length === 0 ? (
-            <p className="card p-6 text-[14px]">No appointments yet — book your first visit above.</p>
-          ) : (
-            <div className="grid gap-3">
-              {appointments.upcoming.map((a) => (
-                <AppointmentRow key={a.id} a={a} onCancel={async () => { await cancelAppointment(token, a.id); load(); }} />
-              ))}
-              {appointments.past.map((a) => <AppointmentRow key={a.id} a={a} past />)}
-            </div>
-          )}
-        </div>
-
-        {/* Dental record */}
-        <div className="reveal">
-          <h2 className="text-[20px] text-ink mb-4">My dental record</h2>
-          {!appointments ? (
-            <Loading />
-          ) : visits.length === 0 ? (
-            <p className="card p-6 text-[14px]">Your treatment history appears here after your first completed visit.</p>
-          ) : (
-            <div className="card p-6 sm:p-7">
-              {visits.map((v, i) => (
-                <div key={v.id} className={`flex gap-3 ${i > 0 ? 'pt-4 mt-4 border-t border-line' : ''}`}>
-                  <span className="w-2 h-2 rounded-full bg-slate mt-2 shrink-0" />
-                  <div>
-                    <p className="text-[14.5px] font-semibold text-ink">{v.reason || 'Dental visit'}</p>
-                    <p className="text-[13px] text-body mt-0.5">{formatDate(v.date, true)} · {formatSlot(v.slot)}{v.doctor ? ` · ${v.doctor}` : ''}</p>
-                    {v.notes && <p className="text-[13px] text-body mt-1">{v.notes}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Medical history */}
-        <div className="reveal">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[20px] text-ink">Medical history</h2>
-            <span className="text-[12px] text-body">Shown to your dentist</span>
+        {view === 'appointments' && (
+          <div className="reveal">
+            <SectionHeader title="My appointments" onBack={back} />
+            {!appointments ? (
+              <Loading />
+            ) : appointments.upcoming.length === 0 && appointments.past.length === 0 ? (
+              <p className="card p-6 text-[14px]">No appointments yet — book your first visit.</p>
+            ) : (
+              <div className="grid gap-3">
+                {appointments.upcoming.map((a) => (
+                  <AppointmentRow key={a.id} a={a} onCancel={async () => { await cancelAppointment(token, a.id); load(); }} />
+                ))}
+                {appointments.past.map((a) => <AppointmentRow key={a.id} a={a} past />)}
+              </div>
+            )}
           </div>
-          {editingMedical ? (
-            <MedicalForm patient={patient} token={token} onDone={(p) => { setPatient(p); setEditingMedical(false); }} onCancel={() => setEditingMedical(false)} />
-          ) : (
-            <div className="card p-6 sm:p-7">
-              {[
-                ['Blood group', patient.blood_group || '—'],
-                ['Conditions', patient.conditions?.length ? patient.conditions.join(', ') : 'None reported'],
-                ['Allergies', patient.allergies || 'None reported'],
-                ['Medicines', patient.medications || 'None reported'],
-                ['Emergency contact', patient.emergency_contact ? `${patient.emergency_contact}${patient.emergency_phone ? ` · +91 ${patient.emergency_phone}` : ''}` : '—'],
-              ].map(([k, v], i) => (
-                <div key={k} className={`flex gap-4 py-2.5 ${i > 0 ? 'border-t border-line' : ''}`}>
-                  <span className="w-40 shrink-0 text-[11.5px] font-bold uppercase tracking-wide text-stone">{k}</span>
-                  <span className="text-[14px] text-ink">{v}</span>
-                </div>
-              ))}
-              <button onClick={() => setEditingMedical(true)} className="btn btn-outline mt-5">Update medical history</button>
-            </div>
-          )}
-        </div>
+        )}
 
-        {/* Records */}
-        <div className="reveal">
-          <h2 className="text-[20px] text-ink mb-4">Records &amp; documents</h2>
-          {records === null ? <Loading /> : (
-            <div className="grid gap-3">
-              {records.map((r) => (
-                <RecordRow key={r.id} r={r} onDelete={r.added_by === 'patient' ? async () => { await deleteRecord(token, r.id); load(); } : undefined} />
-              ))}
-              {records.length === 0 && (
-                <p className="card p-6 text-[14px]">
-                  Nothing here yet. Prescriptions, X-rays and reports the clinic files for you appear here automatically.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        {view === 'record' && (
+          <div className="reveal">
+            <SectionHeader title="My dental record" onBack={back} />
+            {!appointments ? (
+              <Loading />
+            ) : visits.length === 0 ? (
+              <p className="card p-6 text-[14px]">Your treatment history appears here after your first completed visit.</p>
+            ) : (
+              <div className="card p-6 sm:p-7">
+                {visits.map((v, i) => (
+                  <div key={v.id} className={`flex gap-3 ${i > 0 ? 'pt-4 mt-4 border-t border-line' : ''}`}>
+                    <span className="w-2 h-2 rounded-full bg-slate mt-2 shrink-0" />
+                    <div>
+                      <p className="text-[14.5px] font-semibold text-ink">{v.reason || 'Dental visit'}</p>
+                      <p className="text-[13px] text-body mt-0.5">{formatDate(v.date, true)} · {formatSlot(v.slot)}{v.doctor ? ` · ${v.doctor}` : ''}</p>
+                      {v.notes && <p className="text-[13px] text-body mt-1">{v.notes}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Personal details */}
-        <div className="reveal">
-          <h2 className="text-[20px] text-ink mb-4">Personal details</h2>
-          {editingDetails ? (
-            <DetailsForm patient={patient} token={token} onDone={(p) => { setPatient(p); setEditingDetails(false); }} onCancel={() => setEditingDetails(false)} />
-          ) : (
-            <div className="card p-6 sm:p-7">
-              {[
-                ['Name', patient.name], ['Mobile', `+91 ${patient.phone}`], ['Age', patient.age || '—'], ['Sex', patient.sex || '—'],
-                ['Email', patient.email || '—'], ['Address', patient.address || '—'],
-              ].map(([k, v], i) => (
-                <div key={k} className={`flex gap-4 py-2.5 ${i > 0 ? 'border-t border-line' : ''}`}>
-                  <span className="w-24 shrink-0 text-[11.5px] font-bold uppercase tracking-wide text-stone">{k}</span>
-                  <span className="text-[14px] text-ink">{v}</span>
-                </div>
-              ))}
-              <button onClick={() => setEditingDetails(true)} className="btn btn-outline mt-5">Edit details</button>
-            </div>
-          )}
-        </div>
+        {view === 'medical' && (
+          <div className="reveal">
+            <SectionHeader title="Medical history" onBack={back} />
+            {editingMedical ? (
+              <MedicalForm patient={patient} token={token} onDone={(p) => { setPatient(p); setEditingMedical(false); }} onCancel={() => setEditingMedical(false)} />
+            ) : (
+              <div className="card p-6 sm:p-7">
+                {[
+                  ['Blood group', patient.blood_group || '—'],
+                  ['Conditions', patient.conditions?.length ? patient.conditions.join(', ') : 'None reported'],
+                  ['Allergies', patient.allergies || 'None reported'],
+                  ['Medicines', patient.medications || 'None reported'],
+                  ['Emergency contact', patient.emergency_contact ? `${patient.emergency_contact}${patient.emergency_phone ? ` · +91 ${patient.emergency_phone}` : ''}` : '—'],
+                ].map(([k, v], i) => (
+                  <div key={k} className={`flex gap-4 py-2.5 ${i > 0 ? 'border-t border-line' : ''}`}>
+                    <span className="w-40 shrink-0 text-[11.5px] font-bold uppercase tracking-wide text-stone">{k}</span>
+                    <span className="text-[14px] text-ink">{v}</span>
+                  </div>
+                ))}
+                <button onClick={() => setEditingMedical(true)} className="btn btn-outline mt-5">Update medical history</button>
+              </div>
+            )}
+          </div>
+        )}
 
-        <button onClick={signOut} className="text-[14px] font-semibold text-[#b42318] py-4 flex items-center justify-center gap-2">
-          <FiLogOut /> Sign out
-        </button>
+        {view === 'records' && (
+          <div className="reveal">
+            <SectionHeader title="Records & documents" onBack={back} />
+            {records === null ? <Loading /> : (
+              <div className="grid gap-3">
+                {records.map((r) => (
+                  <RecordRow key={r.id} r={r} onDelete={r.added_by === 'patient' ? async () => { await deleteRecord(token, r.id); load(); } : undefined} />
+                ))}
+                {records.length === 0 && (
+                  <p className="card p-6 text-[14px]">
+                    Nothing here yet. Prescriptions, X-rays and reports the clinic files for you appear here automatically.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {view === 'details' && (
+          <div className="reveal">
+            <SectionHeader title="Personal details" onBack={back} />
+            {editingDetails ? (
+              <DetailsForm patient={patient} token={token} onDone={(p) => { setPatient(p); setEditingDetails(false); }} onCancel={() => setEditingDetails(false)} />
+            ) : (
+              <div className="card p-6 sm:p-7">
+                {[
+                  ['Name', patient.name], ['Mobile', `+91 ${patient.phone}`], ['Age', patient.age || '—'], ['Sex', patient.sex || '—'],
+                  ['Email', patient.email || '—'], ['Address', patient.address || '—'],
+                ].map(([k, v], i) => (
+                  <div key={k} className={`flex gap-4 py-2.5 ${i > 0 ? 'border-t border-line' : ''}`}>
+                    <span className="w-24 shrink-0 text-[11.5px] font-bold uppercase tracking-wide text-stone">{k}</span>
+                    <span className="text-[14px] text-ink">{v}</span>
+                  </div>
+                ))}
+                <button onClick={() => setEditingDetails(true)} className="btn btn-outline mt-5">Edit details</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -497,7 +524,7 @@ function BookForm({ token, onBooked }) {
     <div className="grid gap-6 mt-5">
       <div>
         <p className="text-[13px] font-semibold text-ink mb-3">Choose a date</p>
-        <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+        <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x" style={{ touchAction: 'pan-x' }}>
           {days.map((d) => (
             <button key={d.iso} type="button" disabled={d.closed} onClick={() => setDate(d.iso)}
               className={`snap-start shrink-0 w-[70px] py-2.5 rounded-xl border text-center transition-colors disabled:opacity-40 ${
