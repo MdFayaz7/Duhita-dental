@@ -6,7 +6,7 @@ import { Linking } from 'react-native';
 import { uploadFile } from './upload';
 
 // The clinic's API. Set EXPO_PUBLIC_CLINIC_API_URL to point at a laptop while developing.
-export const CLINIC_API = process.env.EXPO_PUBLIC_CLINIC_API_URL ?? 'https://duhita-dental-api.onrender.com';
+export const CLINIC_API = process.env.EXPO_PUBLIC_CLINIC_API_URL ?? 'https://api.duhitadental.com';
 
 export type MedicalRecord = {
   id: string;

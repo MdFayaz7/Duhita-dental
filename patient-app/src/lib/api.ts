@@ -14,7 +14,7 @@ export type Speech = {
 
 // In dev, reach the backend on the same machine that serves the JS bundle.
 // Duhita AI's own server. Set EXPO_PUBLIC_API_URL to point at a laptop while developing.
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://duhita-ai.onrender.com';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://ai.duhitadental.com';
 const headers: Record<string, string> = process.env.EXPO_PUBLIC_APP_TOKEN
   ? { 'x-app-token': process.env.EXPO_PUBLIC_APP_TOKEN }
   : {};

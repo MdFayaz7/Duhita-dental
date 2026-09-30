@@ -2,7 +2,7 @@ import { createElement, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { clinic } from '../theme';
 
-export const SITE_URL = (process.env.EXPO_PUBLIC_SITE_URL ?? 'https://duhita-frontend.vercel.app').replace(/\/+$/, '');
+export const SITE_URL = (process.env.EXPO_PUBLIC_SITE_URL ?? 'https://duhitadental.com').replace(/\/+$/, '');
 
 /**
  * Browser build of the site screen.

@@ -6,7 +6,7 @@ import { useCallback } from 'react';
 import { Button } from '../components/ui';
 import { clinic, type } from '../theme';
 
-export const SITE_URL = (process.env.EXPO_PUBLIC_SITE_URL ?? 'https://duhita-frontend.vercel.app').replace(/\/+$/, '');
+export const SITE_URL = (process.env.EXPO_PUBLIC_SITE_URL ?? 'https://duhitadental.com').replace(/\/+$/, '');
 
 /**
  * The clinic's own website, shown inside the app.
