@@ -521,8 +521,8 @@ function BookForm({ token, onBooked }) {
   }
 
   return (
-    <div className="grid gap-6 mt-5">
-      <div>
+    <div className="grid gap-6 mt-5 min-w-0">
+      <div className="min-w-0">
         <p className="text-[13px] font-semibold text-ink mb-3">Choose a date</p>
         <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x" style={{ touchAction: 'pan-x' }}>
           {days.map((d) => (
