@@ -8,7 +8,7 @@ export const clinicInfo = {
   phoneDisplay: '+91 94403 13066',
   whatsapp: 'https://wa.me/919440313066',
   email: 'duhitadent@gmail.com',
-  website: 'https://duhita-frontend.vercel.app',
+  website: 'https://duhitadental.com',
   addressLines: [
     '1st Floor, D.No 59, Shanthi Plaza, 14-2/1',
     'Above SBI NRI Branch, Gayatri Nagar, Krishna Nagar',
