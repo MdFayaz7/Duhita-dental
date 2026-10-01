@@ -21,6 +21,8 @@ const HIDE_SITE_CHROME = `
     css.textContent = [
       'header { display: none !important; }',
       'a[aria-label="Chat on WhatsApp"] { display: none !important; }',
+      /* the app has its own AI assistant button, so the site's floating one is hidden here */
+      'a[aria-label="Ask Duhita AI, our dental assistant"] { display: none !important; }',
       /* the app has its own Call / Book bar, so the hero's one is hidden here */
       'nav[aria-label="Quick actions"] { display: none !important; }',
       'body { -webkit-user-select: none; user-select: none; }'
