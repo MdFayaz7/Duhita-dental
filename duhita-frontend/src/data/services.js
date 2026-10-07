@@ -193,7 +193,7 @@ export const categories = [
         excerpt: 'Permanent, natural-looking replacements for one, several or all missing teeth.',
         intro: [
           'A dental implant is a small titanium post placed into the jawbone, where it bonds with bone to act as a new root. A custom crown is then fixed on top, giving you a tooth that looks, feels and functions like your own.',
-          'As an oral & maxillofacial surgeon, Dr. Sasidhar plans each implant with 3D imaging to protect nerves and sinuses and place the fixture precisely where the final tooth needs to be.',
+          'As an implantologist, Dr. Sasidhar plans each implant with 3D imaging to protect nerves and sinuses and place the fixture precisely where the final tooth needs to be.',
         ],
         sections: [
           {
@@ -534,9 +534,9 @@ export const categories = [
     name: 'Oral & Maxillofacial Surgery',
     icon: 'surgery',
     image: img('maxillofacial.jpg'),
-    short: 'Painless extractions, wisdom teeth removal and advanced jaw surgery by an M.D.S surgeon.',
+    short: 'Painless extractions, wisdom teeth removal and advanced jaw surgery with careful planning and aftercare.',
     intro:
-      'Oral and maxillofacial surgery covers procedures of the teeth, jaws and face. Duhita Dental is led by Dr. Nalluru Sasidhar, a post-graduate specialist in this field, so even complex surgical cases in Vijayawada can be managed in-house with a focus on safety and a smooth recovery.',
+      'Oral and maxillofacial surgery covers procedures of the teeth, jaws and face. At Duhita Dental these procedures are planned with careful imaging, with a focus on safety and a smooth recovery.',
     treatments: [
       {
         slug: 'wisdom-teeth-removal',
@@ -545,7 +545,7 @@ export const categories = [
         excerpt: 'Surgical removal of impacted or painful third molars with a focus on comfort and healing.',
         intro: [
           'Wisdom teeth usually erupt between the ages of 17 and 25. When there is not enough space, they may become impacted — stuck in the bone or gum — causing pain, swelling, infection or damage to the neighbouring tooth.',
-          'Dr. Sasidhar uses digital X-rays to map each tooth’s position relative to nerves before surgery, allowing a precise, minimally invasive procedure.',
+          'We use digital X-rays to map each tooth’s position relative to nerves before surgery, allowing a precise, minimally invasive procedure.',
         ],
         sections: [
           {
@@ -582,7 +582,7 @@ export const categories = [
           'Beyond extractions, our surgical services include treatment of jaw cysts and benign lesions, facial trauma and fractures, and bone preparation before implants or dentures.',
         ],
         sections: [{ h: 'Procedures Include', list: ['Cyst and benign tumour removal', 'Jaw fracture management', 'Bone grafting and ridge preparation', 'Biopsy of suspicious lesions'] }],
-        faqs: [{ q: 'Do I need a referral?', a: 'No referral is needed. You can book a consultation directly with Dr. Sasidhar.' }],
+        faqs: [{ q: 'Do I need a referral?', a: 'No referral is needed. You can book a consultation directly with the clinic.' }],
       },
     ],
   },

@@ -53,7 +53,7 @@ export default function Footer() {
           <div>
             <Logo light />
             <p className="mt-4 sm:mt-5 text-[13.5px] sm:text-[14px] leading-relaxed text-white/70 max-w-xs">
-              Specialist dental care for families across Vijayawada since 1997 — led by an M.D.S oral &amp; maxillofacial surgeon.
+              Specialist dental care for families across Vijayawada since 1997 — led by an MDS endodontist and implantologist.
             </p>
             <div className="flex gap-3 mt-4 sm:mt-6">
               {[

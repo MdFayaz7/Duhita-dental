@@ -53,7 +53,7 @@ export default function Treatment() {
             <h2>{t.title} at Duhita Dental</h2>
             <p>
               Patients from {site.areas.slice(0, 6).join(', ')} and across Vijayawada choose Duhita Dental for experienced,
-              surgeon-led care, strict sterilisation and transparent pricing. <Link to="/patients/book-appointment">Book a consultation</Link>{' '}
+              specialist-led care, strict sterilisation and transparent pricing. <Link to="/patients/book-appointment">Book a consultation</Link>{' '}
               or call <a href={`tel:${site.phone}`}>{site.phoneDisplay}</a> to discuss your treatment.
             </p>
             {t.faqs?.length > 0 && (

@@ -10,7 +10,7 @@ const builtIn = [{
   id: 'founder',
   name: founder.name,
   qualification: founder.credentials,
-  speciality: 'Oral & Maxillofacial Surgery',
+  speciality: 'Endodontist & Implantologist',
   experience_years: founder.years,
   bio: 'Founder of Duhita Multispeciality Dental Centre, practising in Vijayawada since 1997.',
   photo: founder.image,
@@ -29,8 +29,8 @@ export default function OurDoctors() {
         <div className="max-w-2xl reveal">
           <h2 id="doctors-heading" className="text-[27px] sm:text-[33px] md:text-[44px]">Our Doctors</h2>
           <p className="mt-4 leading-relaxed">
-            Specialists who plan and carry out every treatment at Duhita Dental, led by our founder, an M.D.S oral &amp;
-            maxillofacial surgeon.
+            Specialists who plan and carry out every treatment at Duhita Dental, led by our founder, an MDS endodontist
+            and implantologist.
           </p>
         </div>
 

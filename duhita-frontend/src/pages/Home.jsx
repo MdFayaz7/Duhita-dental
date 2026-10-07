@@ -37,7 +37,7 @@ function Hero() {
             Specialist Dental Care in Vijayawada, Andhra Pradesh
           </h1>
           <ul className="mt-3.5 sm:mt-8 flex flex-wrap gap-x-5 gap-y-0.5 text-[13px] sm:text-[14px] text-white/90">
-            <li><strong className="font-semibold text-white">30+</strong> years of experience</li>
+            <li><strong className="font-semibold text-white">32+</strong> years of experience</li>
             <li><strong className="font-semibold text-white">10,000+</strong> patients treated</li>
             <li><strong className="font-semibold text-white">7</strong> specialities</li>
           </ul>
@@ -84,7 +84,7 @@ function Hero() {
 export default function Home() {
   useSeo(
     'Best Dental Clinic in Vijayawada | Duhita Multispeciality Dental Centre, Benz Circle',
-    'Trusted dentist in Benz Circle, Vijayawada since 1997. Dental implants, painless root canal, braces & aligners, kids dentistry, gum care and wisdom tooth surgery by Dr. Nalluru Sasidhar, M.D.S. Call +91 94403 13066.',
+    'Trusted dentist in Benz Circle, Vijayawada since 1997. Dental implants, painless root canal, braces & aligners, kids dentistry, gum care and wisdom tooth removal, led by Dr. Nalluru Sasidhar, BDS, MDS (endodontist & implantologist). Call +91 94403 13066.',
   );
   return <Hero />;
 }

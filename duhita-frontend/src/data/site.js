@@ -43,23 +43,23 @@ export const site = {
 
 export const doctor = {
   name: 'Dr. Nalluru Sasidhar',
-  credentials: 'M.D.S (Oral & Maxillofacial Surgery)',
+  credentials: 'BDS, MDS (Conservative Dentistry)',
   image: '/images/dr-sasidhar.jpg',
-  years: 30,
+  years: 32,
 };
 
 export const stats = [
   { value: '1997', label: 'Caring for Vijayawada since' },
   { value: '10,000+', label: 'Patients treated' },
   { value: '7', label: 'Dental specialities under one roof' },
-  { value: '30+', label: 'Years of clinical experience' },
+  { value: '32+', label: 'Years of clinical experience' },
 ];
 
 export const whyChoose = [
   {
     icon: 'surgeon',
-    title: 'M.D.S Surgeon-Led Care',
-    body: 'Every treatment plan is reviewed by Dr. Sasidhar, a post-graduate oral & maxillofacial surgeon with over 30 years in practice.',
+    title: 'Specialist-Led Care',
+    body: 'Every treatment plan is reviewed by Dr. Sasidhar, an MDS endodontist and implantologist with over 32 years of experience.',
   },
   {
     icon: 'comfort',

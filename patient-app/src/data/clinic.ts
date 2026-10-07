@@ -25,7 +25,7 @@ export const clinicInfo = {
     google: 'https://www.google.com/search?q=duhita+multispeciality+dental+centre',
   },
   stats: [
-    { value: '30+', label: 'Years of care' },
+    { value: '32+', label: 'Years of care' },
     { value: '10,000+', label: 'Patients treated' },
     { value: '7', label: 'Specialities' },
   ],
@@ -33,7 +33,7 @@ export const clinicInfo = {
 
 export const founder = {
   name: 'Dr. Nalluru Sasidhar',
-  credentials: 'M.D.S (Oral & Maxillofacial Surgery)',
+  credentials: 'BDS, MDS (Conservative Dentistry)',
   blurb:
     'Founder of Duhita Dental, practising in Vijayawada since 1997. Known for careful diagnosis, gentle hands and explaining every option before treatment begins.',
 };
@@ -45,7 +45,7 @@ export const aboutStory = [
 ];
 
 export const whyChoose = [
-  { title: 'Surgeon-led care', body: 'Complex cases are handled in-house by an M.D.S oral & maxillofacial surgeon.' },
+  { title: 'Specialist-led care', body: 'Treatment is led by an MDS endodontist and implantologist with over 32 years of experience.' },
   { title: 'Strict sterilisation', body: 'Autoclave sterilisation with sealed pouches and single-use disposables at every chair.' },
   { title: 'Honest treatment plans', body: 'Written options with staged pricing before any procedure begins — no surprises.' },
   { title: 'Six days a week', body: 'Morning and late-evening appointments, so care fits around school and work.' },
@@ -114,7 +114,7 @@ export const categories: Category[] = [
   {
     slug: 'oral-surgery',
     name: 'Oral & Maxillofacial Surgery',
-    short: 'Painless extractions, wisdom teeth removal and advanced jaw surgery by an M.D.S surgeon.',
+    short: 'Painless extractions, wisdom teeth removal and advanced jaw surgery with careful planning and aftercare.',
     treatments: [
       { slug: 'wisdom-teeth-removal', title: 'Wisdom Tooth Removal', excerpt: 'Impacted wisdom teeth removed safely, with clear aftercare.' },
       { slug: 'tooth-extraction', title: 'Tooth Extraction', excerpt: 'Painless removal when a tooth cannot be saved, with options to replace it.' },

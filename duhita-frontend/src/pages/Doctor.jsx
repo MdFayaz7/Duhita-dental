@@ -4,24 +4,23 @@ import useSeo from '../hooks/useSeo';
 import { doctor } from '../data/site';
 
 const expertise = [
-  'Wisdom tooth and impacted tooth surgery',
-  'Dental implants and full-mouth rehabilitation',
-  'Bone grafting and ridge preparation',
-  'Jaw cysts, biopsies and oral lesion management',
-  'Facial trauma and jaw fracture care',
   'Painless root canal treatment',
+  'Dental implants and full-mouth rehabilitation',
+  'Tooth-coloured fillings and conservative restorations',
+  'Broken and cracked tooth repair',
+  'Crowns, bridges and smile design',
 ];
 
 export default function Doctor() {
   useSeo(
-    'Dr. Nalluru Sasidhar, M.D.S | Oral & Maxillofacial Surgeon in Vijayawada',
-    'Meet Dr. Nalluru Sasidhar, M.D.S (Oral & Maxillofacial Surgery), founder of Duhita Dental, Vijayawada — 30+ years of experience in implants, wisdom tooth surgery and complex dental care.',
+    'Dr. Nalluru Sasidhar, BDS, MDS | Endodontist & Implantologist in Vijayawada',
+    `Meet Dr. Nalluru Sasidhar, BDS, MDS (Conservative Dentistry), endodontist and implantologist, founder of Duhita Dental, Vijayawada — ${doctor.years}+ years of experience in root canal treatment, dental implants and conservative dental care.`,
   );
   return (
     <>
-      <PageHero eyebrow="Meet the Doctor" title={`${doctor.name}, M.D.S`} image="/images/services/maxillo_facial%20surgery/facial%20surgery%20.png.webp"
+      <PageHero eyebrow="Meet the Doctor" title={`${doctor.name}, BDS, MDS`} image="/images/services/endodontics/root%20canal.jpg"
         crumbs={[{ label: 'Home', to: '/' }, { label: 'About Us', to: '/about' }, { label: doctor.name }]}>
-        Oral &amp; Maxillofacial Surgeon · Founder, Duhita Multispeciality Dental Centre
+        Endodontist &amp; Implantologist · Founder, Duhita Multispeciality Dental Centre
       </PageHero>
       <section className="section-y bg-ivory">
         <div className="container-x grid gap-12 lg:grid-cols-[380px_1fr] lg:gap-20 items-start">
@@ -33,11 +32,11 @@ export default function Doctor() {
             </div>
           </div>
           <article className="reveal prose-duhita">
-            <h2 className="!mt-0">A Surgeon’s Precision, a Family Dentist’s Warmth</h2>
+            <h2 className="!mt-0">Saving Natural Teeth, with a Family Dentist’s Warmth</h2>
             <p>
-              {doctor.name} completed his Master of Dental Surgery in Oral &amp; Maxillofacial Surgery and founded Duhita Dental in
-              Vijayawada in 1997. For more than {doctor.years} years he has treated patients of every age — combining surgical
-              expertise with the patience and clear communication that nervous patients value most.
+              {doctor.name} holds a BDS and an MDS in Conservative Dentistry, and practises as an endodontist and implantologist.
+              He founded Duhita Dental in Vijayawada in 1997 and has {doctor.years}+ years of experience overall, treating
+              patients of every age with the patience and clear communication that nervous patients value most.
             </p>
             <p>
               Patients frequently mention his punctuality, discipline and the time he takes to explain a diagnosis before any
@@ -47,8 +46,8 @@ export default function Doctor() {
             <ul>{expertise.map((e) => <li key={e}>{e}</li>)}</ul>
             <h2>Treatment Philosophy</h2>
             <p>
-              “Save the natural tooth whenever it can be saved, replace it properly when it cannot, and never recommend a treatment I
-              would not choose for my own family.” That principle shapes every plan made at the clinic.
+              Save the natural tooth whenever it can be saved, replace it properly when it cannot, and never recommend a treatment
+              that would not be right for the patient’s own family. That principle shapes every plan made at the clinic.
             </p>
           </article>
         </div>

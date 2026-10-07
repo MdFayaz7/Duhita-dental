@@ -17,9 +17,9 @@ FRONTEND = Path(__file__).resolve().parents[2] / "duhita-frontend" / "public"
 DOCTORS = [
     {
         "name": "Dr. Nalluru Sasidhar",
-        "qualification": "M.D.S (Oral & Maxillofacial Surgery)",
-        "speciality": "Oral & Maxillofacial Surgery",
-        "experience_years": 30,
+        "qualification": "BDS, MDS (Conservative Dentistry)",
+        "speciality": "Endodontist & Implantologist",
+        "experience_years": 32,
         "bio": "Founder of Duhita Multispeciality Dental Centre, practising in Vijayawada since 1997.",
         "photo": "/images/dr-sasidhar.jpg",
         "order": 0,
