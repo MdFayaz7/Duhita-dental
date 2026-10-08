@@ -9,6 +9,7 @@ from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
 from ..db import get_db, serialize
+from ..events import broadcast_event
 from ..models import AppRecordIn, PatientIn
 from ..security import current_admin
 from ..uploads import IMAGE_TYPES, PDF_TYPES, delete_upload, save_upload
@@ -32,7 +33,10 @@ async def register(payload: PatientIn):
     doc["patient_id"] = await _next_patient_id(db)
     doc["created_at"] = datetime.now(timezone.utc)
     await db.patients.insert_one(doc)
-    return {"patient_id": doc["patient_id"], "name": doc["name"]}
+    res = {"patient_id": doc["patient_id"], "name": doc["name"]}
+    await broadcast_event("patient_registered", serialize(doc))
+    await broadcast_event("stats_updated")
+    return res
 
 
 @router.get("/lookup/{patient_id}")
@@ -114,6 +118,8 @@ async def delete_patient(patient_id: str, _: str = Depends(current_admin)):
     res = await get_db().patients.delete_one({"patient_id": patient_id})
     if not res.deleted_count:
         raise HTTPException(404, "Patient not found.")
+    await broadcast_event("patient_deleted", {"patient_id": patient_id})
+    await broadcast_event("stats_updated")
     return {"ok": True}
 
 
@@ -151,7 +157,9 @@ async def add_record(
         doc["file_type"] = "pdf" if allowed is PDF_TYPES else "image"
 
     result = await db.records.insert_one(doc)
-    return serialize(await db.records.find_one({"_id": result.inserted_id}))
+    created = serialize(await db.records.find_one({"_id": result.inserted_id}))
+    await broadcast_event("record_updated", {"patient_id": patient_id.upper(), "record": created})
+    return created
 
 
 @router.delete("/{patient_id}/records/{record_id}")
@@ -164,4 +172,5 @@ async def delete_record(patient_id: str, record_id: str, _: str = Depends(curren
     if not doc:
         raise HTTPException(404, "Record not found.")
     await delete_upload(doc.get("file"))
+    await broadcast_event("record_updated", {"patient_id": patient_id.upper(), "record_id": record_id})
     return {"ok": True}

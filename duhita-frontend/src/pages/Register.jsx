@@ -35,6 +35,7 @@ export default function Register() {
   useSeo(
     'New Patient Registration | Duhita Dental, Vijayawada',
     'Register as a new patient at Duhita Multispeciality Dental Centre, Benz Circle, Vijayawada. Save time at the clinic by sharing your details and medical history online.',
+    { image: '/images/services/pedodontics/pedodontics.jpg' }
   );
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
@@ -200,9 +201,16 @@ export default function Register() {
                 <label className="flex gap-3 text-[13px] leading-relaxed">
                   <input type="checkbox" className="mt-1 accent-slate w-4 h-4 shrink-0" checked={form.consent} onChange={set('consent')} />
                   <span>
-                    I confirm the information above is correct to the best of my knowledge, and I agree to be contacted by Duhita Dental
-                    by phone, SMS or WhatsApp about my care.
-                    {errors.consent && <span className="block text-[#b42318] mt-1" role="alert">{errors.consent}</span>}
+                    I confirm that the health and personal information provided above is accurate. By registering, I consent to the collection and processing of my patient details in accordance with the{' '}
+                    <Link to="/terms-conditions" target="_blank" rel="noopener noreferrer" className="text-slate font-medium underline underline-offset-2 hover:text-ink">
+                      Terms &amp; Conditions
+                    </Link>{' '}
+                    and{' '}
+                    <Link to="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-slate font-medium underline underline-offset-2 hover:text-ink">
+                      Privacy Policy
+                    </Link>
+                    , and agree to receive appointment and clinical communications from Duhita Dental by phone, SMS, or WhatsApp.
+                    {errors.consent && <span className="block text-[#b42318] mt-1 font-medium" role="alert">{errors.consent}</span>}
                   </span>
                 </label>
                 <div className="flex flex-wrap items-center gap-4">

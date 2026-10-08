@@ -12,11 +12,31 @@ export default function Treatment() {
   const { category, treatment } = useParams();
   const c = findCategory(category);
   const t = findTreatment(category, treatment);
+
+  const schema = t ? {
+    '@context': 'https://schema.org',
+    '@type': 'MedicalProcedure',
+    name: t.title,
+    description: t.excerpt,
+    image: `https://duhitadental.com${t.image}`,
+    provider: {
+      '@type': 'Dentist',
+      name: 'Duhita Multispeciality Dental Centre',
+      telephone: '+91-9440313066',
+      url: 'https://duhitadental.com',
+    },
+  } : null;
+
   useSeo(
     t ? `${t.title} in Vijayawada | Duhita Dental, Benz Circle` : 'Page not found | Duhita Dental',
     t ? `${t.excerpt} Expert ${t.title.toLowerCase()} at Duhita Multispeciality Dental Centre, Vijayawada. Call ${site.phoneDisplay}.` : undefined,
+    {
+      image: t?.image || undefined,
+      schema,
+    }
   );
-  if (!t) return <NotFound />;
+
+  if (!c || !t) return <NotFound />;
 
   const others = c.treatments.filter((x) => x.slug !== t.slug);
 
@@ -41,7 +61,7 @@ export default function Treatment() {
           <article className="prose-duhita max-w-3xl">
             {t.intro.map((p) => <p key={p.slice(0, 20)} className="text-[16px] sm:text-[17px]">{p}</p>)}
             <figure className="my-7 sm:my-10 card img-well p-3 flex justify-center">
-              <img src={t.image} alt={`${t.title} at Duhita Dental Vijayawada`} className="max-h-[320px] sm:max-h-[520px] w-auto max-w-full object-contain" />
+              <img src={t.image} alt={`${t.title} at Duhita Dental Vijayawada`} loading="lazy" decoding="async" className="max-h-[320px] sm:max-h-[520px] w-auto max-w-full object-contain" />
             </figure>
             {t.sections.map((s) => (
               <div key={s.h}>

@@ -16,6 +16,7 @@ export default function CommunityDentistry() {
   useSeo(
     'Free Dental Camps in Vijayawada | Community Dentistry | Duhita Dental',
     'Duhita Multispeciality Dental Centre conducts free dental camps across Vijayawada and Krishna district — school programmes, workplace screenings and community check-ups led by Dr. Nalluru Sasidhar, M.D.S.',
+    { image: '/images/gallery/camps/camp-06.jpg' }
   );
 
   return (

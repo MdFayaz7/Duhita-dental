@@ -15,14 +15,20 @@ router = APIRouter(prefix="/api/stats", tags=["stats"], dependencies=[Depends(cu
 async def overview():
     db = get_db()
     today = datetime.now(IST).strftime("%Y-%m-%d")
-    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    week_ago_dt = datetime.now(timezone.utc) - timedelta(days=7)
+    week_ago_iso = week_ago_dt.isoformat()
 
     return {
         "appointments_today": await db.appointments.count_documents({"date": today}),
         "appointments_pending": await db.appointments.count_documents({"status": "pending"}),
         "appointments_total": await db.appointments.count_documents({}),
         "patients_total": await db.patients.count_documents({}),
-        "patients_this_week": await db.patients.count_documents({"created_at": {"$gte": datetime.fromisoformat(week_ago)}}),
+        "patients_this_week": await db.patients.count_documents({
+            "$or": [
+                {"created_at": {"$gte": week_ago_dt}},
+                {"created_at": {"$gte": week_ago_iso}},
+            ]
+        }),
         "doctors": await db.doctors.count_documents({"active": True}),
         "research": await db.research.count_documents({}),
         "feedback": await db.feedback.count_documents({}),

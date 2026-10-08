@@ -45,6 +45,7 @@ export default function BookAppointment() {
   useSeo(
     'Book a Dental Appointment Online | Duhita Dental, Vijayawada',
     'Book your dental appointment online at Duhita Multispeciality Dental Centre, Benz Circle, Vijayawada. Choose a date and time slot — morning or evening, Monday to Saturday.',
+    { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );
   const { state } = useLocation();
   const days = useMemo(upcomingDays, []);
@@ -120,15 +121,22 @@ export default function BookAppointment() {
         <div className="container-x grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px] lg:gap-14 items-start [&>*]:min-w-0">
           {booked ? (
             <div className="card p-7 sm:p-10 md:p-12 text-center gallery-fade">
-              <FiCheckCircle className="w-14 h-14 mx-auto text-slate" />
-              <h2 className="text-[26px] sm:text-[31px] md:text-[40px] mt-5">Appointment requested</h2>
-              <p className="mt-3">Thank you, {form.name.split(' ')[0]}. Our team will call you shortly to confirm.</p>
+              <div className="w-14 h-14 mx-auto rounded-full bg-[#fff4e5] border border-[#f5c68b] grid place-items-center text-[#a15c07]">
+                <FiClock className="w-7 h-7" />
+              </div>
+              <span className="mt-4 inline-block px-3 py-1 rounded-full text-[12px] font-bold uppercase tracking-wider bg-[#fff4e5] text-[#a15c07]">
+                Status: Pending Review
+              </span>
+              <h2 className="text-[26px] sm:text-[31px] md:text-[38px] mt-3">Appointment request submitted</h2>
+              <p className="mt-3 max-w-lg mx-auto text-[14.5px] text-body">
+                Thank you, {form.name.split(' ')[0]}. <strong>Your appointment is currently Pending.</strong> Our clinic team will manually review doctor availability and call or message you once Confirmed.
+              </p>
               <dl className="mt-8 grid sm:grid-cols-2 gap-px bg-line text-left max-w-lg mx-auto">
                 {[
                   [FiUser, 'Patient', `${form.name} · ${form.patientId}`],
                   [FiPhone, 'Mobile', `+91 ${form.phone}`],
-                  [FiCalendar, 'Date', fmtDay(selectedDay.date, { weekday: 'long', day: 'numeric', month: 'long' })],
-                  [FiClock, 'Time', formatSlot(form.slot)],
+                  [FiCalendar, 'Requested Date', fmtDay(selectedDay.date, { weekday: 'long', day: 'numeric', month: 'long' })],
+                  [FiClock, 'Requested Time', formatSlot(form.slot)],
                 ].map(([I, k, v]) => (
                   <div key={k} className="bg-ivory p-4">
                     <dt className="flex items-center gap-2 text-[12px] uppercase tracking-[0.12em]"><I /> {k}</dt>
@@ -136,7 +144,9 @@ export default function BookAppointment() {
                   </div>
                 ))}
               </dl>
-              <p className="mt-6 text-[13.5px]">Please arrive 10 minutes early and bring any previous X-rays or prescriptions.</p>
+              <p className="mt-6 text-[13px] text-body max-w-md mx-auto">
+                Submissions are not auto-confirmed. Please wait for official clinic confirmation before arriving.
+              </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link to="/" className="btn btn-solid !px-7 !py-3">Back to Home</Link>
                 <button type="button" onClick={() => { setBooked(false); update({ date: '', slot: '', notes: '' }); }} className="btn btn-outline !py-3">
@@ -253,11 +263,31 @@ export default function BookAppointment() {
                     </div>
                   </FormSection>
 
+                  <div className="rounded-xl p-4 bg-amber-500/10 border border-amber-500/25 text-[13px] text-amber-950 leading-relaxed">
+                    <p className="font-semibold text-amber-900 mb-1 flex items-center gap-1.5">
+                      <span>ℹ️</span> Notice Regarding Appointment Confirmation
+                    </p>
+                    <p>
+                      <strong>Submitting this request does not confirm your appointment. Your appointment will be confirmed only after manual approval by Duhita Dental.</strong>
+                    </p>
+                    <p className="mt-1.5 text-[12px] text-amber-900/80">
+                      Our front office reviews chair and surgeon availability before confirming. Read our{' '}
+                      <Link to="/appointment-policy" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-ink">
+                        Appointment &amp; Cancellation Policy
+                      </Link>.
+                    </p>
+                  </div>
+
                   <div className="border-t border-line pt-7 flex flex-wrap items-center gap-5">
-                    <button type="submit" disabled={saving} className="btn btn-solid !px-8 !py-3.5 disabled:opacity-60">{saving ? 'Booking…' : 'Confirm Appointment'}</button>
+                    <button type="submit" disabled={saving} className="btn btn-solid !px-8 !py-3.5 disabled:opacity-60">
+                      {saving ? 'Submitting…' : 'Submit Appointment Request'}
+                    </button>
                     {form.date && form.slot && (
                       <span className="text-[14px] text-ink">
                         {fmtDay(selectedDay.date, { weekday: 'short', day: 'numeric', month: 'short' })} at {formatSlot(form.slot)}
+                        <span className="ml-2 text-[12px] px-2 py-0.5 rounded-full bg-[#fff4e5] text-[#a15c07] font-semibold uppercase tracking-wider">
+                          Pending Review
+                        </span>
                       </span>
                     )}
                   </div>

@@ -50,7 +50,7 @@ function Lightbox({ images, index, onClose, onNav }) {
         }}
       >
         <figure key={img.src} className="max-h-full flex flex-col items-center gallery-fade" onClick={(e) => e.stopPropagation()}>
-          <img src={img.src} alt={img.caption} className="no-zoom max-h-[72vh] max-w-full object-contain shadow-2xl" />
+          <img src={img.src} alt={img.caption} decoding="async" className="no-zoom max-h-[72vh] max-w-full object-contain shadow-2xl" />
           <figcaption className="mt-4 text-center text-white/85 text-[15px] max-w-2xl">{img.caption}</figcaption>
         </figure>
         {images.length > 1 && (
@@ -71,7 +71,7 @@ function Lightbox({ images, index, onClose, onNav }) {
         {images.map((t, i) => (
           <button key={t.src} onClick={() => onNav(i - index)} aria-label={`View photo ${i + 1}`}
             className={`shrink-0 w-16 h-12 overflow-hidden transition-opacity ${i === index ? 'opacity-100 ring-2 ring-white' : 'opacity-45 hover:opacity-80'}`}>
-            <img src={t.src} alt="" className="no-zoom w-full h-full object-cover" loading="lazy" />
+            <img src={t.src} alt={t.caption || `Thumbnail ${i + 1}`} decoding="async" className="no-zoom w-full h-full object-cover" loading="lazy" />
           </button>
         ))}
       </div>
@@ -128,7 +128,7 @@ export default function Gallery({ id, category, heading, children, className = '
               <button key={img.src} onClick={() => setLightbox(i)}
                 aria-label={`Open photo ${i + 1} of ${images.length}: ${img.caption}`}
                 className="reveal group relative aspect-[4/3] overflow-hidden rounded-[18px] bg-mist text-left shadow-[0_10px_30px_-20px_rgba(16,24,40,0.5)]">
-                <img src={img.src} alt={img.caption} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={img.src} alt={img.caption} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                 <span className="touch-reveal pointer-events-none absolute inset-x-0 bottom-0 p-4 pt-12 bg-gradient-to-t from-black/75 to-transparent text-white text-[13.5px] leading-snug opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-300">
                   {img.caption}
                 </span>
@@ -184,7 +184,7 @@ export default function Gallery({ id, category, heading, children, className = '
               aria-label={`Open photo ${i + 1} of ${images.length}: ${img.caption}`}
               className="group relative shrink-0 w-[88%] sm:w-[calc((100%-16px)/1.6)] lg:w-[calc((100%-16px)/2.4)] aspect-[4/3] overflow-hidden rounded-[18px] bg-mist text-left shadow-[0_10px_30px_-20px_rgba(16,24,40,0.5)]"
             >
-              <img src={img.src} alt={img.caption} loading="lazy" draggable="false" className="absolute inset-0 w-full h-full object-cover" />
+              <img src={img.src} alt={img.caption} loading="lazy" decoding="async" draggable="false" className="absolute inset-0 w-full h-full object-cover" />
               <span className="touch-reveal pointer-events-none absolute inset-x-0 bottom-0 p-4 pt-12 bg-gradient-to-t from-black/70 to-transparent text-white text-[13.5px] leading-snug opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0 transition-all duration-300">
                 {img.caption}
               </span>

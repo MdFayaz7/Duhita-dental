@@ -12,6 +12,7 @@ export default function ServiceCategory() {
   useSeo(
     c ? `${c.name} in Vijayawada | Duhita Multispeciality Dental Centre` : 'Page not found | Duhita Dental',
     c ? `${c.short} Book at Duhita Dental, Benz Circle, Vijayawada.` : undefined,
+    { image: c?.image || undefined }
   );
   if (!c) return <NotFound />;
 
@@ -37,7 +38,7 @@ export default function ServiceCategory() {
             </p>
           </div>
           <div className="reveal card aspect-[4/3] img-well p-4">
-            <img src={c.image} alt={c.name} className="w-full h-full object-contain" />
+            <img src={c.image} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-contain" />
           </div>
         </div>
       </section>
@@ -49,7 +50,7 @@ export default function ServiceCategory() {
             {c.treatments.map((t) => (
               <Link key={t.slug} to={`/services/${c.slug}/${t.slug}`} className="reveal card card-hover group flex flex-col">
                 <div className="aspect-[16/10] sm:aspect-[4/3] img-well p-3">
-                  <img src={t.image} alt={t.title} className="w-full h-full object-contain" loading="lazy" />
+                  <img src={t.image} alt={t.title} loading="lazy" decoding="async" className="w-full h-full object-contain" />
                 </div>
                 <div className="p-5 sm:p-6 flex flex-col flex-1">
                   <h3 className="text-[21px] sm:text-[24px] leading-tight">{t.title}</h3>

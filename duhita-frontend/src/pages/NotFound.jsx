@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import useSeo from '../hooks/useSeo';
 
 export default function NotFound() {
-  useSeo('Page not found | Duhita Dental', 'The page you are looking for could not be found.');
+  useSeo('Page not found | Duhita Dental', 'The page you are looking for could not be found.', { noindex: true });
   return (
     <section className="bg-ivory section-y">
       <div className="container-x text-center">

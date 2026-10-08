@@ -3,6 +3,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pymongo.errors import PyMongoError
@@ -31,6 +32,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins,
@@ -42,12 +44,19 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_rejected_origins(request: Request, call_next):
-    """Make CORS failures self-explaining in the server log; keep JSON reads fresh."""
+    """Make CORS failures self-explaining in the server log; keep JSON reads fresh and static assets cached."""
     response = await call_next(request)
     path = request.url.path
     if request.method == "GET" and path.startswith("/api/") and not path.startswith("/api/files/"):
         # Admin edits must show up on the next page view — never serve a cached list.
         response.headers["Cache-Control"] = "no-store"
+    elif request.method == "GET" and path.startswith("/uploads/"):
+        # Uploaded images can be cached by browsers for optimal loading speed.
+        response.headers["Cache-Control"] = "public, max-age=604800"
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+
     if request.method == "OPTIONS" and response.status_code == 400:
         origin = request.headers.get("origin")
         print(f"[cors] rejected origin {origin!r} — add it to CORS_ORIGINS (allowed now: {settings.origins})")
@@ -56,7 +65,12 @@ async def log_rejected_origins(request: Request, call_next):
 
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
-for router in (auth, patients, appointments, schedule, doctors, research, gallery, feedback, files, stats, patient_app):
+from . import events
+from .routers import (
+    appointments, auth, doctors, feedback, files, gallery, patient_app, patients, research, schedule, stats,
+)
+
+for router in (events, auth, patients, appointments, schedule, doctors, research, gallery, feedback, files, stats, patient_app):
     app.include_router(router.router)
 
 

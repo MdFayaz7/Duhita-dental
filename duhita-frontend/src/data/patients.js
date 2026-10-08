@@ -48,6 +48,10 @@ export const sessions = [
 ];
 
 export const formatSlot = (t) => {
-  const [h, m] = t.split(':').map(Number);
+  if (!t) return '—';
+  if (!t.includes(':')) return t;
+  const parts = t.split(':').map(Number);
+  if (isNaN(parts[0]) || isNaN(parts[1])) return t;
+  const [h, m] = parts;
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 };

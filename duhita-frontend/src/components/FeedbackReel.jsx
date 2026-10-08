@@ -64,8 +64,8 @@ export default function FeedbackReel() {
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return undefined;
-    const nearIo = new IntersectionObserver(([e]) => e.isIntersecting && setNear(true), { rootMargin: '300px 0px' });
-    const viewIo = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.4 });
+    const nearIo = new IntersectionObserver(([e]) => e.isIntersecting && setNear(true), { rootMargin: '800px 0px' });
+    const viewIo = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.3 });
     nearIo.observe(el);
     viewIo.observe(el);
     const onVisibility = () => document.hidden && videoRef.current?.pause();
@@ -145,18 +145,23 @@ export default function FeedbackReel() {
                 {active ? (
                   <>
                     {clip.poster && (
-                      <img src={clip.poster} alt="" aria-hidden="true" loading="lazy"
+                      <img src={clip.poster} alt="" aria-hidden="true" loading="eager" decoding="async"
                         className="no-zoom absolute inset-0 w-full h-full object-cover" />
                     )}
                     <video
                       key={clip.id}
                       ref={videoRef}
+                      width="405"
+                      height="720"
                       src={near ? (clip.poster ? clip.src : `${clip.src}#t=0.1`) : undefined}
                       poster={clip.poster || undefined}
                       playsInline
                       muted={muted}
-                      preload={near ? 'auto' : 'none'}
+                      preload={near ? 'auto' : 'metadata'}
                       onLoadStart={() => setStatus('loading')}
+                      onLoadedData={() => {
+                        if (status === 'loading') setStatus('ready');
+                      }}
                       onWaiting={() => setStatus('loading')}
                       onPlaying={() => setStatus('playing')}
                       onCanPlay={(e) => {
@@ -230,7 +235,7 @@ export default function FeedbackReel() {
                   <button onClick={() => !dragged() && select(i)} tabIndex={-1}
                     className="absolute inset-0 w-full h-full bg-gradient-to-br from-[#24384a] to-[#0f1720]"
                     aria-label={`Play ${c.patient_name || `patient story ${i + 1}`}`}>
-                    {c.poster && <img src={c.poster} alt="" loading="lazy" className="no-zoom absolute inset-0 w-full h-full object-cover" />}
+                    {c.poster && <img src={c.poster} alt={c.patient_name ? `Patient review video - ${c.patient_name}` : `Patient review video thumbnail ${i + 1}`} loading="lazy" decoding="async" className="no-zoom absolute inset-0 w-full h-full object-cover" />}
                     <span className="absolute inset-0 grid place-items-center text-white">
                       <span className="w-14 h-14 grid place-items-center rounded-full bg-black/35 ring-1 ring-white/40 backdrop-blur-sm">
                         <FiPlay className="w-6 h-6 translate-x-0.5" />

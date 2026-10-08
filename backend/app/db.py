@@ -8,7 +8,13 @@ _client: AsyncIOMotorClient | None = None
 def get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
-        _client = AsyncIOMotorClient(settings.mongo_uri, uuidRepresentation="standard")
+        _client = AsyncIOMotorClient(
+            settings.mongo_uri,
+            uuidRepresentation="standard",
+            maxPoolSize=50,
+            minPoolSize=5,
+            serverSelectionTimeoutMS=5000,
+        )
     return _client
 
 
@@ -30,10 +36,18 @@ async def ensure_indexes() -> None:
     await db.feedback.create_index([("order", 1), ("created_at", -1)])
 
 
+import datetime
+
+
 def serialize(doc: dict | None) -> dict | None:
-    """Mongo document -> JSON-safe dict."""
+    """Mongo document -> JSON-safe dict with UTC ISO8601 timestamps."""
     if not doc:
         return None
     doc = dict(doc)
     doc["id"] = str(doc.pop("_id"))
+    for k, v in list(doc.items()):
+        if isinstance(v, datetime.datetime):
+            if v.tzinfo is None:
+                v = v.replace(tzinfo=datetime.timezone.utc)
+            doc[k] = v.isoformat()
     return doc

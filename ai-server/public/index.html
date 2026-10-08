@@ -47,11 +47,11 @@ uniform float uScale, uOpen, uWide, uRound, uBlink, uBrow, uTilt;
 uniform vec2 uHead;
 
 const vec2 MOUTH = vec2(226.0, 187.0);
-const float HALFW = 21.5;
+const float HALFW = 22.0;
 const vec2 EYE_L = vec2(193.5, 141.0);
 const vec2 EYE_R = vec2(257.0, 141.0);
 const vec2 EYE_RAD = vec2(20.5, 15.0);
-const vec2 PIVOT = vec2(226.0, 262.0);
+const vec2 PIVOT = vec2(226.0, 218.0);
 
 vec4 tex(vec2 p) {
   vec2 uv = p / 450.0;
@@ -83,60 +83,106 @@ bool eyelid(vec2 p, vec2 c, out vec4 col) {
 void main() {
   vec2 p = (vec2(gl_FragCoord.x, uCanvas.y - gl_FragCoord.y) - uOrigin) / uScale;
 
-  // Head sway / tilt / nod (everything above the neck; the body stays put).
-  float mh = 1.0 - smoothstep(232.0, 272.0, p.y);
-  float a = -uTilt * mh;
-  vec2 d = p - PIVOT;
-  p = PIVOT + vec2(cos(a) * d.x - sin(a) * d.y, sin(a) * d.x + cos(a) * d.y) - uHead * mh;
-
-  // Eyebrow raise.
+  // The body, neck, stethoscope, scrubs, coat, and hair remain 100% stable and stationary.
+  // Eyebrow raise:
   p.y += uBrow * 2.2 * exp(-pow((p.y - 116.0) / 9.0, 2.0)) * exp(-pow((p.x - 226.0) / 62.0, 2.0));
 
   vec4 lidCol;
   if (eyelid(p, EYE_L, lidCol) || eyelid(p, EYE_R, lidCol)) { gl_FragColor = lidCol; return; }
 
-  // Mouth.
+  // Mouth (anatomically aligned with natural smile line, pearly upper teeth & lips).
   float dx = p.x - MOUTH.x;
-  float dy = p.y - MOUTH.y;
-  float hw = HALFW * (1.0 + 0.2 * uWide - 0.3 * uRound);
-  float near = exp(-(dx * dx) / (36.0 * 36.0) - (dy * dy) / (18.0 * 18.0));
-  float sx = 1.0 + (0.18 * uWide - 0.24 * uRound) * near;
-  float srcx = MOUTH.x + dx / sx;
-  float ndx = dx / hw;
-  float prof = sqrt(max(0.0, 1.0 - ndx * ndx));
-  prof = pow(prof, 0.8);
-  float drop = 10.0 * uOpen;
-  float gapLo = drop * prof;
-  float gapUp = 1.8 * uOpen * prof;
-  float jawX = exp(-(dx * dx) / (50.0 * 50.0));
+  float hw = HALFW * (1.0 + 0.16 * uWide - 0.22 * uRound);
+  float ndx = dx / max(hw, 1.0);
 
-  vec2 src = vec2(srcx, p.y);
-  bool inGap = false;
-  if (dy > 0.0) {
-    if (dy < gapLo) inGap = true;
-    else {
-      float t = smoothstep(0.0, 12.0, dy - gapLo);
-      src.y = p.y - mix(gapLo, drop * jawX, t) * (1.0 - smoothstep(20.0, 52.0, dy));
+  if (abs(ndx) < 1.0) {
+    float near = exp(-(dx * dx) / (32.0 * 32.0) - pow((p.y - MOUTH.y) / 18.0, 2.0));
+    float sx = 1.0 + (0.15 * uWide - 0.22 * uRound) * near;
+    float src_x = MOUTH.x + dx / sx;
+
+    // Smile seam curve follows the photograph's natural lip parting
+    float seam_curve = -3.9 * (ndx * ndx);
+    float seam_y = MOUTH.y + seam_curve;
+
+    float prof = pow(cos(abs(ndx) * 1.5707963), 1.4);
+    float drop = 8.0 * uOpen * prof;
+    float lift = 0.8 * uOpen * prof;
+
+    float y_upper = seam_y - lift;
+    float y_lower = seam_y + drop;
+
+    // 1. Inside oral opening (natural pearly teeth & depth)
+    if (p.y >= y_upper && p.y < y_lower && drop > 0.35) {
+      float gap_h = max(0.001, y_lower - y_upper);
+      float v = (p.y - y_upper) / gap_h;
+
+      // Pearly upper teeth contour
+      float teeth_h = 0.43 + 0.08 * (1.0 - ndx * ndx);
+      float teeth_edge = clamp((teeth_h - v) / 0.09, 0.0, 1.0) * clamp((0.82 - abs(ndx)) / 0.15, 0.0, 1.0);
+
+      // Realistic pearly teeth shading with upper-lip shadow and corner falloff
+      float lip_shadow = clamp(v / 0.07, 0.65, 1.0);
+      float corner_falloff = 1.0 - 0.35 * pow(abs(ndx) / 0.85, 2.0);
+      vec3 teeth_col = vec3(0.95, 0.96, 0.97) * lip_shadow * corner_falloff;
+
+      // Subtle incisor division grooves
+      float tooth_groove = cos(ndx * 3.1415926 * 6.5);
+      if (abs(ndx) < 0.7 && v > 0.10 && v < teeth_h) {
+        float groove_factor = clamp(tooth_groove * 0.035, 0.0, 0.05);
+        teeth_col *= (1.0 - groove_factor);
+      }
+
+      // Warm deep oral cavity background
+      vec3 cav_col = vec3(0.22, 0.085, 0.11) * (0.85 + 0.3 * v);
+
+      // Soft natural tongue in lower-middle oral cavity
+      float tongue_mask = 0.0;
+      if (v > teeth_h * 0.9 && abs(ndx) < 0.6) {
+        float tv = (v - teeth_h * 0.9) / max(0.001, 1.0 - teeth_h * 0.9);
+        tongue_mask = sin(tv * 3.1415926) * (1.0 - pow(abs(ndx) / 0.6, 2.0)) * 0.75;
+      }
+      vec3 tongue_col = vec3(0.65, 0.32, 0.37);
+
+      vec3 inner_col = mix(cav_col, tongue_col, tongue_mask);
+      inner_col = mix(inner_col, teeth_col, teeth_edge);
+
+      // Antialiased boundary blend with upper and lower lip contours
+      vec4 lip_top = tex(vec2(src_x, seam_y - 0.5));
+      vec4 lip_bot = tex(vec2(src_x, seam_y + 0.5));
+      vec4 lip_corner = tex(vec2(src_x, seam_y));
+
+      float alpha_top = clamp((p.y - y_upper) / 0.8, 0.0, 1.0);
+      float alpha_bot = clamp((y_lower - p.y) / 0.8, 0.0, 1.0);
+      float alpha_sides = clamp((1.0 - abs(ndx)) / 0.12, 0.0, 1.0);
+
+      vec3 col = mix(lip_top.rgb, inner_col, alpha_top);
+      col = mix(lip_bot.rgb, col, alpha_bot);
+      col = mix(lip_corner.rgb, col, alpha_sides);
+
+      gl_FragColor = vec4(col, 1.0);
+      return;
     }
-  } else {
-    if (-dy < gapUp) inGap = true;
-    else src.y = p.y + gapUp * exp(-pow((-dy - gapUp) / 6.0, 2.0));
+
+    // 2. Above upper lip: subtle speech lift
+    if (p.y < y_upper) {
+      float lift_falloff = exp(-pow((y_upper - p.y) / 5.0, 2.0));
+      float src_y = p.y + lift * lift_falloff;
+      gl_FragColor = tex(vec2(src_x, src_y));
+      return;
+    }
+
+    // 3. Below dropped lower lip: lower lip moves naturally, strictly stopping at lip base (y <= 212)
+    if (p.y <= 212.0) {
+      float dist = p.y - y_lower;
+      float chin_limit = 1.0 - smoothstep(8.0, 15.0, dist);
+      float falloff = exp(-pow(dist / 10.0, 2.0)) * chin_limit;
+      float src_y = seam_y + (p.y - y_lower) + (1.0 - falloff) * drop * 0.15;
+      gl_FragColor = tex(vec2(src_x, min(src_y, 212.0)));
+      return;
+    }
   }
 
-  if (inGap) {
-    float yTop = MOUTH.y - gapUp;
-    float h = gapUp + gapLo;
-    float v = (p.y - yTop) / max(h, 0.001);
-    vec3 col = mix(vec3(0.36, 0.07, 0.09), vec3(0.16, 0.02, 0.04), v);
-    float teeth = (1.0 - smoothstep(0.24, 0.34, v)) * (1.0 - smoothstep(0.7, 0.92, abs(ndx))) * smoothstep(1.5, 3.5, h);
-    col = mix(col, vec3(0.97, 0.95, 0.91), teeth);
-    float tongue = smoothstep(0.6, 0.82, v) * (1.0 - smoothstep(0.35, 0.7, abs(ndx)));
-    col = mix(col, vec3(0.74, 0.3, 0.33), tongue * 0.85);
-    float edge = smoothstep(0.0, 0.8, min(p.y - yTop, MOUTH.y + gapLo - p.y)) * smoothstep(0.0, 0.15, 1.0 - abs(ndx));
-    gl_FragColor = mix(tex(vec2(srcx, MOUTH.y)), vec4(col, 1.0), edge);
-    return;
-  }
-  gl_FragColor = tex(src);
+  gl_FragColor = tex(p);
 }`;
 
 function shader(type, src) {

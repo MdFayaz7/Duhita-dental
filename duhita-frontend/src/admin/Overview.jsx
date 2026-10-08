@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { FiArrowRight, FiCalendar, FiClock, FiFileText, FiImage, FiUserCheck, FiUsers } from 'react-icons/fi';
+import { FiArrowRight, FiCalendar, FiClock, FiFileText, FiImage, FiRefreshCw, FiUserCheck, FiUsers } from 'react-icons/fi';
 import { api } from './api';
 import { PageHead } from './AdminLayout';
-import { EmptyState, ErrorNote, Panel, Skeleton, StatusPill, formatDateTime, formatSlot } from './ui';
+import { Button, EmptyState, ErrorNote, Panel, Skeleton, StatusPill, formatDateTime, formatSlot } from './ui';
+import { useLiveEvents } from '../lib/useLiveEvents';
 
-const Kpi = ({ icon: Icon, label, value, to, tone = 'text-[var(--a-accent)] bg-[var(--a-accent-soft)]' }) => {
+const Kpi = ({ icon: Icon, label, value, sub, to, tone = 'text-[var(--a-accent)] bg-[var(--a-accent-soft)]' }) => {
   const inner = (
     <Panel className="p-5 h-full transition-colors hover:border-white/25">
-      <span className={`w-10 h-10 grid place-items-center rounded-xl ${tone}`}><Icon className="w-[18px] h-[18px]" /></span>
+      <div className="flex items-center justify-between">
+        <span className={`w-10 h-10 grid place-items-center rounded-xl ${tone}`}><Icon className="w-[18px] h-[18px]" /></span>
+        {sub && <span className="text-[12px] font-medium text-[var(--a-muted)] bg-white/5 border border-white/5 px-2 py-0.5 rounded-md">{sub}</span>}
+      </div>
       <p className="mt-4 text-[28px] font-semibold leading-none">{value}</p>
       <p className="mt-2 text-[13px] text-[var(--a-muted)]">{label}</p>
     </Panel>
@@ -32,27 +36,108 @@ export default function Overview() {
   const [stats, setStats] = useState(null);
   const [feed, setFeed] = useState(null);
   const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    Promise.all([api.overview(), api.dashboard()])
-      .then(([s, f]) => { setStats(s); setFeed(f); })
-      .catch((e) => setError(e.message));
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true);
+    try {
+      const [s, f] = await Promise.all([api.overview(), api.dashboard()]);
+      setStats(s);
+      setFeed(f);
+      setError('');
+    } catch (e) {
+      if (!silent) setError(e.message);
+    } finally {
+      if (!silent) setRefreshing(false);
+    }
   }, []);
 
-  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  useLiveEvents((event) => {
+    if (['appointment_created', 'appointment_updated', 'appointment_deleted', 'patient_registered', 'patient_deleted', 'stats_updated', 'schedule_updated'].includes(event.type)) {
+      fetchData(true);
+    }
+  });
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchData(true);
+      }
+    }, 5000);
+
+    const onFocus = () => fetchData(true);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [fetchData]);
+
+  const today = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata',
+  });
 
   return (
     <>
-      <PageHead title={`Good day${user ? `, ${user}` : ''}`} subtitle={today} />
+      <PageHead
+        title={`Good day${user ? `, ${user}` : ''}`}
+        subtitle={today}
+        actions={
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-medium">Live sync</span>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => fetchData(false)} disabled={refreshing}>
+              <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-[var(--a-accent)]' : ''}`} />
+              {refreshing ? 'Updating…' : 'Refresh'}
+            </Button>
+          </div>
+        }
+      />
       <ErrorNote>{error}</ErrorNote>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats ? (
           <>
-            <Kpi icon={FiCalendar} label="Appointments today" value={stats.appointments_today} to="/admin/appointments" />
-            <Kpi icon={FiClock} label="Awaiting confirmation" value={stats.appointments_pending} to="/admin/appointments" tone="text-[#f2b356] bg-[#f2b356]/14" />
-            <Kpi icon={FiUsers} label="Registrations this week" value={stats.patients_this_week} to="/admin/patients" tone="text-[#74c0f0] bg-[#4ea8de]/14" />
-            <Kpi icon={FiUserCheck} label="Doctors listed" value={stats.doctors} to="/admin/doctors" tone="text-[#c9a6f5] bg-[#a97bf0]/14" />
+            <Kpi
+              icon={FiCalendar}
+              label="Total Appointments"
+              value={stats.appointments_total}
+              sub={stats.appointments_today > 0 ? `${stats.appointments_today} today` : 'All time'}
+              to="/admin/appointments"
+            />
+            <Kpi
+              icon={FiClock}
+              label="Awaiting Confirmation"
+              value={stats.appointments_pending}
+              sub={stats.appointments_pending > 0 ? 'Pending' : 'All clear'}
+              to="/admin/appointments"
+              tone="text-[#f2b356] bg-[#f2b356]/14"
+            />
+            <Kpi
+              icon={FiUsers}
+              label="Registered Patients"
+              value={stats.patients_total}
+              sub={stats.patients_this_week > 0 ? `+${stats.patients_this_week} this wk` : 'Total records'}
+              to="/admin/patients"
+              tone="text-[#74c0f0] bg-[#4ea8de]/14"
+            />
+            <Kpi
+              icon={FiUserCheck}
+              label="Doctors on Team"
+              value={stats.doctors}
+              sub="Specialists"
+              to="/admin/doctors"
+              tone="text-[#c9a6f5] bg-[#a97bf0]/14"
+            />
           </>
         ) : (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[136px] rounded-2xl" />)

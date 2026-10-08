@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import PageHero from '../components/PageHero';
 import Gallery from '../components/Gallery';
 import ContactSection from '../components/ContactSection';
@@ -7,6 +8,7 @@ export default function ClinicGallery() {
   useSeo(
     'Clinic Gallery | Duhita Multispeciality Dental Centre, Vijayawada',
     'Photo gallery of Duhita Multispeciality Dental Centre in Benz Circle, Vijayawada — treatment rooms, equipment and the clinic our patients visit.',
+    { image: '/images/gallery/clinic/clinic-01.jpg' }
   );
   return (
     <>
@@ -22,7 +24,7 @@ export default function ClinicGallery() {
 
       <Gallery id="clinic-gallery" category="clinic" layout="grid" heading="Our Clinic in Pictures" className="bg-ivory">
         Tap any photo to view it full screen. For more of the clinic, see{' '}
-        <a href="/about#infrastructure" className="text-ink underline underline-offset-4">Our Infrastructure</a> on the About page.
+        <Link to="/about#infrastructure" className="text-ink underline underline-offset-4">Our Infrastructure</Link> on the About page.
       </Gallery>
 
       <ContactSection />

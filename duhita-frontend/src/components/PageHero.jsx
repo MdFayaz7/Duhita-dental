@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export default function PageHero({ eyebrow, title, image, crumbs = [], children }) {
   return (
     <section className="relative isolate overflow-hidden bg-slate">
-      {image && <img src={image} alt="" className="absolute inset-0 -z-10 w-full h-full object-cover opacity-40" />}
+      {image && <img src={image} alt={`${title} - Duhita Multispeciality Dental Centre, Vijayawada`} decoding="async" fetchPriority="high" className="absolute inset-0 -z-10 w-full h-full object-cover opacity-40" />}
       <div className="absolute inset-0 -z-10 bg-slate/85 md:bg-transparent md:bg-gradient-to-r md:from-slate md:via-slate/85 md:to-slate/30" />
       <div className="container-x py-11 sm:py-20 md:py-28 text-white">
         {crumbs.length > 0 && (

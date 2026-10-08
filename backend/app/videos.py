@@ -88,6 +88,28 @@ def grab_cover(video_path: str) -> bytes | None:
     return None
 
 
+def optimize_video_file(in_path: str, out_path: str) -> bool:
+    """Compress clip to 720p H.264 with -movflags +faststart for instant web streaming."""
+    try:
+        import imageio_ffmpeg
+        exe = imageio_ffmpeg.get_ffmpeg_exe()
+        cmd = [
+            exe, "-y", "-i", in_path,
+            "-vf", "scale='min(720,iw)':-2",
+            "-c:v", "libx264",
+            "-crf", "23",
+            "-preset", "faster",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-movflags", "+faststart",
+            out_path,
+        ]
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=120)
+        return Path(out_path).exists() and Path(out_path).stat().st_size > 0
+    except Exception:
+        return False
+
+
 async def save_video(file: UploadFile) -> dict:
     """Store a clip; returns the fields to keep on the feedback document."""
     filename, content_type = _check(file)
@@ -109,16 +131,31 @@ async def save_video(file: UploadFile) -> dict:
             raise HTTPException(502, f"Video upload to Cloudinary failed: {exc}") from exc
         return {"cloud_id": result["public_id"], **_urls(result["public_id"])}
 
-    # GridFS fallback — streamed from a temp file, never read fully into memory.
-    with tempfile.NamedTemporaryFile(suffix=Path(filename).suffix or ".mp4") as tmp:
+    # GridFS fallback — compress to 720p with faststart so the browser can play immediately
+    with tempfile.NamedTemporaryFile(suffix=Path(filename).suffix or ".mp4", delete=False) as raw_tmp:
+        raw_path = raw_tmp.name
         while chunk := file.file.read(1024 * 1024):
-            tmp.write(chunk)
-        tmp.flush()
-        tmp.seek(0)
-        file_id = await bucket().upload_from_stream(
-            filename, tmp, metadata={"content_type": content_type, "folder": "feedback"}
-        )
-        cover = await run_in_threadpool(grab_cover, tmp.name)
+            raw_tmp.write(chunk)
+        raw_tmp.flush()
+
+    opt_path = raw_path + "_opt.mp4"
+    stream_path = raw_path
+    final_type = content_type
+
+    optimized = await run_in_threadpool(optimize_video_file, raw_path, opt_path)
+    if optimized:
+        stream_path = opt_path
+        final_type = "video/mp4"
+
+    try:
+        with open(stream_path, "rb") as final_stream:
+            file_id = await bucket().upload_from_stream(
+                filename, final_stream, metadata={"content_type": final_type, "folder": "feedback"}
+            )
+        cover = await run_in_threadpool(grab_cover, stream_path)
+    finally:
+        for p in (raw_path, opt_path):
+            Path(p).unlink(missing_ok=True)
 
     poster = await store_bytes(cover, f"{Path(filename).stem}-cover.jpg", "image/jpeg", "feedback") if cover else ""
     return {"src": f"{FILE_PREFIX}{file_id}", "poster": poster}

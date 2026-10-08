@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   FiActivity, FiCalendar, FiCamera, FiCheckCircle, FiChevronLeft, FiClock, FiFile, FiFolder,
   FiHeart, FiImage, FiLogOut, FiTrash2, FiUser,
@@ -13,6 +14,7 @@ import {
 } from '../lib/patientApi';
 import { complaintChips } from '../data/patients';
 import { site } from '../data/site';
+import { useLiveEvents } from '../lib/useLiveEvents';
 
 const PHONE = /^[6-9]\d{9}$/;
 const DAYS_AHEAD = 21;
@@ -26,7 +28,11 @@ const RECORD_KINDS = [
 ];
 
 export default function Account() {
-  useSeo('My Account | Duhita Dental, Vijayawada', 'Sign in to book appointments, see your dental record and manage your Duhita Dental profile.');
+  useSeo(
+    'My Account | Duhita Dental, Vijayawada',
+    'Sign in to book appointments, see your dental record and manage your Duhita Dental profile.',
+    { noindex: true }
+  );
   const { ready, token, patient } = usePatientAuth();
 
   if (!ready) {
@@ -149,9 +155,29 @@ function AuthPanel() {
             </>
           )}
 
+          {mode === 'signup' && (
+            <div className="pt-1">
+              <label className="flex gap-2.5 text-[12.5px] text-body leading-relaxed">
+                <input type="checkbox" required className="mt-0.5 accent-slate w-4 h-4 shrink-0"
+                  checked={form.consent || false} onChange={(e) => set({ consent: e.target.checked })} />
+                <span>
+                  I agree to the{' '}
+                  <Link to="/terms-conditions" target="_blank" rel="noopener noreferrer" className="text-slate font-medium underline underline-offset-2 hover:text-ink">
+                    Terms &amp; Conditions
+                  </Link>{' '}
+                  and{' '}
+                  <Link to="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-slate font-medium underline underline-offset-2 hover:text-ink">
+                    Privacy Policy
+                  </Link>
+                  , and consent to clinical notifications from Duhita Dental.
+                </span>
+              </label>
+            </div>
+          )}
+
           {failed && <p className="text-[13px] text-[#b42318]" role="alert">{failed}</p>}
 
-          <button type="submit" disabled={busy} className="btn btn-solid w-full !py-3.5 disabled:opacity-60">
+          <button type="submit" disabled={busy || (mode === 'signup' && !form.consent)} className="btn btn-solid w-full !py-3.5 disabled:opacity-60">
             {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
           </button>
           <button type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setErrors({}); setFailed(''); }}
@@ -203,7 +229,25 @@ function Dashboard() {
     myAppointments(token).then(setAppointments).catch(() => setAppointments({ upcoming: [], past: [] }));
     myRecords(token).then((d) => setRecords(d.items)).catch(() => setRecords([]));
   };
-  useEffect(load, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useLiveEvents((event) => {
+    if (['appointment_created', 'appointment_updated', 'appointment_deleted', 'record_updated'].includes(event.type)) {
+      load();
+    }
+  });
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 5000);
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [token]);
 
   const visits = (appointments?.past ?? []).filter((a) => a.status === 'completed');
   const next = appointments?.upcoming?.[0];
@@ -512,10 +556,22 @@ function BookForm({ token, onBooked }) {
   if (booked) {
     return (
       <div className="text-center py-6 gallery-fade">
-        <FiCheckCircle className="w-12 h-12 mx-auto text-slate" />
-        <p className="text-[18px] text-ink mt-4">Appointment requested</p>
-        <p className="text-[14px] mt-2">{formatDate(booked.date, true)} at {formatSlot(booked.slot)}. We’ll call to confirm.</p>
-        <button onClick={() => { setBooked(null); setDate(''); setSlot(''); setReason(''); setNotes(''); }} className="btn btn-outline mt-5">Book another</button>
+        <div className="w-12 h-12 mx-auto rounded-full bg-[#fff4e5] border border-[#f5c68b] grid place-items-center text-[#a15c07]">
+          <FiClock className="w-6 h-6" />
+        </div>
+        <span className="mt-3 inline-block px-3 py-1 rounded-full text-[11.5px] font-bold uppercase tracking-wider bg-[#fff4e5] text-[#a15c07]">
+          Status: Pending Review
+        </span>
+        <p className="text-[18px] font-semibold text-ink mt-2">Appointment Request Submitted</p>
+        <p className="text-[14px] text-body mt-2">
+          {formatDate(booked.date, true)} at {formatSlot(booked.slot)}.
+        </p>
+        <p className="text-[13px] text-body mt-2 max-w-sm mx-auto">
+          Your request is <strong>Pending</strong> manual review by Duhita Dental. You will receive a confirmation call or message once approved by clinic staff.
+        </p>
+        <button onClick={() => { setBooked(null); setDate(''); setSlot(''); setReason(''); setNotes(''); }} className="btn btn-outline mt-5">
+          Request Another
+        </button>
       </div>
     );
   }
@@ -567,9 +623,24 @@ function BookForm({ token, onBooked }) {
         <textarea className="field min-h-[80px]" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </Field>
 
+      <div className="rounded-xl p-3.5 bg-amber-500/10 border border-amber-500/25 text-[12.5px] text-amber-950 leading-relaxed">
+        <p className="font-semibold text-amber-900 mb-0.5 flex items-center gap-1.5">
+          <span>ℹ️</span> Notice Regarding Appointment Confirmation
+        </p>
+        <p>
+          <strong>Submitting this request does not confirm your appointment. Your appointment will be confirmed only after manual approval by Duhita Dental.</strong>
+        </p>
+        <p className="mt-1 text-[11.5px] text-amber-900/80">
+          All bookings enter a <strong>Pending</strong> state until clinic staff reviews doctor availability. Read our{' '}
+          <Link to="/appointment-policy" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-ink">
+            Appointment Policy
+          </Link>.
+        </p>
+      </div>
+
       {failed && <p className="text-[13px] text-[#b42318]" role="alert">{failed}</p>}
       <button onClick={submit} disabled={!date || !slot || busy} className="btn btn-solid disabled:opacity-50">
-        {busy ? 'Booking…' : date && slot ? `Request ${formatDate(date)} · ${formatSlot(slot)}` : 'Request appointment'}
+        {busy ? 'Submitting…' : date && slot ? `Request ${formatDate(date)} · ${formatSlot(slot)} (Pending)` : 'Submit appointment request'}
       </button>
     </div>
   );

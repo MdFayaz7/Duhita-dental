@@ -6,6 +6,7 @@ import {
 } from 'react-icons/fi';
 import { api, getToken, setToken } from './api';
 import { AdminProviders, cx } from './ui';
+import useSeo from '../hooks/useSeo';
 
 const GROUPS = [
   {
@@ -35,6 +36,7 @@ const GROUPS = [
 ];
 
 export default function AdminLayout() {
+  useSeo('Admin Dashboard | Duhita Dental', undefined, { noindex: true });
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [user, setUser] = useState('');

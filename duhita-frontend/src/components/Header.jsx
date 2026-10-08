@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { FiChevronDown, FiMenu, FiUser, FiX } from 'react-icons/fi';
 import Logo from './Logo';
@@ -24,6 +24,7 @@ const menu = [
     label: 'For Patients',
     to: '/patient-info',
     children: [
+      { label: 'Patient Guide & Overview', to: '/patient-info' },
       { label: 'New Patient Registration', to: '/patients/register' },
       { label: 'Book an Appointment', to: '/patients/book-appointment' },
       { label: 'FAQs', to: '/patient-info#faqs' },
@@ -33,20 +34,34 @@ const menu = [
   { label: 'Login', to: '/account', account: true },
 ];
 
-function Dropdown({ item }) {
+function Dropdown({ item, isOpen, onClose }) {
   if (item.mega) {
     return (
-      <div className="absolute right-0 top-full pt-3 invisible opacity-0 translate-y-1 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:visible group-focus-within:opacity-100 transition-all duration-200">
-        <div className="w-[860px] bg-white shadow-xl border border-line p-8 grid grid-cols-3 gap-x-8 gap-y-6">
+      <div
+        className={`absolute left-1/2 -translate-x-1/2 top-full pt-3 transition-all duration-200 z-50 ${
+          isOpen
+            ? 'opacity-100 visible translate-y-0 pointer-events-auto'
+            : 'opacity-0 invisible pointer-events-none -translate-y-1'
+        }`}
+      >
+        <div className="w-[860px] bg-white shadow-2xl rounded-xl border border-line p-8 grid grid-cols-3 gap-x-8 gap-y-6">
           {categories.map((c) => (
             <div key={c.slug}>
-              <Link to={`/services/${c.slug}`} className="block text-[14px] font-semibold text-ink hover:text-slate mb-2">
+              <Link
+                to={`/services/${c.slug}`}
+                onClick={onClose}
+                className="block text-[14px] font-semibold text-ink hover:text-slate mb-2"
+              >
                 {c.name}
               </Link>
               <ul className="space-y-1.5">
                 {c.treatments.map((t) => (
                   <li key={t.slug}>
-                    <Link to={`/services/${c.slug}/${t.slug}`} className="text-[13px] text-body hover:text-slate">
+                    <Link
+                      to={`/services/${c.slug}/${t.slug}`}
+                      onClick={onClose}
+                      className="text-[13px] text-body hover:text-slate transition-colors"
+                    >
                       {t.title}
                     </Link>
                   </li>
@@ -54,23 +69,40 @@ function Dropdown({ item }) {
               </ul>
             </div>
           ))}
-          <div className="flex flex-col justify-end gap-3">
-            <Link to="/services/community-dentistry" className="block text-[14px] font-semibold text-ink hover:text-slate">
+          <div className="flex flex-col justify-end gap-3 pt-2">
+            <Link
+              to="/services/community-dentistry"
+              onClick={onClose}
+              className="block text-[14px] font-semibold text-ink hover:text-slate"
+            >
               Community Dentistry
-              <span className="block text-[13px] font-normal text-body mt-1">Free dental camps</span>
+              <span className="block text-[13px] font-normal text-body mt-1">Free dental camps & outreach</span>
             </Link>
-            <Link to="/services" className="btn btn-outline">View All Services</Link>
+            <Link to="/services" onClick={onClose} className="btn btn-outline text-xs py-2">
+              View All Services
+            </Link>
           </div>
         </div>
       </div>
     );
   }
+
   return (
-    <div className="absolute left-0 top-full pt-3 invisible opacity-0 translate-y-1 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:visible group-focus-within:opacity-100 transition-all duration-200">
-      <ul className="min-w-[220px] bg-white shadow-xl border border-line py-2">
+    <div
+      className={`absolute left-0 top-full pt-3 transition-all duration-200 z-50 ${
+        isOpen
+          ? 'opacity-100 visible translate-y-0 pointer-events-auto'
+          : 'opacity-0 invisible pointer-events-none -translate-y-1'
+      }`}
+    >
+      <ul className="min-w-[240px] bg-white shadow-2xl rounded-xl border border-line py-2 overflow-hidden">
         {item.children.map((c) => (
           <li key={c.to}>
-            <Link to={c.to} className="block px-5 py-2.5 text-[14px] text-body hover:bg-ivory hover:text-slate">
+            <Link
+              to={c.to}
+              onClick={onClose}
+              className="block px-5 py-2.5 text-[14px] text-body hover:bg-ivory hover:text-ink transition-colors font-medium"
+            >
               {c.label}
             </Link>
           </li>
@@ -83,12 +115,56 @@ function Dropdown({ item }) {
 export default function Header() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(null);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const closeTimeoutRef = useRef(null);
+  const headerRef = useRef(null);
+
   const { pathname, hash } = useLocation();
   const { patient } = usePatientAuth();
   const accountLabel = patient ? patient.name.split(' ')[0] : 'Login';
 
-  useEffect(() => {
+  const clearCloseTimeout = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  };
+
+  const handleMouseEnter = (label, hasDropdown) => {
+    clearCloseTimeout();
+    if (hasDropdown) {
+      setActiveDropdown(label);
+    } else {
+      setActiveDropdown(null);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    clearCloseTimeout();
+    closeTimeoutRef.current = setTimeout(() => {
+      setActiveDropdown(null);
+    }, 180);
+  };
+
+  const handleClose = () => {
+    clearCloseTimeout();
+    setActiveDropdown(null);
     setOpen(false);
+  };
+
+  const handleItemClick = (e, item, hasSubmenu) => {
+    if (!hasSubmenu) {
+      handleClose();
+      return;
+    }
+    // Submenu trigger: toggle open/close on click
+    e.preventDefault();
+    clearCloseTimeout();
+    setActiveDropdown((curr) => (curr === item.label ? null : item.label));
+  };
+
+  useEffect(() => {
+    handleClose();
     setExpanded(null);
   }, [pathname, hash]);
 
@@ -96,8 +172,29 @@ export default function Header() {
     document.body.style.overflow = open ? 'hidden' : '';
   }, [open]);
 
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (headerRef.current && !headerRef.current.contains(e.target)) {
+        setActiveDropdown(null);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setActiveDropdown(null);
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+      clearCloseTimeout();
+    };
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 bg-ivory border-b border-black/5">
+    <header ref={headerRef} className="sticky top-0 z-50 bg-ivory border-b border-black/5">
       <div className="container-x flex items-center justify-between py-2 sm:py-2.5">
         <Logo />
 
@@ -105,26 +202,55 @@ export default function Header() {
         <div className="hidden lg:block">
           <nav aria-label="Main">
             <ul className="flex items-center gap-7">
-              {menu.map((item) => (
-                <li key={item.label} className="relative group">
-                  <NavLink
-                    to={item.to}
-                    end={item.to === '/'}
-                    className={({ isActive }) =>
-                      `flex items-center gap-1.5 text-[15px] py-2 transition-colors ${
-                        isActive ? 'text-ink font-medium' : 'text-body hover:text-ink'
-                      } ${item.account ? '!text-ink font-medium' : ''}`
-                    }
+              {menu.map((item) => {
+                const hasSubmenu = Boolean(item.children || item.mega);
+                const isItemOpen = activeDropdown === item.label;
+
+                return (
+                  <li
+                    key={item.label}
+                    className="relative"
+                    onMouseEnter={() => handleMouseEnter(item.label, hasSubmenu)}
+                    onMouseLeave={handleMouseLeave}
+                    onFocus={() => {
+                      if (hasSubmenu) setActiveDropdown(item.label);
+                    }}
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) {
+                        setActiveDropdown((curr) => (curr === item.label ? null : curr));
+                      }
+                    }}
                   >
-                    {item.account && <FiUser className="w-4 h-4" />}
-                    {item.account ? accountLabel : item.label}
-                    {(item.children || item.mega) && (
-                      <FiChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
+                    <NavLink
+                      to={item.to}
+                      end={item.to === '/'}
+                      onClick={(e) => handleItemClick(e, item, hasSubmenu)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-1.5 text-[15px] py-2 transition-colors cursor-pointer select-none ${
+                          isActive ? 'text-ink font-medium' : 'text-body hover:text-ink'
+                        } ${item.account ? '!text-ink font-medium' : ''}`
+                      }
+                    >
+                      {item.account && <FiUser className="w-4 h-4" />}
+                      {item.account ? accountLabel : item.label}
+                      {hasSubmenu && (
+                        <FiChevronDown
+                          className={`w-4 h-4 transition-transform duration-200 ${
+                            isItemOpen ? 'rotate-180' : ''
+                          }`}
+                        />
+                      )}
+                    </NavLink>
+                    {hasSubmenu && (
+                      <Dropdown
+                        item={item}
+                        isOpen={isItemOpen}
+                        onClose={handleClose}
+                      />
                     )}
-                  </NavLink>
-                  {(item.children || item.mega) && <Dropdown item={item} />}
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           </nav>
         </div>

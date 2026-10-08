@@ -21,6 +21,10 @@ const BookAppointment = lazy(() => import('./pages/BookAppointment'));
 const HomeService = lazy(() => import('./pages/HomeService'));
 const Account = lazy(() => import('./pages/Account'));
 const Assistant = lazy(() => import('./pages/Assistant'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsConditions = lazy(() => import('./pages/TermsConditions'));
+const MedicalDisclaimer = lazy(() => import('./pages/MedicalDisclaimer'));
+const AppointmentPolicy = lazy(() => import('./pages/AppointmentPolicy'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Admin dashboard (dark theme, its own shell — no public header or footer)
@@ -36,13 +40,16 @@ const AdminResearch = lazy(() => import('./admin/Research'));
 const AdminGallery = lazy(() => import('./admin/Gallery'));
 const AdminFeedback = lazy(() => import('./admin/Feedback'));
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 const Loading = () => <div className="min-h-[60vh]" aria-busy="true" />;
 
 export default function App() {
   return (
-    <PatientAuthProvider>
-    <BrowserRouter>
-      <Suspense fallback={<Loading />}>
+    <ErrorBoundary>
+      <PatientAuthProvider>
+        <BrowserRouter>
+          <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminLayout />}>
@@ -76,11 +83,16 @@ export default function App() {
             <Route path="home-service" element={<HomeService />} />
             <Route path="account" element={<Account />} />
             <Route path="assistant" element={<Assistant />} />
+            <Route path="privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="terms-conditions" element={<TermsConditions />} />
+            <Route path="medical-disclaimer" element={<MedicalDisclaimer />} />
+            <Route path="appointment-policy" element={<AppointmentPolicy />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </Suspense>
-    </BrowserRouter>
-    </PatientAuthProvider>
+        </BrowserRouter>
+      </PatientAuthProvider>
+    </ErrorBoundary>
   );
 }

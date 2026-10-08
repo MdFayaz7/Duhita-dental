@@ -12,9 +12,27 @@ const expertise = [
 ];
 
 export default function Doctor() {
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Physician',
+    name: doctor.name,
+    image: `https://duhitadental.com${doctor.image}`,
+    medicalSpecialty: 'OralAndMaxillofacialSurgery',
+    jobTitle: doctor.credentials,
+    worksFor: {
+      '@type': 'Dentist',
+      name: 'Duhita Multispeciality Dental Centre',
+      url: 'https://duhitadental.com',
+    },
+  };
+
   useSeo(
     'Dr. Nalluru Sasidhar, BDS, MDS | Endodontist & Implantologist in Vijayawada',
     `Meet Dr. Nalluru Sasidhar, BDS, MDS (Conservative Dentistry), endodontist and implantologist, founder of Duhita Dental, Vijayawada — ${doctor.years}+ years of experience in root canal treatment, dental implants and conservative dental care.`,
+    {
+      image: doctor.image,
+      schema,
+    }
   );
   return (
     <>
@@ -25,7 +43,7 @@ export default function Doctor() {
       <section className="section-y bg-ivory">
         <div className="container-x grid gap-12 lg:grid-cols-[380px_1fr] lg:gap-20 items-start">
           <div className="reveal card overflow-hidden w-[220px] sm:w-[280px] lg:w-auto mx-auto lg:mx-0 lg:sticky lg:top-32">
-            <div className="aspect-[4/5] overflow-hidden img-well"><img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover object-top" /></div>
+            <div className="aspect-[4/5] overflow-hidden img-well"><img src={doctor.image} alt={doctor.name} loading="lazy" decoding="async" className="w-full h-full object-cover object-top" /></div>
             <div className="bg-slate text-white p-6">
               <p className="font-display text-[22px]">{doctor.name}</p>
               <p className="text-[13.5px] text-white/80 mt-1">{doctor.credentials}</p>

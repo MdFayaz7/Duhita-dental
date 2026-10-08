@@ -90,33 +90,44 @@ body {
   font-size: 14px;
   font-weight: 500;
   line-height: 1.2;
+  text-decoration: none !important;
   transition: background 0.25s, color 0.25s, border-color 0.25s, transform 0.25s;
   white-space: nowrap;
 }
+.btn svg {
+  flex-shrink: 0;
+}
 .btn-solid {
   background: var(--color-slate);
-  color: #fff;
+  color: #fff !important;
   border: 1px solid var(--color-slate);
+}
+.btn-solid svg {
+  color: #fff !important;
 }
 .btn-solid:hover {
   background: var(--color-slate-deep);
+  color: #fff !important;
 }
 .btn-outline {
   border: 1px solid var(--color-slate);
-  color: var(--color-slate);
+  color: var(--color-slate) !important;
   background: transparent;
 }
 .btn-outline:hover {
   background: var(--color-slate);
-  color: #fff;
+  color: #fff !important;
+}
+.btn-outline:hover svg {
+  color: #fff !important;
 }
 .btn-light {
   border: 1px solid rgba(255, 255, 255, 0.7);
-  color: #fff;
+  color: #fff !important;
 }
 .btn-light:hover {
   background: #fff;
-  color: var(--color-slate);
+  color: var(--color-slate) !important;
 }
 
 /* Long-form article typography */
@@ -154,11 +165,14 @@ body {
   border-radius: 50%;
   background: var(--color-slate);
 }
-.prose-duhita a {
+.prose-duhita a:not(.btn) {
   color: var(--color-slate);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.prose-duhita .not-prose a:not(.btn) {
+  text-decoration: none;
 }
 
 /* Reveal on scroll */
@@ -497,3 +511,10 @@ main img:not(.no-zoom):not(.hero-media):hover {
     transform: none;
   }
 }
+
+/* Modern web performance: skip layout/paint for offscreen heavy sections */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+

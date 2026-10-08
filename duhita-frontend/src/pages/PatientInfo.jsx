@@ -53,9 +53,26 @@ const moreFaqs = [
 ];
 
 export default function PatientInfo() {
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: moreFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: f.a,
+      },
+    })),
+  };
+
   useSeo(
     'Patient Information | First Visit, Payments & Aftercare | Duhita Dental Vijayawada',
     'Everything you need before visiting Duhita Dental in Vijayawada — first visit guide, what to bring, payment options, aftercare instructions and FAQs.',
+    {
+      image: '/images/services/pedodontics/pedodontics.jpg',
+      schema: faqSchema,
+    }
   );
   return (
     <>

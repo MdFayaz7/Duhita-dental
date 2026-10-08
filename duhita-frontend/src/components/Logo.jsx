@@ -5,7 +5,7 @@ export default function Logo({ light = false, size = 'md' }) {
   return (
     <Link to="/" className="group flex items-center gap-2.5 sm:gap-3" aria-label="Duhita Dental home">
       <span className={`logo-mark shrink-0 ${light ? 'bg-white rounded-2xl p-2' : ''}`}>
-        <img src="/images/brand/duhita-logo-sm.png" alt="Duhita Dental Care logo" width="120" height="145"
+        <img src="/images/brand/duhita-logo-sm.png" alt="Duhita Dental Care logo" width="120" height="145" decoding="async"
           className={`no-zoom ${img} w-auto`} />
       </span>
       <span className="leading-none">

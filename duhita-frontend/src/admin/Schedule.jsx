@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FiChevronLeft, FiChevronRight, FiClock, FiCopy, FiEdit2, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiClock, FiCopy, FiEdit2, FiPlus, FiPrinter, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import { api } from './api';
 import { PageHead } from './AdminLayout';
 import {
   Button, EmptyState, ErrorNote, Field, IconButton, Modal, Panel, Skeleton, StatusPill, STATUSES,
   Table, formatSlot, inputClass, todayIso, useConfirm, useToast,
 } from './ui';
+import { useLiveEvents } from '../lib/useLiveEvents';
 
 const shiftDate = (iso, days) => {
   const [y, m, d] = iso.split('-').map(Number);
@@ -23,18 +24,44 @@ export default function Schedule() {
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
 
-  const load = useCallback(async () => {
-    setRows(null);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setRows(null);
     setError('');
     try {
       const { items } = await api.schedule(date);
       setRows(items);
     } catch (e) {
-      setError(e.message);
-      setRows([]);
+      if (!silent) {
+        setError(e.message);
+        setRows([]);
+      }
     }
   }, [date]);
-  useEffect(() => { load(); }, [load]);
+
+  useLiveEvents((event) => {
+    if (['schedule_updated', 'appointment_created', 'appointment_updated'].includes(event.type)) {
+      load(true);
+    }
+  });
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(() => {
+      if (!editing && document.visibilityState === 'visible') {
+        load(true);
+      }
+    }, 5000);
+
+    const onFocus = () => { if (!editing) load(true); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [load, editing]);
 
   const copyDay = async () => {
     try {
@@ -85,11 +112,21 @@ export default function Schedule() {
         title="Daily Schedule"
         subtitle="The clinic's running order for the day."
         actions={
-          <>
+          <div className="flex items-center gap-2.5">
+            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-medium">Live</span>
+            </div>
+            <Button variant="secondary" onClick={() => load()}>
+              <FiRefreshCw className="w-3.5 h-3.5" /> Refresh
+            </Button>
             <Button variant="secondary" onClick={() => window.print()}><FiPrinter /> Print</Button>
             <Button variant="secondary" onClick={copyDay}><FiCopy /> Copy appointments</Button>
             <Button onClick={() => setEditing({ ...blank, priority: (rows?.length || 0) + 1 })}><FiPlus /> Add entry</Button>
-          </>
+          </div>
         }
       />
       <ErrorNote>{error}</ErrorNote>

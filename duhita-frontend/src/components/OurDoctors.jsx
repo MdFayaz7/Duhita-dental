@@ -42,7 +42,7 @@ export default function OurDoctors() {
               <article key={d.id || d.name} className="reveal card card-hover flex flex-col">
                 <div className="aspect-[4/5] max-h-[340px] img-well overflow-hidden">
                   {d.photo
-                    ? <img src={d.photo} alt={d.name} loading="lazy" className="w-full h-full object-cover object-top" />
+                    ? <img src={d.photo} alt={d.name} loading="lazy" decoding="async" className="w-full h-full object-cover object-top" />
                     : <FiUser className="w-12 h-12 text-stone" aria-hidden="true" />}
                 </div>
                 <div className="p-6 flex flex-col flex-1">

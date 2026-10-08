@@ -9,6 +9,7 @@ export default function Reviews() {
   useSeo(
     'Patient Reviews | Duhita Dental, Vijayawada — 4.7★ on Google',
     `Read what patients say about Duhita Multispeciality Dental Centre, Vijayawada — rated ${googlePlace.rating} from ${googlePlace.total} Google reviews.`,
+    { image: '/images/services/smile-design.jpg' }
   );
   return (
     <>

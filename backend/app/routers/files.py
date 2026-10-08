@@ -10,7 +10,7 @@ from ..uploads import bucket
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 RANGE = re.compile(r"bytes=(\d*)-(\d*)")
-CHUNK = 256 * 1024
+CHUNK = 1024 * 1024
 
 
 @router.api_route("/{file_id}", methods=["GET", "HEAD"])

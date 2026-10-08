@@ -40,6 +40,7 @@ export default function Research() {
   useSeo(
     'Our Research & Publications | Duhita Dental, Vijayawada',
     'Research papers, case studies and publications from the team at Duhita Multispeciality Dental Centre, Vijayawada.',
+    { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );
 
   const research = useLiveList('/api/research', (p) => ({ ...p, file: apiFileUrl(p.file) }), builtInResearch);

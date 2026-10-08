@@ -1,0 +1,13 @@
+# Robots.txt for Duhita Multispeciality Dental Centre (https://duhitadental.com)
+User-agent: *
+Allow: /
+
+# Disallow private user accounts and admin panels
+Disallow: /admin
+Disallow: /admin/
+Disallow: /account
+Disallow: /account/
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://duhitadental.com/sitemap.xml

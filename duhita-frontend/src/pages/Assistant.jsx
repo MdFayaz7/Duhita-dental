@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FiMic, FiRotateCcw, FiSend, FiSquare } from 'react-icons/fi';
 import DuhitaAvatar from '../components/DuhitaAvatar';
 import useSeo from '../hooks/useSeo';
@@ -14,8 +15,8 @@ const GREETING = {
 };
 const SUGGESTIONS = ['I have a toothache', 'పంటి నొప్పిగా ఉంది', 'Why do my gums bleed?', 'Sensitive teeth', 'I need a check-up'];
 const STATUS = {
-  idle: 'Type or tap the mic to talk',
-  listening: 'Listening… tap to stop',
+  idle: 'Type or tap mic',
+  listening: 'Listening… tap ■',
   thinking: 'Thinking…',
   speaking: 'Speaking',
 };
@@ -25,6 +26,7 @@ export default function Assistant() {
   useSeo(
     'Duhita AI — Ask a Dental Question | Duhita Dental, Vijayawada',
     'Chat with Duhita AI, a friendly dental assistant, in English or Telugu. General guidance only — for treatment, book a visit at Duhita Dental, Vijayawada.',
+    { image: '/images/brand/duhita-ai-avatar.png' }
   );
 
   const avatar = useRef(null);
@@ -41,12 +43,28 @@ export default function Assistant() {
   const chunksRef = useRef([]);
   const recTimeout = useRef(null);
   const listRef = useRef(null);
+  const bottomRef = useRef(null);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+    } else if (listRef.current) {
+      listRef.current.scrollTo({
+        top: listRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+  }, []);
 
   useEffect(() => {
     messagesRef.current = messages;
-    sessionStorage.setItem(STORE_KEY, JSON.stringify(messages.slice(-40)));
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+    try {
+      sessionStorage.setItem(STORE_KEY, JSON.stringify(messages.slice(-40)));
+    } catch { /* ignore */ }
+    // Small timeout ensures DOM reflow is complete before scrolling
+    const t = setTimeout(() => scrollToBottom(true), 40);
+    return () => clearTimeout(t);
+  }, [messages, phase, scrollToBottom]);
 
   useEffect(() => {
     try {
@@ -126,8 +144,6 @@ export default function Assistant() {
   const startMic = useCallback(async () => {
     setNotice('');
     if (!navigator.mediaDevices?.getUserMedia) {
-      // Browsers only expose the mic API on secure origins (https, or localhost). On a plain
-      // http test URL there's no permission prompt to show — this isn't a "denied" case.
       setNotice(
         window.isSecureContext
           ? "This browser doesn't support voice input. Please type your message instead."
@@ -144,7 +160,7 @@ export default function Assistant() {
         if (!rec.discard && chunksRef.current.length) onRecorded(new Blob(chunksRef.current, { type: 'audio/webm' }));
       };
       mediaRef.current = rec;
-      rec.start();
+      rec.start(250);
       setRecording(true);
       setPhase('listening');
       recTimeout.current = setTimeout(() => stopMic(), 30_000);
@@ -178,90 +194,173 @@ export default function Assistant() {
   const busy = phase === 'thinking';
 
   return (
-    <div className="bg-[#eef8fb] min-h-[calc(100vh-69px)] md:min-h-[calc(100vh-76px)]">
-      <div className="container-x py-6 sm:py-10">
-        <div className="max-w-5xl mx-auto grid gap-6 lg:grid-cols-[320px_1fr] items-start">
-          {/* Avatar + status */}
-          <div className="lg:sticky lg:top-24">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h1 className="text-[24px] sm:text-[28px] text-[#0b7d88]" style={{ fontFamily: 'var(--font-display)' }}>Duhita AI</h1>
-                <p className="text-[13px] text-[#4c5b70]">AI Dental Assistant · English | తెలుగు</p>
+    <div className="bg-[#eef8fb] h-[calc(100svh-69px)] md:h-[calc(100svh-76px)] overflow-hidden flex flex-col">
+      <div className="container-x flex-1 min-h-0 py-3 sm:py-5 flex flex-col">
+        <div className="max-w-6xl mx-auto w-full flex-1 min-h-0 grid gap-4 lg:gap-6 lg:grid-cols-[320px_1fr] items-stretch">
+          {/* Avatar + controls sidebar */}
+          <div className="flex flex-col h-full min-h-0 justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h1 className="text-[22px] sm:text-[26px] text-[#0b7d88]" style={{ fontFamily: 'var(--font-display)' }}>Duhita AI</h1>
+                  <p className="text-[12.5px] text-[#4c5b70]">AI Dental Assistant · English | తెలుగు</p>
+                </div>
+                <button
+                  onClick={reset}
+                  aria-label="New conversation"
+                  title="New conversation"
+                  className="w-9 h-9 grid place-items-center rounded-full bg-white border border-[#cfe0ea] text-[#0b7d88] hover:bg-[#d9f3f7] transition-colors shadow-2xs"
+                >
+                  <FiRotateCcw className="w-4 h-4" />
+                </button>
               </div>
-              <button onClick={reset} aria-label="New conversation"
-                className="w-9 h-9 grid place-items-center rounded-full bg-white border border-[#cfe0ea] text-[#0b7d88] hover:bg-[#d9f3f7]">
-                <FiRotateCcw className="w-4 h-4" />
-              </button>
+
+              <div className="relative aspect-[4/3] sm:aspect-square lg:aspect-[4/5] rounded-[22px] overflow-hidden bg-[#d9f3f7] shadow-[0_20px_50px_-25px_rgba(14,154,167,0.5)] border border-white">
+                <DuhitaAvatar ref={avatar} onEvent={onAvatarEvent} />
+                {!avatarReady && (
+                  <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                    <span className="w-8 h-8 rounded-full border-[3px] border-[#0e9aa7]/30 border-t-[#0e9aa7] animate-spin" />
+                  </div>
+                )}
+                <div className="absolute inset-x-2.5 bottom-2.5 flex items-center justify-between gap-1.5">
+                  <div className="flex bg-white/95 backdrop-blur-sm rounded-xl p-0.5 shadow-xs">
+                    {['en-IN', 'te-IN'].map((l) => (
+                      <button
+                        key={l}
+                        onClick={() => chooseLang(l)}
+                        className={`px-2.5 py-1 rounded-lg text-[11.5px] font-semibold transition-colors ${
+                          lang === l ? 'bg-[#0e9aa7] text-white' : 'text-[#0b7d88] hover:bg-[#eef8fb]'
+                        }`}
+                      >
+                        {l === 'en-IN' ? 'English' : 'తెలుగు'}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="flex items-center gap-1.5 bg-white/95 backdrop-blur-sm rounded-full px-2.5 py-1 text-[11.5px] font-medium text-[#0b7d88] shadow-xs">
+                    {busy ? (
+                      <span className="w-2 h-2 rounded-full bg-[#0e9aa7] animate-pulse" />
+                    ) : (
+                      <span className={`w-2 h-2 rounded-full ${recording ? 'bg-[#e5484d]' : 'bg-[#12b76a]'}`} />
+                    )}
+                    {STATUS[phase]}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="relative aspect-[3/4] sm:aspect-square rounded-[22px] overflow-hidden bg-[#d9f3f7] shadow-[0_20px_50px_-25px_rgba(14,154,167,0.5)]">
-              <DuhitaAvatar ref={avatar} onEvent={onAvatarEvent} />
-              {!avatarReady && (
-                <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                  <span className="w-8 h-8 rounded-full border-[3px] border-[#0e9aa7]/30 border-t-[#0e9aa7] animate-spin" />
-                </div>
-              )}
-              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
-                <div className="flex bg-white/90 backdrop-blur-sm rounded-xl p-1">
-                  {['en-IN', 'te-IN'].map((l) => (
-                    <button key={l} onClick={() => chooseLang(l)}
-                      className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${lang === l ? 'bg-[#0e9aa7] text-white' : 'text-[#0b7d88]'}`}>
-                      {l === 'en-IN' ? 'English' : 'తెలుగు'}
-                    </button>
-                  ))}
-                </div>
-                <span className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1.5 text-[12px] font-medium text-[#0b7d88]">
-                  {busy ? <span className="w-2 h-2 rounded-full bg-[#0e9aa7] animate-pulse" /> : <span className={`w-2 h-2 rounded-full ${recording ? 'bg-[#e5484d]' : 'bg-[#0e9aa7]'}`} />}
-                  {STATUS[phase]}
-                </span>
-              </div>
+            <div className="mt-2.5 text-[11px] text-[#4c5b70] leading-relaxed text-center lg:text-left bg-white/70 p-2.5 rounded-xl border border-line/60">
+              <p>
+                <strong>AI Dental Assistant Disclaimer:</strong> Duhita AI provides general oral health and appointment guidance only. It is <strong>not a doctor or dentist</strong> and does not provide a medical diagnosis.
+              </p>
+              <p className="mt-1">
+                In an emergency, visit a hospital casualty. Read our{' '}
+                <Link to="/medical-disclaimer" className="text-[#0b7d88] underline font-medium hover:text-ink">
+                  Medical &amp; AI Disclaimer
+                </Link>.
+              </p>
             </div>
-            <p className="mt-3 text-[11.5px] text-[#4c5b70] leading-relaxed text-center lg:text-left">
-              General guidance only — not a diagnosis. In an emergency, visit a hospital.
-            </p>
           </div>
 
-          {/* Chat */}
-          <div className="card min-h-[60vh] lg:min-h-[70vh] flex flex-col overflow-hidden">
-            <div ref={listRef} className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-3">
-              {messages.map((m) => (
-                <div key={m.id} className={`max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-[14.5px] leading-relaxed whitespace-pre-wrap ${
-                  m.role === 'user' ? 'self-end bg-[#0e9aa7] text-white rounded-br-md' : 'self-start bg-[#eef8fb] text-ink rounded-bl-md'
-                }`}>
-                  {m.content}
+          {/* Chat Window: Full-height fit, scrollable messages, pinned input bar */}
+          <div className="card h-full min-h-0 flex flex-col overflow-hidden bg-white shadow-xl rounded-[22px] border border-line">
+
+            {/* Scrollable messages container */}
+            <div
+              ref={listRef}
+              className="flex-1 min-h-0 overflow-y-auto px-4 py-5 sm:px-6 flex flex-col gap-3.5 overscroll-contain"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#cfe0ea transparent',
+              }}
+            >
+              {messages.map((m) => {
+                const isUser = m.role === 'user';
+                return (
+                  <div
+                    key={m.id}
+                    className={`max-w-[85%] sm:max-w-[78%] px-4 py-3 rounded-2xl text-[14.5px] leading-relaxed whitespace-pre-wrap shadow-2xs ${
+                      isUser
+                        ? 'self-end bg-[#0e9aa7] text-white rounded-br-xs'
+                        : 'self-start bg-[#eef8fb] text-ink rounded-bl-xs border border-[#cfe0ea]/60'
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+                );
+              })}
+
+              {busy && (
+                <div className="self-start flex items-center gap-2 px-4 py-3 rounded-2xl rounded-bl-xs bg-[#eef8fb] text-[#0b7d88] border border-[#cfe0ea]/60 shadow-2xs">
+                  <span className="flex gap-1 items-center">
+                    <span className="w-2 h-2 rounded-full bg-[#0e9aa7] animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-2 h-2 rounded-full bg-[#0e9aa7] animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-2 h-2 rounded-full bg-[#0e9aa7] animate-bounce" />
+                  </span>
+                  <span className="text-[13px] font-medium">Duhita AI is thinking…</span>
                 </div>
-              ))}
+              )}
+
+              <div ref={bottomRef} className="h-0" />
             </div>
 
+            {/* Suggestions Chips */}
             {messages.length <= 1 && phase === 'idle' && (
-              <div className="px-4 sm:px-6 pb-3 flex gap-2 overflow-x-auto no-scrollbar">
+              <div className="shrink-0 px-4 sm:px-6 py-2.5 flex gap-2 overflow-x-auto no-scrollbar border-t border-line/40 bg-[#fbfdfd]">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => ask(s)}
-                    className="shrink-0 rounded-full border border-[#0e9aa7]/40 text-[#0b7d88] text-[13px] px-3.5 py-2 hover:bg-[#d9f3f7]">
+                  <button
+                    key={s}
+                    onClick={() => ask(s)}
+                    className="shrink-0 rounded-full border border-[#0e9aa7]/35 bg-white text-[#0b7d88] text-[12.5px] font-medium px-3.5 py-1.5 hover:bg-[#d9f3f7] transition-colors shadow-2xs"
+                  >
                     {s}
                   </button>
                 ))}
               </div>
             )}
 
+            {/* Notices / Errors */}
             {notice && (
-              <button onClick={() => setNotice('')} className="mx-4 sm:mx-6 mb-2 text-[12.5px] text-[#b42318] text-left">{notice}</button>
+              <div className="shrink-0 mx-4 sm:mx-6 my-2 text-[12.5px] text-[#b42318] bg-[#fef3f2] px-3.5 py-2 rounded-xl border border-[#fee4e2] flex items-center justify-between">
+                <span>{notice}</span>
+                <button onClick={() => setNotice('')} className="font-semibold underline ml-2 text-xs">Dismiss</button>
+              </div>
             )}
 
-            <form onSubmit={(e) => { e.preventDefault(); ask(input); }}
-              className="flex items-center gap-2 p-3 sm:p-4 border-t border-line">
-              <input value={input} onChange={(e) => setInput(e.target.value)} maxLength={500}
+            {/* Pinned Input Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                ask(input);
+              }}
+              className="shrink-0 flex items-center gap-2 p-3 sm:p-4 border-t border-line bg-white"
+            >
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                maxLength={500}
                 disabled={recording}
                 placeholder={recording ? 'Listening… tap ■ when done' : 'Type in English or తెలుగు…'}
-                className="field flex-1" />
+                className="field flex-1 h-12 rounded-xl border-[#d0dbe2] focus:border-[#0e9aa7] focus:ring-[#0e9aa7]/20 text-[14.5px] px-4"
+              />
               {input.trim() && !recording ? (
-                <button type="submit" aria-label="Send" className="w-11 h-11 shrink-0 rounded-full bg-[#0e9aa7] text-white grid place-items-center hover:bg-[#0b7d88]">
-                  <FiSend className="w-[18px] h-[18px]" />
+                <button
+                  type="submit"
+                  aria-label="Send"
+                  className="w-12 h-12 shrink-0 rounded-xl bg-[#0e9aa7] text-white grid place-items-center hover:bg-[#0b7d88] transition-colors shadow-sm"
+                >
+                  <FiSend className="w-5 h-5" />
                 </button>
               ) : (
-                <button type="button" onClick={toggleMic} disabled={busy} aria-label={recording ? 'Stop listening' : 'Talk to Duhita AI'}
-                  className={`w-11 h-11 shrink-0 rounded-full grid place-items-center text-white transition-colors ${recording ? 'bg-[#e5484d]' : 'bg-[#0e9aa7] hover:bg-[#0b7d88]'} disabled:opacity-50`}>
-                  {recording ? <FiSquare className="w-4 h-4" /> : <FiMic className="w-[18px] h-[18px]" />}
+                <button
+                  type="button"
+                  onClick={toggleMic}
+                  disabled={busy}
+                  aria-label={recording ? 'Stop listening' : 'Talk to Duhita AI'}
+                  className={`w-12 h-12 shrink-0 rounded-xl grid place-items-center text-white transition-colors shadow-sm ${
+                    recording ? 'bg-[#e5484d] animate-pulse' : 'bg-[#0e9aa7] hover:bg-[#0b7d88]'
+                  } disabled:opacity-50`}
+                >
+                  {recording ? <FiSquare className="w-4 h-4" /> : <FiMic className="w-5 h-5" />}
                 </button>
               )}
             </form>

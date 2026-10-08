@@ -267,7 +267,12 @@ export function exportCsv(filename, rows) {
 /** 2026-09-20T18:04:11Z -> "20 Sep 2026, 11:34 PM" in clinic (IST) time */
 export const formatDateTime = (iso) => {
   if (!iso) return '—';
-  const d = new Date(iso);
+  let s = String(iso);
+  if (!s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) {
+    s += 'Z';
+  }
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return '—';
   return d.toLocaleString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
@@ -276,7 +281,10 @@ export const formatDateTime = (iso) => {
 
 export const formatSlot = (t) => {
   if (!t) return '—';
-  const [h, m] = t.split(':').map(Number);
+  if (!t.includes(':')) return t;
+  const parts = t.split(':').map(Number);
+  if (isNaN(parts[0]) || isNaN(parts[1])) return t;
+  const [h, m] = parts;
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 };
 

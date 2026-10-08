@@ -45,7 +45,51 @@ export const campFiles = ${JSON.stringify(listPhotos('camps'))};`;
   };
 }
 
+function cacheStaticAssets() {
+  return {
+    name: 'duhita-cache-static-assets',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url && (req.url.startsWith('/images/') || req.url.startsWith('/fonts/'))) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        next();
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url && (req.url.startsWith('/images/') || req.url.startsWith('/fonts/'))) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), galleryFolders()],
+  plugins: [react(), tailwindcss(), galleryFolders(), cacheStaticAssets()],
   server: { port: 5180 },
+  build: {
+    target: 'es2022',
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react/') || id.includes('react-dom/')) {
+              return 'vendor-react';
+            }
+            if (id.includes('react-router') || id.includes('react-router-dom')) {
+              return 'vendor-router';
+            }
+            if (id.includes('react-icons')) {
+              return 'vendor-icons';
+            }
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
 });

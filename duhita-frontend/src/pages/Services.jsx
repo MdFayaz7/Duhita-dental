@@ -10,6 +10,7 @@ export default function Services() {
   useSeo(
     'Dental Treatments in Vijayawada | Implants, RCT, Braces & More | Duhita Dental',
     'Explore all dental treatments at Duhita Dental, Benz Circle, Vijayawada — endodontics, implants & prosthodontics, orthodontics, kids dentistry, gum care, oral surgery and oral diagnosis.',
+    { image: '/images/services/prosthodontics/full%20mouth%20rehabitation.jpeg' }
   );
   return (
     <>
@@ -28,7 +29,7 @@ export default function Services() {
           {categories.map((c) => (
             <article key={c.slug} className="reveal card card-hover flex flex-col group">
               <Link to={`/services/${c.slug}`} className="block aspect-[16/10] sm:aspect-[4/3] img-well p-3">
-                <img src={c.image} alt={`${c.name} in Vijayawada`} className="w-full h-full object-contain" loading="lazy" />
+                <img src={c.image} alt={`${c.name} in Vijayawada`} className="w-full h-full object-contain" loading="lazy" decoding="async" />
               </Link>
               <div className="p-5 sm:p-7 flex flex-col flex-1">
                 <Icon name={c.icon} className="w-9 h-9 text-ink" />
@@ -51,7 +52,7 @@ export default function Services() {
           <article className="reveal card card-hover flex flex-col group">
             <Link to="/services/community-dentistry" className="block aspect-[16/10] sm:aspect-[4/3] overflow-hidden">
               <img src="/images/gallery/camps/camp-06.jpg" alt="Free dental camp by Duhita Dental in Vijayawada"
-                className="w-full h-full object-cover" loading="lazy" />
+                className="w-full h-full object-cover" loading="lazy" decoding="async" />
             </Link>
             <div className="p-5 sm:p-7 flex flex-col flex-1">
               <Icon name="comfort" className="w-9 h-9 text-ink" />

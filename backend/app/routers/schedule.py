@@ -4,6 +4,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..db import get_db, serialize
+from ..events import broadcast_event
 from ..models import ScheduleIn, ScheduleUpdate
 from ..security import current_admin
 
@@ -21,7 +22,9 @@ async def create(payload: ScheduleIn):
     doc = payload.model_dump()
     doc["created_at"] = datetime.now(timezone.utc)
     result = await get_db().schedule.insert_one(doc)
-    return serialize(await get_db().schedule.find_one({"_id": result.inserted_id}))
+    created = serialize(await get_db().schedule.find_one({"_id": result.inserted_id}))
+    await broadcast_event("schedule_updated", created)
+    return created
 
 
 @router.post("/copy-appointments")
@@ -49,6 +52,7 @@ async def copy_from_appointments(date: str):
         })
     if rows:
         await db.schedule.insert_many(rows)
+        await broadcast_event("schedule_updated", {"date": date, "added": len(rows)})
     return {"added": len(rows)}
 
 
@@ -62,7 +66,9 @@ async def update(entry_id: str, payload: ScheduleUpdate):
     )
     if not res:
         raise HTTPException(404, "Schedule entry not found.")
-    return serialize(res)
+    serialized = serialize(res)
+    await broadcast_event("schedule_updated", serialized)
+    return serialized
 
 
 @router.delete("/{entry_id}")
@@ -70,4 +76,5 @@ async def delete(entry_id: str):
     res = await get_db().schedule.delete_one({"_id": ObjectId(entry_id)})
     if not res.deleted_count:
         raise HTTPException(404, "Schedule entry not found.")
+    await broadcast_event("schedule_updated", {"id": entry_id})
     return {"ok": True}

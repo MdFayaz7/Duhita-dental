@@ -4,6 +4,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..db import get_db, serialize
+from ..events import broadcast_event
 from ..models import AppointmentIn, AppointmentUpdate
 from ..security import current_admin
 
@@ -16,7 +17,10 @@ async def create(payload: AppointmentIn):
     doc = payload.model_dump()
     doc.update(status="pending", created_at=datetime.now(timezone.utc))
     result = await db.appointments.insert_one(doc)
-    return {"id": str(result.inserted_id), **{k: doc[k] for k in ("name", "date", "slot")}}
+    created = {"id": str(result.inserted_id), **{k: doc[k] for k in ("name", "date", "slot", "phone", "status")}}
+    await broadcast_event("appointment_created", created)
+    await broadcast_event("stats_updated")
+    return created
 
 
 @router.get("")
@@ -39,7 +43,8 @@ async def list_appointments(
             {"patient_id": {"$regex": q, "$options": "i"}},
         ]
     db = get_db()
-    cursor = db.appointments.find(query).sort([("date", 1), ("slot", 1)]).limit(limit)
+    order = [("slot", 1)] if date else [("date", -1), ("slot", 1)]
+    cursor = db.appointments.find(query).sort(order).limit(limit)
     return {"items": [serialize(d) for d in await cursor.to_list(limit)]}
 
 
@@ -54,7 +59,10 @@ async def update(appointment_id: str, payload: AppointmentUpdate, _: str = Depen
     )
     if not res:
         raise HTTPException(404, "Appointment not found.")
-    return serialize(res)
+    serialized = serialize(res)
+    await broadcast_event("appointment_updated", serialized)
+    await broadcast_event("stats_updated")
+    return serialized
 
 
 @router.delete("/{appointment_id}")
@@ -62,4 +70,6 @@ async def delete(appointment_id: str, _: str = Depends(current_admin)):
     res = await get_db().appointments.delete_one({"_id": ObjectId(appointment_id)})
     if not res.deleted_count:
         raise HTTPException(404, "Appointment not found.")
+    await broadcast_event("appointment_deleted", {"id": appointment_id})
+    await broadcast_event("stats_updated")
     return {"ok": True}

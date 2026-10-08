@@ -12,6 +12,7 @@ from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from ..db import get_db, serialize
+from ..events import broadcast_event
 from ..models import (
     AppBookingIn,
     AppLoginIn,
@@ -301,7 +302,10 @@ async def book(payload: AppBookingIn, patient_id: str = Depends(current_patient)
         "created_at": datetime.now(timezone.utc),
     }
     result = await db.appointments.insert_one(appointment)
-    return serialize(await db.appointments.find_one({"_id": result.inserted_id}))
+    created = serialize(await db.appointments.find_one({"_id": result.inserted_id}))
+    await broadcast_event("appointment_created", created)
+    await broadcast_event("stats_updated")
+    return created
 
 
 @router.post("/me/appointments/{appointment_id}/cancel")
@@ -320,4 +324,7 @@ async def cancel(appointment_id: str, patient_id: str = Depends(current_patient)
     )
     if not res:
         raise HTTPException(404, "That appointment cannot be cancelled.")
-    return serialize(res)
+    canceled = serialize(res)
+    await broadcast_event("appointment_updated", canceled)
+    await broadcast_event("stats_updated")
+    return canceled

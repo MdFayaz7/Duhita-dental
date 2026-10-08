@@ -24,7 +24,17 @@ DOCTORS = [
         "photo": "/images/dr-sasidhar.jpg",
         "order": 0,
         "active": True,
-    }
+    },
+    {
+        "name": "Dr. Sailaja Sasidhar",
+        "qualification": "B.D.S",
+        "speciality": "Aesthetic & General Dentistry",
+        "experience_years": 25,
+        "bio": "Senior aesthetic dental surgeon specialising in preventive care, cosmetic smile makeovers and restorative dentistry.",
+        "photo": "/images/services/endodontics/smile_design.jpeg",
+        "order": 1,
+        "active": True,
+    },
 ]
 
 

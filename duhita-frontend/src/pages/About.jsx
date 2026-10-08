@@ -18,6 +18,7 @@ export default function About() {
   useSeo(
     'About Duhita Dental | Trusted Dental Clinic in Vijayawada Since 1997',
     'Learn about Duhita Multispeciality Dental Centre, Benz Circle, Vijayawada — a specialist-led family dental clinic caring for patients since 1997.',
+    { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );
   return (
     <>
@@ -116,7 +117,7 @@ export default function About() {
             </ul>
           </div>
           <div className="reveal bg-white p-3">
-            <img src={technology[0].image} alt={technology[0].strong} className="w-full h-auto object-contain" loading="lazy" />
+            <img src={technology[0].image} alt={technology[0].strong} className="w-full h-auto object-contain" loading="lazy" decoding="async" />
           </div>
         </div>
       </section>

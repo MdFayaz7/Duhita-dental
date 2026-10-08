@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { AI_BASE } from '../lib/patientApi';
 import { playDuhitaVoice, stopDuhitaVoice } from '../lib/duhitaVoice';
 
-const AVATAR_PAGE = `${AI_BASE}/avatar/?v=6&external=1`;
+const AVATAR_PAGE = `${AI_BASE}/avatar/?v=11&external=1`;
 
 /**
  * The talking-avatar page Duhita AI's server already serves, in an iframe.

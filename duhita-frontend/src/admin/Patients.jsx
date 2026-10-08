@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  FiCalendar, FiDownload, FiFile, FiImage, FiPhone, FiPlus, FiTrash2, FiUser, FiUsers,
+  FiCalendar, FiDownload, FiFile, FiImage, FiPhone, FiPlus, FiRefreshCw, FiTrash2, FiUser, FiUsers,
 } from 'react-icons/fi';
 import { api } from './api';
 import { PageHead } from './AdminLayout';
@@ -8,6 +8,7 @@ import {
   Button, Drawer, EmptyState, ErrorNote, Field, IconButton, Modal, Panel, SearchInput, Segmented,
   Skeleton, StatusPill, Table, exportCsv, formatDateTime, formatSlot, inputClass, todayIso, useConfirm, useToast,
 } from './ui';
+import { useLiveEvents } from '../lib/useLiveEvents';
 
 const RECORD_KINDS = [
   { id: 'prescription', label: 'Prescription' },
@@ -50,10 +51,31 @@ export default function Patients() {
     }
   }, [q, sort, from, to]);
 
+  useLiveEvents((event) => {
+    if (['patient_registered', 'patient_deleted', 'record_updated'].includes(event.type)) {
+      load();
+    }
+  });
+
   useEffect(() => {
     const t = setTimeout(load, q ? 350 : 0);
-    return () => clearTimeout(t);
-  }, [load, q]);
+    const interval = setInterval(() => {
+      if (!selected && !q && document.visibilityState === 'visible') {
+        load();
+      }
+    }, 5000);
+
+    const onFocus = () => { if (!selected) load(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
+    return () => {
+      clearTimeout(t);
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [load, q, selected]);
 
   const open = async (row) => {
     setSelected({ patient: row, appointments: null, records: null });
@@ -107,7 +129,23 @@ export default function Patients() {
       <PageHead
         title="Patient Registrations"
         subtitle={data ? `${data.total} registration${data.total === 1 ? '' : 's'} from the website` : 'Loading…'}
-        actions={<Button variant="secondary" onClick={download} disabled={!items?.length}><FiDownload /> Export CSV</Button>}
+        actions={
+          <div className="flex items-center gap-2.5">
+            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-medium">Live</span>
+            </div>
+            <Button variant="secondary" onClick={() => load()}>
+              <FiRefreshCw className="w-3.5 h-3.5" /> Refresh
+            </Button>
+            <Button variant="secondary" onClick={download} disabled={!items?.length}>
+              <FiDownload /> Export CSV
+            </Button>
+          </div>
+        }
       />
       <ErrorNote>{error}</ErrorNote>
 

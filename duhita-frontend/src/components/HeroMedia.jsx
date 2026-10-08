@@ -27,34 +27,66 @@ const PORTRAIT = {
   jewel: { x: 0.6249, y: 0.5667, size: 0.014 },
 };
 
+// Persistent memory retention: keeps decoded image buffers in browser memory
+// so returning to the home page paints instantly with zero network or decode delay.
+if (typeof window !== 'undefined') {
+  const p1 = new Image();
+  p1.src = LANDSCAPE.webp;
+  const p2 = new Image();
+  p2.src = LANDSCAPE.jpg;
+  const p3 = new Image();
+  p3.src = PORTRAIT.webp;
+  const p4 = new Image();
+  p4.src = PORTRAIT.jpg;
+}
+
+let cachedStage = null;
+let cachedPhotoType = null;
+
 export default function HeroMedia({ alt }) {
   const phone = usePhone();
   const photo = phone ? PORTRAIT : LANDSCAPE;
+  const photoType = phone ? 'portrait' : 'landscape';
   const boxRef = useRef(null);
-  const [stage, setStage] = useState(null);
+
+  // Initialize immediately from cached stage if available to eliminate layout jump and delay
+  const [stage, setStage] = useState(() => (cachedPhotoType === photoType ? cachedStage : null));
 
   useLayoutEffect(() => {
     const box = boxRef.current;
+    if (!box) return;
     const fit = () => {
       const { width: cw, height: ch } = box.getBoundingClientRect();
+      if (!cw || !ch) return;
       const scale = Math.max(cw / photo.w, ch / photo.h);
       const w = photo.w * scale;
       const h = photo.h * scale;
-      setStage({ width: w, height: h, left: (cw - w) * photo.focus.x, top: (ch - h) * photo.focus.y });
+      const nextStage = { width: w, height: h, left: (cw - w) * photo.focus.x, top: (ch - h) * photo.focus.y };
+      cachedStage = nextStage;
+      cachedPhotoType = photoType;
+      setStage(nextStage);
     };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(box);
     return () => ro.disconnect();
-  }, [photo]);
+  }, [photo, photoType]);
 
   return (
     <div ref={boxRef} className="absolute inset-0 -z-10 overflow-hidden">
       <div className="hero-media absolute" style={stage || { inset: 0 }}>
         <picture>
           <source srcSet={photo.webp} type="image/webp" />
-          <img src={photo.jpg} alt={alt} width={photo.w} height={photo.h} fetchPriority="high"
-            className="block w-full h-full object-cover" />
+          <img
+            src={photo.jpg}
+            alt={alt}
+            width={photo.w}
+            height={photo.h}
+            loading="eager"
+            decoding="sync"
+            fetchPriority="high"
+            className="no-zoom block w-full h-full object-cover"
+          />
         </picture>
 
         {stage && (

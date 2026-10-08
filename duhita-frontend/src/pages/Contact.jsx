@@ -7,6 +7,7 @@ export default function Contact() {
   useSeo(
     'Contact Duhita Dental | Dentist Near Benz Circle, Vijayawada | +91 94403 13066',
     'Book an appointment at Duhita Multispeciality Dental Centre, Shanthi Plaza, Krishna Nagar, near Benz Circle, Vijayawada. Open Mon–Sat 9 AM–1 PM & 3 PM–9 PM.',
+    { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );
   return (
     <>

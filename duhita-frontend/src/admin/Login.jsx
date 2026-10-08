@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { FiLock, FiUser } from 'react-icons/fi';
 import { api, setToken } from './api';
 import { Button, ErrorNote, inputClass } from './ui';
+import useSeo from '../hooks/useSeo';
 
 export default function AdminLogin() {
+  useSeo('Admin Login | Duhita Dental', undefined, { noindex: true });
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
