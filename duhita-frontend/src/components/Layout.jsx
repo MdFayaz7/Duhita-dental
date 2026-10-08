@@ -41,6 +41,7 @@ export default function Layout() {
       idleId = window.requestIdleCallback(() => {
         preloadRoute('/services');
         preloadRoute('/patients/book-appointment');
+        preloadRoute('/assistant');
         preloadRoute('/about');
       }, { timeout: 2500 });
     }

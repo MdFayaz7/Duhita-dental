@@ -26,7 +26,14 @@ app.use((req, res, next) => {
 app.use(
   '/avatar',
   express.static(fileURLToPath(new URL('./public', import.meta.url)), {
-    setHeaders: (res, path) => res.set('cache-control', path.endsWith('.png') ? 'public, max-age=604800' : 'no-cache'),
+    maxAge: '7d',
+    setHeaders: (res, path) => {
+      if (path.endsWith('.png') || path.endsWith('.webp')) {
+        res.set('cache-control', 'public, max-age=31536000, immutable');
+      } else if (path.endsWith('.html')) {
+        res.set('cache-control', 'public, max-age=3600, stale-while-revalidate=86400');
+      }
+    },
   }),
 );
 

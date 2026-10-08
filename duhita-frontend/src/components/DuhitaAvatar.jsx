@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { AI_BASE } from '../lib/patientApi';
 import { playDuhitaVoice, stopDuhitaVoice } from '../lib/duhitaVoice';
 
-const AVATAR_PAGE = `${AI_BASE}/avatar/?v=11&external=1`;
+const AVATAR_PAGE = `${AI_BASE}/avatar/?v=12&external=1`;
 
 /**
  * The talking-avatar page Duhita AI's server already serves, in an iframe.
@@ -42,8 +42,14 @@ const DuhitaAvatar = forwardRef(function DuhitaAvatar({ onEvent }, ref) {
   }, []);
 
   return (
-    <iframe ref={frameRef} src={AVATAR_PAGE} title="Duhita AI" allow="autoplay"
-      className="w-full h-full border-0" />
+    <iframe
+      ref={frameRef}
+      src={AVATAR_PAGE}
+      title="Duhita AI"
+      allow="autoplay"
+      loading="eager"
+      className="w-full h-full border-0"
+    />
   );
 });
 

@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <title>Duhita AI Avatar</title>
+<link rel="preload" as="image" href="./avatar.webp" type="image/webp" fetchpriority="high" />
+<link rel="preload" as="image" href="./avatar.png" type="image/png" />
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: radial-gradient(circle at 50% 42%, #e6f7fa 0%, #cfeef4 48%, #eef8fb 100%); }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -16,17 +18,24 @@
 <button id="unlock">🔊 Tap to enable her voice</button>
 <script type="module">
 // Duhita AI 2.5D talking avatar.
-// The portrait is warped in a WebGL shader: the jaw and lower lip drop, the upper lip lifts,
-// the mouth widens or rounds, the inner mouth (teeth, tongue) shows through, the eyelids blink
-// and the head sways. The mouth is driven by HeadAudio (audio → visemes, any language).
-// Loaded lazily, only when used (see initHeadAudio below) — a static top-level import would
-// evaluate the module (and its AudioWorkletNode references) immediately, which throws on
-// browsers/origins without AudioWorklet (e.g. Safari on a non-HTTPS origin) before our own
-// try/catch ever runs.
+// Optimized for sub-second, instant loading with parallel asset decoding and WebGL rendering.
 const HA = 'https://cdn.jsdelivr.net/gh/met4citizen/HeadAudio@0.1.0-alpha/dist/';
 const params = new URLSearchParams(location.search);
 // external=1: the host app plays the audio and streams lip-sync values in (web build; avoids iframe autoplay blocks).
 const EXTERNAL = params.get('external') === '1';
+
+// Immediately start image fetch & decode in parallel with WebGL shader compilation
+const requestedImg = params.get('img');
+const img = new Image();
+img.decoding = 'async';
+img.src = requestedImg || './avatar.webp';
+const imgPromise = img.decode().catch(() => {
+  if (!img.src.endsWith('.png')) {
+    img.src = './avatar.png';
+    return img.decode().catch(() => {});
+  }
+});
+
 const post = (msg) => {
   const s = JSON.stringify(msg);
   if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(s);
@@ -206,9 +215,7 @@ const U = Object.fromEntries(
   ['uTex', 'uCanvas', 'uOrigin', 'uScale', 'uOpen', 'uWide', 'uRound', 'uBlink', 'uBrow', 'uTilt', 'uHead'].map((n) => [n, gl.getUniformLocation(prog, n)]),
 );
 
-const img = new Image();
-img.src = params.get('img') || './avatar.png';
-await img.decode();
+await imgPromise;
 gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
 gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
@@ -302,18 +309,30 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-// ---------- Audio ----------
-const ctx = new AudioContext();
-const analyser = new AnalyserNode(ctx, { fftSize: 1024 });
-const buf = new Float32Array(analyser.fftSize);
-const out = new DelayNode(ctx, { delayTime: 0.07 }); // lips lead the sound slightly, like real speech
-analyser.connect(out); // analyser sits in the playback chain so it is always processed
-out.connect(ctx.destination);
+// ---------- Audio (lazy-loaded on demand) ----------
+let ctx = null;
+let analyser = null;
+let buf = null;
+let out = null;
 let headaudio = null;
 let source = null;
 
+function getAudio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = new AnalyserNode(ctx, { fftSize: 1024 });
+    buf = new Float32Array(analyser.fftSize);
+    out = new DelayNode(ctx, { delayTime: 0.07 }); // lips lead the sound slightly, like real speech
+    analyser.connect(out);
+    out.connect(ctx.destination);
+    if (!EXTERNAL) ctx.onstatechange = showUnlock;
+  }
+  return { ctx, analyser, buf, out };
+}
+
 async function initHeadAudio() {
   try {
+    const { ctx } = getAudio();
     // Android WebViews (and Safari on a non-HTTPS origin) have no AudioWorklet. Lip-sync then
     // runs on loudness alone, which is why this is a quiet fallback, not an error. The dynamic
     // import keeps any AudioWorkletNode reference inside HeadAudio's own module from throwing
@@ -332,7 +351,7 @@ async function initHeadAudio() {
 
 setInterval(() => {
   if (EXTERNAL) return;
-  if (!speaking) return (s.level = 0);
+  if (!speaking || !analyser || !buf) return (s.level = 0);
   // RMS of the last ~11 ms of output
   analyser.getFloatTimeDomainData(buf);
   let sum = 0;
@@ -356,6 +375,7 @@ function stop() {
 
 async function speak(b64) {
   stop();
+  const { ctx, analyser } = getAudio();
   if (ctx.state !== 'running') {
     ctx.resume(); // don't block: some browsers only allow this after a tap inside this page
     setTimeout(showUnlock, 300);
@@ -402,9 +422,11 @@ addEventListener('message', (e) => {
 // Browsers may block sound until the user taps inside this page; offer an explicit button then.
 const unlockBtn = document.getElementById('unlock');
 function showUnlock() {
+  if (!ctx) return;
   unlockBtn.style.display = ctx.state === 'running' ? 'none' : 'block';
 }
 async function unlock() {
+  const { ctx } = getAudio();
   await ctx.resume().catch(() => {});
   // Safari also wants a sound started inside the gesture.
   const b = new AudioBufferSourceNode(ctx, { buffer: ctx.createBuffer(1, 1, 22050) });
@@ -414,7 +436,6 @@ async function unlock() {
 }
 if (!EXTERNAL) {
   addEventListener('pointerdown', unlock, { passive: true });
-  ctx.onstatechange = showUnlock;
 }
 if (!EXTERNAL) setTimeout(showUnlock, 1500);
 
@@ -425,10 +446,11 @@ if (params.has('debug')) {
   const errs = [];
   addEventListener('error', (e) => errs.push(e.message));
   addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
-  setInterval(() => (el.textContent = `ctx=${ctx.state} speaking=${speaking} ha=${!!headaudio}\nopen=${s.open.toFixed(2)} lvl=${s.level.toFixed(3)} wide=${s.wide.toFixed(2)} round=${s.round.toFixed(2)}\n${errs.slice(-3).join('\n')}`), 100);
+  setInterval(() => (el.textContent = `ctx=${ctx ? ctx.state : 'lazy'} speaking=${speaking} ha=${!!headaudio}\nopen=${s.open.toFixed(2)} lvl=${s.level.toFixed(3)} wide=${s.wide.toFixed(2)} round=${s.round.toFixed(2)}\n${errs.slice(-3).join('\n')}`), 100);
 }
 
-requestAnimationFrame(frame);
+// Paint first frame synchronously and notify host immediately
+frame(performance.now());
 if (!EXTERNAL) await initHeadAudio();
 post({ type: 'ready' });
 </script>

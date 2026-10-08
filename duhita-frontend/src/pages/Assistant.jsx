@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiMic, FiRotateCcw, FiSend, FiSquare } from 'react-icons/fi';
 import DuhitaAvatar from '../components/DuhitaAvatar';
 import useSeo from '../hooks/useSeo';
+import { AI_BASE } from '../lib/patientApi';
 import { respond, talk } from '../lib/duhitaApi';
 import { unlockDuhitaAudio } from '../lib/duhitaVoice';
 
@@ -216,12 +217,22 @@ export default function Assistant() {
               </div>
 
               <div className="relative aspect-[4/3] sm:aspect-square lg:aspect-[4/5] rounded-[22px] overflow-hidden bg-[#d9f3f7] shadow-[0_20px_50px_-25px_rgba(14,154,167,0.5)] border border-white">
-                <DuhitaAvatar ref={avatar} onEvent={onAvatarEvent} />
+                {/* Instant poster placeholder so the doctor avatar is visible immediately from millisecond 0 */}
                 {!avatarReady && (
-                  <div className="absolute inset-0 grid place-items-center pointer-events-none">
-                    <span className="w-8 h-8 rounded-full border-[3px] border-[#0e9aa7]/30 border-t-[#0e9aa7] animate-spin" />
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-b from-[#e6f7fa] to-[#cfeef4] pointer-events-none transition-opacity duration-300">
+                    <img
+                      src={`${AI_BASE}/avatar/avatar.webp`}
+                      onError={(e) => { e.currentTarget.src = `${AI_BASE}/avatar/avatar.png`; }}
+                      alt="Duhita AI"
+                      className="w-full h-full object-cover scale-[1.18]"
+                      style={{ objectPosition: 'center 44%' }}
+                    />
+                    <div className="absolute inset-0 bg-[#0e9aa7]/5 backdrop-blur-[1px] grid place-items-center">
+                      <span className="w-8 h-8 rounded-full border-[3px] border-[#0e9aa7]/30 border-t-[#0e9aa7] animate-spin" />
+                    </div>
                   </div>
                 )}
+                <DuhitaAvatar ref={avatar} onEvent={onAvatarEvent} />
                 <div className="absolute inset-x-2.5 bottom-2.5 flex items-center justify-between gap-1.5">
                   <div className="flex bg-white/95 backdrop-blur-sm rounded-xl p-0.5 shadow-xs">
                     {['en-IN', 'te-IN'].map((l) => (

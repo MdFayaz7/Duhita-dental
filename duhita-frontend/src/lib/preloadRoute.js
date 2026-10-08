@@ -1,3 +1,5 @@
+import { AI_BASE } from './patientApi';
+
 const loaders = {
   '/about': () => import('../pages/About'),
   '/about/dr-nalluru-sasidhar': () => import('../pages/Doctor'),
@@ -12,7 +14,15 @@ const loaders = {
   '/home-service': () => import('../pages/HomeService'),
   '/contact': () => import('../pages/Contact'),
   '/account': () => import('../pages/Account'),
-  '/assistant': () => import('../pages/Assistant'),
+  '/assistant': () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const img = new Image();
+        img.src = `${AI_BASE}/avatar/avatar.webp`;
+      } catch {}
+    }
+    return import('../pages/Assistant');
+  },
   '/admin': () => Promise.all([import('../admin/AdminLayout'), import('../admin/Overview')]),
   '/admin/login': () => import('../admin/Login'),
   '/admin/appointments': () => import('../admin/Appointments'),
