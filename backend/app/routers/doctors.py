@@ -1,60 +1,62 @@
-from datetime import datetime, timezone
-
-from bson import ObjectId
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import delete, select
 
-from ..db import get_db, serialize
+from ..db import SessionDep, serialize
 from ..models import DoctorIn
 from ..security import current_admin
+from ..tables import Doctor
 from ..uploads import IMAGE_TYPES, delete_upload, save_upload
 
 router = APIRouter(prefix="/api/doctors", tags=["doctors"])
 
 
+async def _get(session, doctor_id: int) -> Doctor:
+    doctor = await session.get(Doctor, doctor_id)
+    if not doctor:
+        raise HTTPException(404, "Doctor not found.")
+    return doctor
+
+
 @router.get("")
-async def list_doctors(include_inactive: bool = False):
-    query = {} if include_inactive else {"active": True}
-    cursor = get_db().doctors.find(query).sort([("order", 1), ("name", 1)])
-    return {"items": [serialize(d) for d in await cursor.to_list(100)]}
+async def list_doctors(session: SessionDep, include_inactive: bool = False):
+    stmt = select(Doctor).order_by(Doctor.order, Doctor.name).limit(100)
+    if not include_inactive:
+        stmt = stmt.where(Doctor.active.is_(True))
+    return {"items": [serialize(d) for d in await session.scalars(stmt)]}
 
 
 @router.post("", status_code=201, dependencies=[Depends(current_admin)])
-async def create_doctor(payload: DoctorIn):
-    doc = payload.model_dump()
-    doc["created_at"] = datetime.now(timezone.utc)
-    db = get_db()
-    result = await db.doctors.insert_one(doc)
-    return serialize(await db.doctors.find_one({"_id": result.inserted_id}))
+async def create_doctor(payload: DoctorIn, session: SessionDep):
+    doctor = Doctor(**payload.model_dump())
+    session.add(doctor)
+    await session.commit()
+    return serialize(doctor)
 
 
 @router.post("/{doctor_id}/photo", dependencies=[Depends(current_admin)])
-async def upload_photo(doctor_id: str, file: UploadFile = File(...)):
-    db = get_db()
-    current = await db.doctors.find_one({"_id": ObjectId(doctor_id)})
-    if not current:
-        raise HTTPException(404, "Doctor not found.")
-    path = await save_upload(file, "doctors", IMAGE_TYPES)
-    await delete_upload(current.get("photo"))
-    res = await db.doctors.find_one_and_update(
-        {"_id": ObjectId(doctor_id)}, {"$set": {"photo": path}}, return_document=True
-    )
-    return serialize(res)
+async def upload_photo(doctor_id: int, session: SessionDep, file: UploadFile = File(...)):
+    doctor = await _get(session, doctor_id)
+    old = doctor.photo
+    doctor.photo = await save_upload(session, file, "doctors", IMAGE_TYPES)
+    await delete_upload(session, old)
+    await session.commit()
+    return serialize(doctor)
 
 
 @router.patch("/{doctor_id}", dependencies=[Depends(current_admin)])
-async def update_doctor(doctor_id: str, payload: DoctorIn):
-    res = await get_db().doctors.find_one_and_update(
-        {"_id": ObjectId(doctor_id)}, {"$set": payload.model_dump()}, return_document=True
-    )
-    if not res:
-        raise HTTPException(404, "Doctor not found.")
-    return serialize(res)
+async def update_doctor(doctor_id: int, payload: DoctorIn, session: SessionDep):
+    doctor = await _get(session, doctor_id)
+    for key, value in payload.model_dump().items():
+        setattr(doctor, key, value)
+    await session.commit()
+    return serialize(doctor)
 
 
 @router.delete("/{doctor_id}", dependencies=[Depends(current_admin)])
-async def delete_doctor(doctor_id: str):
-    doc = await get_db().doctors.find_one_and_delete({"_id": ObjectId(doctor_id)})
-    if not doc:
+async def delete_doctor(doctor_id: int, session: SessionDep):
+    row = (await session.execute(delete(Doctor).where(Doctor.id == doctor_id).returning(Doctor.photo))).first()
+    if not row:
         raise HTTPException(404, "Doctor not found.")
-    await delete_upload(doc.get("photo"))
+    await delete_upload(session, row.photo)
+    await session.commit()
     return {"ok": True}

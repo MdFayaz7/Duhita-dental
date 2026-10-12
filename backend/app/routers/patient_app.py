@@ -4,28 +4,20 @@ Patients sign in with their mobile number and a password of their own, and can
 only ever see their own record. The clinic's data is the same one the website
 admin uses, so an appointment booked in the app appears on the dashboard at once.
 """
-from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
+import datetime as dt
 
-from bson import ObjectId
-from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from sqlalchemy import delete, func, or_, select, update
 
-from ..db import get_db, serialize
+from .. import whatsapp
+from ..db import SessionDep, serialize, utcnow
 from ..events import broadcast_event
-from ..models import (
-    AppBookingIn,
-    AppLoginIn,
-    AppPasswordIn,
-    AppProfileUpdate,
-    AppRecordIn,
-    AppRegisterIn,
-)
-from ..routers.patients import _next_patient_id
-from ..uploads import IMAGE_TYPES, PDF_TYPES, delete_upload, save_upload
+from ..models import AppBookingIn, AppLoginIn, AppPasswordIn, AppProfileUpdate, AppRegisterIn
+from ..patients_service import IST, RecordForm, add_patient, add_record
 from ..security import create_patient_token, current_patient, hash_password, verify_password
+from ..tables import Appointment, Patient, Record
+from ..uploads import IMAGE_TYPES, delete_upload, save_upload
 
-IST = ZoneInfo("Asia/Kolkata")
 router = APIRouter(prefix="/api/app", tags=["patient app"])
 
 # Clinic hours, mirrored from the website's booking form.
@@ -34,215 +26,187 @@ SESSIONS = [
     {"id": "evening", "label": "Evening", "range": "3:00 PM – 9:00 PM", "from": 15, "to": 21},
 ]
 BOOKING_DAYS = 30  # how far ahead a patient may book
+ACTIVE = Appointment.status != "cancelled"
 
 
 def _slots(start: int, end: int) -> list[str]:
     return [f"{m // 60:02d}:{m % 60:02d}" for m in range(start * 60, end * 60, 30)]
 
 
-def _today() -> datetime:
-    return datetime.now(IST)
+def _now() -> dt.datetime:
+    return dt.datetime.now(IST)
 
 
-def _public(patient: dict) -> dict:
-    """A patient's own record, without anything private to the clinic."""
-    doc = serialize(patient)
-    doc.pop("password_hash", None)
-    return doc
+def _session_token(patient: Patient) -> dict:
+    return {"access_token": create_patient_token(patient.patient_id), "token_type": "bearer",
+            "patient": serialize(patient)}
 
 
-async def _find_patient(patient_id: str) -> dict:
-    doc = await get_db().patients.find_one({"patient_id": patient_id})
-    if not doc:
+async def _find_patient(session, patient_id: str) -> Patient:
+    patient = await session.scalar(select(Patient).where(Patient.patient_id == patient_id))
+    if not patient:
         raise HTTPException(404, "Your record could not be found. Please contact the clinic.")
-    return doc
+    return patient
+
+
+def _mine(patient: Patient):
+    return or_(Appointment.patient_id == patient.patient_id, Appointment.phone == patient.phone)
 
 
 # ---------------------------------------------------------------- account
 
 @router.get("/check")
-async def check_number(phone: str):
+async def check_number(phone: str, session: SessionDep):
     """Does this mobile number already have a clinic record, and does it have an app login yet?
 
     Lets the app say "we found your record" instead of quietly creating a second one.
     """
-    doc = await get_db().patients.find_one({"phone": phone}, {"password_hash": 1})
-    return {"registered": bool(doc), "has_login": bool(doc and doc.get("password_hash"))}
+    rows = (await session.execute(select(Patient.password_hash).where(Patient.phone == phone))).all()
+    return {"registered": bool(rows), "has_login": any(r.password_hash for r in rows)}
 
 
 @router.post("/register", status_code=201)
-async def register(payload: AppRegisterIn):
+async def register(payload: AppRegisterIn, session: SessionDep):
     """Create an account. A patient already registered at the clinic keeps their Patient ID."""
-    db = get_db()
-    data = payload.model_dump(exclude={"password", "patient_id"})
-    existing = await db.patients.find_one({"phone": payload.phone})
-
     if payload.patient_id:  # linking an existing clinic record by its Patient ID
-        quoted = await db.patients.find_one({"patient_id": payload.patient_id.strip().upper()})
-        if not quoted:
+        existing = await session.scalar(select(Patient).where(Patient.patient_id == payload.patient_id.strip().upper()))
+        if not existing:
             raise HTTPException(404, "No patient found with that Patient ID.")
-        if quoted.get("phone") != payload.phone:
-            raise HTTPException(
-                403, "That Patient ID is registered to a different mobile number. Please call the clinic."
-            )
-        existing = quoted
+        if existing.phone != payload.phone:
+            raise HTTPException(403, "That Patient ID is registered to a different mobile number. Please call the clinic.")
+    else:
+        existing = await session.scalar(
+            select(Patient).where(Patient.phone == payload.phone).order_by(Patient.password_hash.is_(None), Patient.id).limit(1)
+        )
 
-    if existing and existing.get("password_hash"):
+    if existing and existing.password_hash:
         raise HTTPException(409, "This mobile number already has an account. Please sign in instead.")
 
-    changes = {k: v for k, v in data.items() if v not in (None, "", [], {})}
-    changes["password_hash"] = hash_password(payload.password)
-    changes["app_user"] = True
+    changes = {k: v for k, v in payload.model_dump(exclude={"password", "patient_id"}).items()
+               if v not in (None, "", [], {})}
+    changes.update(password_hash=hash_password(payload.password), app_user=True)
 
     if existing:  # registered at the front desk before — attach a login to that record
-        await db.patients.update_one({"_id": existing["_id"]}, {"$set": changes})
-        patient_id = existing["patient_id"]
+        for key, value in changes.items():
+            setattr(existing, key, value)
+        patient = existing
     else:
-        changes["patient_id"] = await _next_patient_id(db)
-        changes["created_at"] = datetime.now(timezone.utc)
-        await db.patients.insert_one(changes)
-        patient_id = changes["patient_id"]
-
-    return {"access_token": create_patient_token(patient_id), "token_type": "bearer",
-            "patient": _public(await _find_patient(patient_id))}
+        patient = await add_patient(session, Patient(**changes))
+    await session.commit()
+    return _session_token(patient)
 
 
 @router.post("/login")
-async def login(payload: AppLoginIn):
-    doc = await get_db().patients.find_one({"phone": payload.phone})
-    if not doc or not doc.get("password_hash") or not verify_password(payload.password, doc["password_hash"]):
+async def login(payload: AppLoginIn, session: SessionDep):
+    patient = await session.scalar(
+        select(Patient).where(Patient.phone == payload.phone, Patient.password_hash.is_not(None)).limit(1)
+    )
+    if not patient or not verify_password(payload.password, patient.password_hash):
         raise HTTPException(401, "Wrong mobile number or password.")
-    return {"access_token": create_patient_token(doc["patient_id"]), "token_type": "bearer",
-            "patient": _public(doc)}
+    return _session_token(patient)
 
 
 @router.get("/me")
-async def me(patient_id: str = Depends(current_patient)):
-    return _public(await _find_patient(patient_id))
+async def me(session: SessionDep, patient_id: str = Depends(current_patient)):
+    return serialize(await _find_patient(session, patient_id))
 
 
 @router.patch("/me")
-async def update_me(payload: AppProfileUpdate, patient_id: str = Depends(current_patient)):
-    changes = {k: v for k, v in payload.model_dump().items() if v is not None}
+async def update_me(payload: AppProfileUpdate, session: SessionDep, patient_id: str = Depends(current_patient)):
+    changes = payload.model_dump(exclude_none=True)
     if not changes:
         raise HTTPException(400, "Nothing to update.")
-    changes["updated_at"] = datetime.now(timezone.utc)
-    doc = await get_db().patients.find_one_and_update(
-        {"patient_id": patient_id}, {"$set": changes}, return_document=True
-    )
-    if not doc:
+    patient = (await session.execute(
+        update(Patient).where(Patient.patient_id == patient_id)
+        .values(**changes, updated_at=utcnow()).returning(Patient)
+    )).scalar_one_or_none()
+    if not patient:
         raise HTTPException(404, "Your record could not be found.")
-    return _public(doc)
+    await session.commit()
+    return serialize(patient)
 
 
 @router.post("/me/password")
-async def change_password(payload: AppPasswordIn, patient_id: str = Depends(current_patient)):
-    doc = await _find_patient(patient_id)
-    if not verify_password(payload.current_password, doc.get("password_hash", "")):
+async def change_password(payload: AppPasswordIn, session: SessionDep, patient_id: str = Depends(current_patient)):
+    patient = await _find_patient(session, patient_id)
+    if not verify_password(payload.current_password, patient.password_hash or ""):
         raise HTTPException(401, "Your current password is not right.")
-    await get_db().patients.update_one(
-        {"patient_id": patient_id}, {"$set": {"password_hash": hash_password(payload.new_password)}}
-    )
+    patient.password_hash = hash_password(payload.new_password)
+    await session.commit()
     return {"ok": True}
 
 
 @router.post("/me/photo")
-async def upload_photo(file: UploadFile = File(...), patient_id: str = Depends(current_patient)):
+async def upload_photo(session: SessionDep, file: UploadFile = File(...), patient_id: str = Depends(current_patient)):
     """Set the patient's profile picture."""
-    doc = await _find_patient(patient_id)
-    path = await save_upload(file, "patients", IMAGE_TYPES)
-    await get_db().patients.update_one({"patient_id": patient_id}, {"$set": {"photo": path}})
-    await delete_upload(doc.get("photo"))  # the one it replaced
-    return {"photo": path}
+    patient = await _find_patient(session, patient_id)
+    old = patient.photo
+    patient.photo = await save_upload(session, file, "patients", IMAGE_TYPES)
+    await delete_upload(session, old)  # the one it replaced
+    await session.commit()
+    return {"photo": patient.photo}
 
 
 @router.delete("/me/photo")
-async def remove_photo(patient_id: str = Depends(current_patient)):
-    doc = await _find_patient(patient_id)
-    await get_db().patients.update_one({"patient_id": patient_id}, {"$unset": {"photo": ""}})
-    await delete_upload(doc.get("photo"))
+async def remove_photo(session: SessionDep, patient_id: str = Depends(current_patient)):
+    patient = await _find_patient(session, patient_id)
+    await delete_upload(session, patient.photo)
+    patient.photo = None
+    await session.commit()
     return {"ok": True}
 
 
 # ---------------------------------------------------------------- records
 
 @router.get("/me/records")
-async def my_records(patient_id: str = Depends(current_patient)):
+async def my_records(session: SessionDep, patient_id: str = Depends(current_patient)):
     """Prescriptions, X-rays and reports — those the clinic adds and those the patient uploads."""
-    cursor = get_db().records.find({"patient_id": patient_id}).sort([("date", -1), ("created_at", -1)])
-    return {"items": [serialize(r) for r in await cursor.to_list(200)]}
+    rows = await session.scalars(
+        select(Record).where(Record.patient_id == patient_id)
+        .order_by(Record.date.desc().nulls_last(), Record.created_at.desc()).limit(200)
+    )
+    return {"items": [serialize(r) for r in rows]}
 
 
 @router.post("/me/records", status_code=201)
-async def add_record(
-    kind: str = Form("report"),
-    title: str = Form(...),
-    notes: str = Form(""),
-    date: str = Form(""),
-    file: UploadFile | None = File(None),
-    patient_id: str = Depends(current_patient),
-):
-    payload = AppRecordIn(kind=kind, title=title, notes=notes or None, date=date or None)
-    db = get_db()
-    doc = {
-        **payload.model_dump(),
-        "patient_id": patient_id,
-        "date": payload.date or _today().strftime("%Y-%m-%d"),
-        "added_by": "patient",
-        "created_at": datetime.now(timezone.utc),
-        "file": None,
-        "file_type": None,
-    }
-    if file is not None and file.filename:
-        allowed = PDF_TYPES if (file.content_type or "").endswith("pdf") else IMAGE_TYPES
-        doc["file"] = await save_upload(file, "records", allowed)
-        doc["file_type"] = "pdf" if allowed is PDF_TYPES else "image"
-
-    result = await db.records.insert_one(doc)
-    return serialize(await db.records.find_one({"_id": result.inserted_id}))
+async def add_my_record(session: SessionDep, form: RecordForm = Depends(), patient_id: str = Depends(current_patient)):
+    return await add_record(session, form, patient_id, "patient")
 
 
 @router.delete("/me/records/{record_id}")
-async def delete_record(record_id: str, patient_id: str = Depends(current_patient)):
+async def delete_record(record_id: int, session: SessionDep, patient_id: str = Depends(current_patient)):
     """A patient may remove what they added; the clinic's own entries stay."""
-    try:
-        oid = ObjectId(record_id)
-    except InvalidId:
-        raise HTTPException(404, "Record not found.")
-    doc = await get_db().records.find_one_and_delete(
-        {"_id": oid, "patient_id": patient_id, "added_by": "patient"}
-    )
-    if not doc:
+    row = (await session.execute(
+        delete(Record).where(Record.id == record_id, Record.patient_id == patient_id, Record.added_by == "patient")
+        .returning(Record.file)
+    )).first()
+    if not row:
         raise HTTPException(404, "That record cannot be removed.")
-    await delete_upload(doc.get("file"))
+    await delete_upload(session, row.file)
+    await session.commit()
     return {"ok": True}
 
 
 # ---------------------------------------------------------------- appointments
 
 @router.get("/slots")
-async def free_slots(date: str):
+async def free_slots(date: str, session: SessionDep):
     """Which times are still open on a given day, and which have passed."""
     try:
-        day = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=IST)
+        day = dt.date.fromisoformat(date)
     except ValueError:
         raise HTTPException(400, "Use a date like 2026-09-30.")
 
-    now = _today()
+    now = _now()
     closed = day.weekday() == 6  # Sunday is by prior appointment only
-    taken = {
-        a["slot"]
-        for a in await get_db().appointments.find(
-            {"date": date, "status": {"$ne": "cancelled"}}, {"slot": 1}
-        ).to_list(400)
-    }
+    taken = set(await session.scalars(select(Appointment.slot).where(Appointment.date == day, ACTIVE)))
 
     sessions = []
     for s in SESSIONS:
         times = []
         for t in _slots(s["from"], s["to"]):
             hour, minute = (int(x) for x in t.split(":"))
-            passed = day.date() == now.date() and (hour, minute) <= (now.hour, now.minute)
+            passed = day == now.date() and (hour, minute) <= (now.hour, now.minute)
             times.append({"time": t, "available": not closed and not passed and t not in taken})
         sessions.append({**{k: s[k] for k in ("id", "label", "range")}, "slots": times})
 
@@ -250,14 +214,14 @@ async def free_slots(date: str):
 
 
 @router.get("/me/appointments")
-async def my_appointments(patient_id: str = Depends(current_patient)):
-    doc = await _find_patient(patient_id)
-    cursor = get_db().appointments.find(
-        {"$or": [{"patient_id": patient_id}, {"phone": doc["phone"]}]}
-    ).sort([("date", -1), ("slot", -1)])
-    items = [serialize(a) for a in await cursor.to_list(200)]
+async def my_appointments(session: SessionDep, patient_id: str = Depends(current_patient)):
+    patient = await _find_patient(session, patient_id)
+    rows = await session.scalars(
+        select(Appointment).where(_mine(patient)).order_by(Appointment.date.desc(), Appointment.slot.desc()).limit(200)
+    )
+    items = [serialize(a) for a in rows]
 
-    today = _today().strftime("%Y-%m-%d")
+    today = _now().date().isoformat()
     upcoming = [a for a in items if a["date"] >= today and a.get("status") not in ("cancelled", "completed")]
     return {
         "upcoming": sorted(upcoming, key=lambda a: (a["date"], a["slot"])),
@@ -266,15 +230,14 @@ async def my_appointments(patient_id: str = Depends(current_patient)):
 
 
 @router.post("/me/appointments", status_code=201)
-async def book(payload: AppBookingIn, patient_id: str = Depends(current_patient)):
-    db = get_db()
-    doc = await _find_patient(patient_id)
+async def book(payload: AppBookingIn, session: SessionDep, background: BackgroundTasks,
+               patient_id: str = Depends(current_patient)):
+    patient = await _find_patient(session, patient_id)
 
-    day = datetime.strptime(payload.date, "%Y-%m-%d").replace(tzinfo=IST)
-    now = _today()
-    if day.date() < now.date():
+    day, now = payload.date, _now()
+    if day < now.date():
         raise HTTPException(400, "That date has already passed.")
-    if day.date() > (now + timedelta(days=BOOKING_DAYS)).date():
+    if day > (now + dt.timedelta(days=BOOKING_DAYS)).date():
         raise HTTPException(400, f"Appointments can be booked up to {BOOKING_DAYS} days ahead.")
     if day.weekday() == 6:
         raise HTTPException(400, "Sundays are by prior appointment only — please call the clinic.")
@@ -282,49 +245,39 @@ async def book(payload: AppBookingIn, patient_id: str = Depends(current_patient)
     hour, minute = (int(x) for x in payload.slot.split(":"))
     if not any(s["from"] <= hour < s["to"] for s in SESSIONS):
         raise HTTPException(400, "That time is outside clinic hours.")
-    if day.date() == now.date() and (hour, minute) <= (now.hour, now.minute):
+    if day == now.date() and (hour, minute) <= (now.hour, now.minute):
         raise HTTPException(400, "That time has already passed today.")
-    if await db.appointments.find_one(
-        {"date": payload.date, "slot": payload.slot, "status": {"$ne": "cancelled"}}
-    ):
+
+    # Serialise bookings for the same slot so two patients can't take it at once.
+    await session.execute(select(func.pg_advisory_xact_lock(int(day.strftime("%Y%m%d")) * 10_000 + hour * 100 + minute)))
+    if await session.scalar(select(Appointment.id).where(Appointment.date == day, Appointment.slot == payload.slot, ACTIVE).limit(1)):
         raise HTTPException(409, "That time has just been taken. Please choose another.")
 
-    appointment = {
-        "patient_id": patient_id,
-        "name": doc["name"],
-        "phone": doc["phone"],
-        "date": payload.date,
-        "slot": payload.slot,
-        "reason": payload.reason,
-        "notes": payload.notes,
-        "status": "pending",
-        "source": "app",
-        "created_at": datetime.now(timezone.utc),
-    }
-    result = await db.appointments.insert_one(appointment)
-    created = serialize(await db.appointments.find_one({"_id": result.inserted_id}))
+    appt = Appointment(patient_id=patient_id, name=patient.name, phone=patient.phone, date=day, slot=payload.slot,
+                       reason=payload.reason, notes=payload.notes, status="pending", source="app")
+    session.add(appt)
+    await session.commit()
+
+    created = serialize(appt)
+    background.add_task(whatsapp.notify_admins_new_appointment, appt.id)
     await broadcast_event("appointment_created", created)
     await broadcast_event("stats_updated")
     return created
 
 
 @router.post("/me/appointments/{appointment_id}/cancel")
-async def cancel(appointment_id: str, patient_id: str = Depends(current_patient)):
-    try:
-        oid = ObjectId(appointment_id)
-    except InvalidId:
-        raise HTTPException(404, "Appointment not found.")
-
-    doc = await _find_patient(patient_id)
-    res = await get_db().appointments.find_one_and_update(
-        {"_id": oid, "$or": [{"patient_id": patient_id}, {"phone": doc["phone"]}],
-         "status": {"$in": ["pending", "confirmed"]}},
-        {"$set": {"status": "cancelled", "updated_at": datetime.now(timezone.utc)}},
-        return_document=True,
-    )
-    if not res:
+async def cancel(appointment_id: int, session: SessionDep, patient_id: str = Depends(current_patient)):
+    patient = await _find_patient(session, patient_id)
+    appt = (await session.execute(
+        update(Appointment)
+        .where(Appointment.id == appointment_id, _mine(patient), Appointment.status.in_(("pending", "confirmed")))
+        .values(status="cancelled", updated_at=utcnow())
+        .returning(Appointment)
+    )).scalar_one_or_none()
+    if not appt:
         raise HTTPException(404, "That appointment cannot be cancelled.")
-    canceled = serialize(res)
-    await broadcast_event("appointment_updated", canceled)
+    await session.commit()
+    cancelled = serialize(appt)
+    await broadcast_event("appointment_updated", cancelled)
     await broadcast_event("stats_updated")
-    return canceled
+    return cancelled

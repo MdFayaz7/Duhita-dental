@@ -3,17 +3,19 @@
 With CLOUDINARY_URL set, clips go to Cloudinary: they are served from its CDN,
 re-encoded to a light 720p stream and get a poster frame, so the website never
 has to stream video through this (small) server. Without it, clips fall back to
-MongoDB GridFS with a tighter size limit.
+Postgres with a tighter size limit.
 """
 import subprocess
 import tempfile
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from .config import settings
-from .uploads import FILE_PREFIX, VIDEO_EXTENSIONS, VIDEO_TYPES, bucket, delete_upload, store_bytes
+from .tables import Feedback
+from .uploads import VIDEO_EXTENSIONS, VIDEO_TYPES, delete_upload, store_bytes
 
 # Portrait-friendly web stream: at most 720px wide, automatic codec and quality.
 STREAM = "c_limit,w_720,q_auto,vc_auto"
@@ -110,8 +112,8 @@ def optimize_video_file(in_path: str, out_path: str) -> bool:
         return False
 
 
-async def save_video(file: UploadFile) -> dict:
-    """Store a clip; returns the fields to keep on the feedback document."""
+async def save_video(session: AsyncSession, file: UploadFile) -> dict:
+    """Store a clip; returns the fields to keep on the feedback row."""
     filename, content_type = _check(file)
 
     if cloud_enabled():
@@ -131,7 +133,7 @@ async def save_video(file: UploadFile) -> dict:
             raise HTTPException(502, f"Video upload to Cloudinary failed: {exc}") from exc
         return {"cloud_id": result["public_id"], **_urls(result["public_id"])}
 
-    # GridFS fallback — compress to 720p with faststart so the browser can play immediately
+    # Postgres fallback — compress to 720p with faststart so the browser can play immediately
     with tempfile.NamedTemporaryFile(suffix=Path(filename).suffix or ".mp4", delete=False) as raw_tmp:
         raw_path = raw_tmp.name
         while chunk := file.file.read(1024 * 1024):
@@ -148,27 +150,25 @@ async def save_video(file: UploadFile) -> dict:
         final_type = "video/mp4"
 
     try:
-        with open(stream_path, "rb") as final_stream:
-            file_id = await bucket().upload_from_stream(
-                filename, final_stream, metadata={"content_type": final_type, "folder": "feedback"}
-            )
+        data = await run_in_threadpool(Path(stream_path).read_bytes)
         cover = await run_in_threadpool(grab_cover, stream_path)
     finally:
         for p in (raw_path, opt_path):
             Path(p).unlink(missing_ok=True)
 
-    poster = await store_bytes(cover, f"{Path(filename).stem}-cover.jpg", "image/jpeg", "feedback") if cover else ""
-    return {"src": f"{FILE_PREFIX}{file_id}", "poster": poster}
+    src = store_bytes(session, data, filename, final_type, "feedback")
+    poster = store_bytes(session, cover, f"{Path(filename).stem}-cover.jpg", "image/jpeg", "feedback") if cover else ""
+    return {"src": src, "poster": poster}
 
 
-async def delete_video(doc: dict) -> None:
-    if doc.get("cloud_id"):
+async def delete_video(session: AsyncSession, clip: Feedback) -> None:
+    if clip.cloud_id:
         try:
             await run_in_threadpool(
-                _cloudinary().uploader.destroy, doc["cloud_id"], resource_type="video", invalidate=True
+                _cloudinary().uploader.destroy, clip.cloud_id, resource_type="video", invalidate=True
             )
         except Exception:
             pass  # already gone or Cloudinary unreachable — the website no longer lists it anyway
         return
-    await delete_upload(doc.get("src"))
-    await delete_upload(doc.get("poster"))
+    await delete_upload(session, clip.src)
+    await delete_upload(session, clip.poster)

@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -6,29 +7,32 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pymongo.errors import PyMongoError
+from sqlalchemy import text
+from sqlalchemy.exc import InterfaceError, OperationalError
 
+from . import events, whatsapp
 from .config import settings
-from .db import ensure_indexes
+from .db import engine
 from .routers import (
     appointments, auth, doctors, feedback, files, gallery, patient_app, patients, research, schedule, stats,
 )
+from .routers import whatsapp as whatsapp_router
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
-    try:
-        await ensure_indexes()
-    except Exception as exc:  # the API should still boot if Mongo is briefly unreachable
-        print(f"[startup] Mongo indexes not created: {exc}")
     yield
+    await whatsapp.aclose()
+    await engine.dispose()
 
 
 app = FastAPI(
     title="Duhita Dental API",
     description="Backend for the Duhita Multispeciality Dental Centre website and admin dashboard.",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -42,6 +46,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.middleware("http")
 async def log_rejected_origins(request: Request, call_next):
     """Make CORS failures self-explaining in the server log; keep JSON reads fresh and static assets cached."""
@@ -51,7 +56,6 @@ async def log_rejected_origins(request: Request, call_next):
         # Admin edits must show up on the next page view — never serve a cached list.
         response.headers["Cache-Control"] = "no-store"
     elif request.method == "GET" and path.startswith("/uploads/"):
-        # Uploaded images can be cached by browsers for optimal loading speed.
         response.headers["Cache-Control"] = "public, max-age=604800"
 
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -63,24 +67,22 @@ async def log_rejected_origins(request: Request, call_next):
     return response
 
 
-app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+app.mount("/uploads", StaticFiles(directory=settings.upload_dir, check_dir=False), name="uploads")
 
-from . import events
-from .routers import (
-    appointments, auth, doctors, feedback, files, gallery, patient_app, patients, research, schedule, stats,
-)
-
-for router in (events, auth, patients, appointments, schedule, doctors, research, gallery, feedback, files, stats, patient_app):
+for router in (events, auth, patients, appointments, schedule, doctors, research, gallery, feedback, files, stats,
+               patient_app, whatsapp_router):
     app.include_router(router.router)
 
 
-@app.exception_handler(PyMongoError)
-async def mongo_error(_: Request, exc: PyMongoError):
+@app.exception_handler(OperationalError)
+@app.exception_handler(InterfaceError)
+@app.exception_handler(ConnectionError)
+async def database_error(_: Request, exc: Exception):
     """Database problems should read clearly in the dashboard, not as a network error."""
-    print(f"[mongo] {exc}")
+    print(f"[db] {type(exc).__name__}: {exc}")
     return JSONResponse(
         status_code=503,
-        content={"detail": "Database unavailable. Check MONGO_URI in backend/.env and that the IP is allowed in Atlas."},
+        content={"detail": "Database unavailable. Check DATABASE_URL in backend/.env and that Postgres is running."},
     )
 
 
@@ -92,10 +94,9 @@ async def unhandled_error(_: Request, exc: Exception):
 
 @app.get("/api/health", tags=["health"])
 async def health():
-    from .db import get_db
-
     try:
-        await get_db().command("ping")
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
         db_ok = True
     except Exception:
         db_ok = False

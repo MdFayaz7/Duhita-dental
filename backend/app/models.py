@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime as dt
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -19,6 +19,7 @@ class Token(BaseModel):
 # ---------- patient app (mobile) ----------
 
 PHONE = r"^[6-9]\d{9}$"
+SLOT = r"^([01]\d|2[0-3]):[0-5]\d$"
 
 
 class AppRegisterIn(BaseModel):
@@ -67,7 +68,7 @@ class AppRecordIn(BaseModel):
     kind: RecordKind = "report"
     title: str = Field(min_length=2, max_length=140)
     notes: str | None = Field(default=None, max_length=800)
-    date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    date: dt.date | None = None
 
 
 class AppPasswordIn(BaseModel):
@@ -76,8 +77,8 @@ class AppPasswordIn(BaseModel):
 
 
 class AppBookingIn(BaseModel):
-    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-    slot: str = Field(pattern=r"^\d{2}:\d{2}$")
+    date: dt.date
+    slot: str = Field(pattern=SLOT)
     reason: str | None = Field(default=None, max_length=200)
     notes: str | None = Field(default=None, max_length=800)
 
@@ -103,7 +104,7 @@ class PatientIn(BaseModel):
 class PatientOut(PatientIn):
     id: str
     patient_id: str
-    created_at: datetime
+    created_at: dt.datetime
 
 
 # ---------- appointments ----------
@@ -115,8 +116,8 @@ class AppointmentIn(BaseModel):
     patient_id: str | None = None
     name: str = Field(min_length=2, max_length=120)
     phone: str = Field(pattern=r"^[6-9]\d{9}$")
-    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-    slot: str = Field(pattern=r"^\d{2}:\d{2}$")
+    date: dt.date
+    slot: str = Field(pattern=SLOT)
     doctor: str | None = None
     reason: str | None = None
     notes: str | None = None
@@ -124,8 +125,8 @@ class AppointmentIn(BaseModel):
 
 class AppointmentUpdate(BaseModel):
     status: AppointmentStatus | None = None
-    date: str | None = None
-    slot: str | None = None
+    date: dt.date | None = None
+    slot: str | None = Field(default=None, pattern=SLOT)
     doctor: str | None = None
     notes: str | None = None
 
@@ -133,9 +134,9 @@ class AppointmentUpdate(BaseModel):
 # ---------- daily schedule ----------
 
 class ScheduleIn(BaseModel):
-    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-    time_from: str = Field(pattern=r"^\d{2}:\d{2}$")
-    time_to: str | None = Field(default=None, pattern=r"^\d{2}:\d{2}$")
+    date: dt.date
+    time_from: str = Field(pattern=SLOT)
+    time_to: str | None = Field(default=None, pattern=SLOT)
     patient_name: str
     patient_id: str | None = None
     doctor: str | None = None
@@ -145,8 +146,8 @@ class ScheduleIn(BaseModel):
 
 
 class ScheduleUpdate(BaseModel):
-    time_from: str | None = None
-    time_to: str | None = None
+    time_from: str | None = Field(default=None, pattern=SLOT)
+    time_to: str | None = Field(default=None, pattern=SLOT)
     patient_name: str | None = None
     patient_id: str | None = None
     doctor: str | None = None

@@ -5,7 +5,7 @@ Four parts in this repo:
 | Folder | What it is | Production host |
 |---|---|---|
 | `duhita-frontend/` | React + Vite + Tailwind website, admin dashboard at `/admin` | `duhitadental.com` (port 80) |
-| `backend/` | FastAPI + MongoDB API | `api.duhitadental.com` (port 8000) |
+| `backend/` | FastAPI + PostgreSQL API (SQLAlchemy async, Alembic) | `api.duhitadental.com` (port 8000) |
 | `ai-server/` | Duhita AI (talking assistant + voice) | `ai.duhitadental.com` (port 8787) |
 | `patient-app/` | Expo / React Native patient app | n/a — distributed via EAS/app stores |
 
@@ -20,8 +20,8 @@ them) — ignore their DNS-mismatch warnings, only the bare subdomains matter.
 
 ## Secrets
 
-`backend/.env` and `ai-server/.env` are real, gitignored, and hold live credentials (Mongo URI, JWT
-secret, Cloudinary key, etc). They are **not** in git and won't be in a zip/clone of this repo — recreate
+`backend/.env` and `ai-server/.env` are real, gitignored, and hold live credentials (DATABASE_URL, JWT
+secret, Cloudinary key, WhatsApp token, etc). They are **not** in git and won't be in a zip/clone of this repo — recreate
 them from the matching `.env.example` with real values, transferred out-of-band (AirDrop/USB), never
 through git, chat, or email.
 
@@ -42,3 +42,13 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
   native equivalents (`ActionBar`, `AriaButton` in `App.tsx`). If `duhita-frontend/src/components/Layout.jsx`
   changes that button's `aria-label`, update the matching CSS selector here too, or the duplicate bot
   icon bug comes back.
+
+## Backend specifics
+
+- Postgres via SQLAlchemy 2.0 async + asyncpg. Schema lives in `backend/app/tables.py`; every change needs an
+  Alembic revision (`alembic revision --autogenerate`), and the container runs `alembic upgrade head` on start.
+- Uploaded files are rows in the `files` table (served at `/api/files/<id>`); ids migrated from Mongo GridFS were kept.
+- `python -m app.migrate_from_mongo` is the one-off MongoDB → Postgres copy; Mongo is otherwise gone.
+- New bookings WhatsApp the admins a Confirm button (Meta Cloud API, approved templates); confirming — by that
+  button or the dashboard — WhatsApps the patient once. Setup and template text: `backend/README.md`.
+- Tests need a real Postgres: `TEST_DATABASE_URL=... pytest` in `backend/`.

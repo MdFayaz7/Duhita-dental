@@ -1,123 +1,112 @@
-import random
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+import datetime as dt
 
-IST = ZoneInfo("Asia/Kolkata")
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import delete, func, or_, select, update
 
-from bson import ObjectId
-from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-
-from ..db import get_db, serialize
+from ..db import SessionDep, contains, serialize
 from ..events import broadcast_event
-from ..models import AppRecordIn, PatientIn
+from ..models import PatientIn
+from ..patients_service import IST, RecordForm, add_patient, add_record
 from ..security import current_admin
-from ..uploads import IMAGE_TYPES, PDF_TYPES, delete_upload, save_upload
+from ..tables import Appointment, Patient, Record
+from ..uploads import delete_upload
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
 
-async def _next_patient_id(db) -> str:
-    stamp = datetime.now(IST).strftime("%y%m")
-    for _ in range(25):
-        candidate = f"DD{stamp}-{random.randint(1000, 9999)}"
-        if not await db.patients.find_one({"patient_id": candidate}):
-            return candidate
-    raise HTTPException(500, "Could not allocate a patient ID. Please try again.")
-
-
 @router.post("", status_code=201)
-async def register(payload: PatientIn):
-    db = get_db()
-    doc = payload.model_dump()
-    doc["patient_id"] = await _next_patient_id(db)
-    doc["created_at"] = datetime.now(timezone.utc)
-    await db.patients.insert_one(doc)
-    res = {"patient_id": doc["patient_id"], "name": doc["name"]}
-    await broadcast_event("patient_registered", serialize(doc))
+async def register(payload: PatientIn, session: SessionDep):
+    patient = await add_patient(session, Patient(**payload.model_dump()))
+    await session.commit()
+    await broadcast_event("patient_registered", serialize(patient))
     await broadcast_event("stats_updated")
-    return res
+    return {"patient_id": patient.patient_id, "name": patient.name}
 
 
 @router.get("/lookup/{patient_id}")
-async def lookup(patient_id: str):
+async def lookup(patient_id: str, session: SessionDep):
     """Used by the booking form to fill in name and phone."""
-    doc = await get_db().patients.find_one({"patient_id": patient_id.strip().upper()})
-    if not doc:
+    row = (await session.execute(
+        select(Patient.patient_id, Patient.name, Patient.phone).where(Patient.patient_id == patient_id.strip().upper())
+    )).first()
+    if not row:
         raise HTTPException(404, "No patient found with that ID.")
-    return {"patient_id": doc["patient_id"], "name": doc["name"], "phone": doc["phone"]}
+    return row._asdict()
 
 
 @router.post("/{patient_id}/reset-app-login", dependencies=[Depends(current_admin)])
-async def reset_app_login(patient_id: str):
+async def reset_app_login(patient_id: str, session: SessionDep):
     """Clear a patient's app password so they can set a new one by registering again.
 
     Used when a patient calls the clinic saying they forgot their app password.
     """
-    res = await get_db().patients.find_one_and_update(
-        {"patient_id": patient_id.strip().upper()},
-        {"$unset": {"password_hash": ""}},
-        return_document=True,
-    )
-    if not res:
+    row = (await session.execute(
+        update(Patient).where(Patient.patient_id == patient_id.strip().upper())
+        .values(password_hash=None).returning(Patient.patient_id, Patient.name)
+    )).first()
+    if not row:
         raise HTTPException(404, "No patient found with that ID.")
-    return {"ok": True, "patient_id": res["patient_id"], "name": res["name"]}
+    await session.commit()
+    return {"ok": True, **row._asdict()}
 
 
 @router.get("")
 async def list_patients(
+    session: SessionDep,
     q: str | None = None,
-    date_from: str | None = Query(None, description="YYYY-MM-DD, registered on or after"),
-    date_to: str | None = Query(None, description="YYYY-MM-DD, registered on or before"),
+    date_from: dt.date | None = Query(None, description="YYYY-MM-DD (clinic time), registered on or after"),
+    date_to: dt.date | None = Query(None, description="YYYY-MM-DD (clinic time), registered on or before"),
     sort: str = Query("newest", pattern="^(newest|oldest|name)$"),
     limit: int = Query(50, le=500),
-    skip: int = 0,
+    skip: int = Query(0, ge=0),
     _: str = Depends(current_admin),
 ):
-    query: dict = {}
-    if q:
-        query["$or"] = [
-            {"name": {"$regex": q, "$options": "i"}},
-            {"phone": {"$regex": q}},
-            {"patient_id": {"$regex": q, "$options": "i"}},
-        ]
-    if date_from or date_to:
-        window: dict = {}
-        if date_from:
-            window["$gte"] = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
-        if date_to:
-            window["$lte"] = datetime.fromisoformat(date_to).replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
-        query["created_at"] = window
+    filters = []
+    if q and q.strip():
+        filters.append(or_(contains(Patient.name, q), contains(Patient.phone, q), contains(Patient.patient_id, q)))
+    if date_from:
+        filters.append(Patient.created_at >= dt.datetime.combine(date_from, dt.time.min, IST))
+    if date_to:
+        filters.append(Patient.created_at < dt.datetime.combine(date_to + dt.timedelta(days=1), dt.time.min, IST))
 
-    order = {"newest": [("created_at", -1)], "oldest": [("created_at", 1)], "name": [("name", 1)]}[sort]
-    db = get_db()
-    cursor = db.patients.find(query).sort(order).skip(skip).limit(limit)
-    return {
-        "total": await db.patients.count_documents(query),
-        "items": [serialize(d) for d in await cursor.to_list(limit)],
-    }
+    order = {"newest": Patient.created_at.desc(), "oldest": Patient.created_at.asc(), "name": Patient.name.asc()}[sort]
+    # One round trip: the page plus the total, via a window count.
+    rows = (await session.execute(
+        select(Patient, func.count().over().label("total")).where(*filters).order_by(order).offset(skip).limit(limit)
+    )).all()
+    total = rows[0].total if rows else (
+        await session.scalar(select(func.count()).select_from(Patient).where(*filters)) if skip else 0
+    )
+    return {"total": total, "items": [serialize(r.Patient) for r in rows]}
 
 
 @router.get("/{patient_id}")
-async def patient_detail(patient_id: str, _: str = Depends(current_admin)):
-    db = get_db()
-    doc = await db.patients.find_one({"patient_id": patient_id.upper()})
-    if not doc:
+async def patient_detail(patient_id: str, session: SessionDep, _: str = Depends(current_admin)):
+    patient = await session.scalar(select(Patient).where(Patient.patient_id == patient_id.upper()))
+    if not patient:
         raise HTTPException(404, "Patient not found.")
-    history = await db.appointments.find({"patient_id": doc["patient_id"]}).sort("date", -1).to_list(50)
-    records = await db.records.find({"patient_id": doc["patient_id"]}).sort([("date", -1), ("created_at", -1)]).to_list(200)
+    history = await session.scalars(
+        select(Appointment).where(Appointment.patient_id == patient.patient_id).order_by(Appointment.date.desc()).limit(50)
+    )
+    records = await session.scalars(
+        select(Record).where(Record.patient_id == patient.patient_id)
+        .order_by(Record.date.desc().nulls_last(), Record.created_at.desc()).limit(200)
+    )
     return {
-        "patient": serialize(doc),
+        "patient": serialize(patient),
         "appointments": [serialize(a) for a in history],
         "records": [serialize(r) for r in records],
     }
 
 
 @router.delete("/{patient_id}")
-async def delete_patient(patient_id: str, _: str = Depends(current_admin)):
-    res = await get_db().patients.delete_one({"patient_id": patient_id})
-    if not res.deleted_count:
+async def delete_patient(patient_id: str, session: SessionDep, _: str = Depends(current_admin)):
+    deleted = (await session.execute(
+        delete(Patient).where(Patient.patient_id == patient_id).returning(Patient.id)
+    )).scalar_one_or_none()
+    if deleted is None:
         raise HTTPException(404, "Patient not found.")
+    await session.commit()
     await broadcast_event("patient_deleted", {"patient_id": patient_id})
     await broadcast_event("stats_updated")
     return {"ok": True}
@@ -128,49 +117,24 @@ async def delete_patient(patient_id: str, _: str = Depends(current_admin)):
 # show up automatically in that patient's app/website record once logged in.
 
 @router.post("/{patient_id}/records", status_code=201)
-async def add_record(
-    patient_id: str,
-    kind: str = Form("report"),
-    title: str = Form(...),
-    notes: str = Form(""),
-    date: str = Form(""),
-    file: UploadFile | None = File(None),
-    _: str = Depends(current_admin),
-):
-    db = get_db()
-    if not await db.patients.find_one({"patient_id": patient_id.upper()}, {"_id": 1}):
+async def add_clinic_record(patient_id: str, session: SessionDep, form: RecordForm = Depends(),
+                            _: str = Depends(current_admin)):
+    patient_id = patient_id.upper()
+    if not await session.scalar(select(Patient.id).where(Patient.patient_id == patient_id)):
         raise HTTPException(404, "Patient not found.")
-
-    payload = AppRecordIn(kind=kind, title=title, notes=notes or None, date=date or None)
-    doc = {
-        **payload.model_dump(),
-        "patient_id": patient_id.upper(),
-        "date": payload.date or datetime.now(IST).strftime("%Y-%m-%d"),
-        "added_by": "clinic",
-        "created_at": datetime.now(timezone.utc),
-        "file": None,
-        "file_type": None,
-    }
-    if file is not None and file.filename:
-        allowed = PDF_TYPES if (file.content_type or "").endswith("pdf") else IMAGE_TYPES
-        doc["file"] = await save_upload(file, "records", allowed)
-        doc["file_type"] = "pdf" if allowed is PDF_TYPES else "image"
-
-    result = await db.records.insert_one(doc)
-    created = serialize(await db.records.find_one({"_id": result.inserted_id}))
-    await broadcast_event("record_updated", {"patient_id": patient_id.upper(), "record": created})
+    created = await add_record(session, form, patient_id, "clinic")
+    await broadcast_event("record_updated", {"patient_id": patient_id, "record": created})
     return created
 
 
 @router.delete("/{patient_id}/records/{record_id}")
-async def delete_record(patient_id: str, record_id: str, _: str = Depends(current_admin)):
-    try:
-        oid = ObjectId(record_id)
-    except InvalidId:
+async def delete_record(patient_id: str, record_id: int, session: SessionDep, _: str = Depends(current_admin)):
+    file = (await session.execute(
+        delete(Record).where(Record.id == record_id, Record.patient_id == patient_id.upper()).returning(Record.file)
+    )).first()
+    if not file:
         raise HTTPException(404, "Record not found.")
-    doc = await get_db().records.find_one_and_delete({"_id": oid, "patient_id": patient_id.upper()})
-    if not doc:
-        raise HTTPException(404, "Record not found.")
-    await delete_upload(doc.get("file"))
-    await broadcast_event("record_updated", {"patient_id": patient_id.upper(), "record_id": record_id})
+    await delete_upload(session, file.file)
+    await session.commit()
+    await broadcast_event("record_updated", {"patient_id": patient_id.upper(), "record_id": str(record_id)})
     return {"ok": True}

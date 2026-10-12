@@ -1,53 +1,62 @@
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+import datetime as dt
+from collections.abc import AsyncIterator
+from typing import Annotated, Any
+
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from .config import settings
 
-_client: AsyncIOMotorClient | None = None
+engine = create_async_engine(
+    settings.async_database_url,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
+SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
-def get_client() -> AsyncIOMotorClient:
-    global _client
-    if _client is None:
-        _client = AsyncIOMotorClient(
-            settings.mongo_uri,
-            uuidRepresentation="standard",
-            maxPoolSize=50,
-            minPoolSize=5,
-            serverSelectionTimeoutMS=5000,
-        )
-    return _client
+async def get_session() -> AsyncIterator[AsyncSession]:
+    async with SessionLocal() as session:
+        yield session
 
 
-def get_db() -> AsyncIOMotorDatabase:
-    return get_client()[settings.mongo_db]
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+PRIVATE_COLUMNS = {"extra", "password_hash"}
 
 
-async def ensure_indexes() -> None:
-    db = get_db()
-    await db.admins.create_index("username", unique=True)
-    await db.patients.create_index("patient_id", unique=True)
-    await db.patients.create_index("phone")
-    await db.appointments.create_index([("date", 1), ("slot", 1)])
-    await db.appointments.create_index("patient_id")
-    await db.schedule.create_index([("date", 1), ("priority", 1)])
-    await db.gallery.create_index([("category", 1), ("order", 1)])
-    await db.research.create_index("created_at")
-    await db.doctors.create_index("order")
-    await db.feedback.create_index([("order", 1), ("created_at", -1)])
+def serialize(row: Any) -> dict | None:
+    """ORM row -> JSON-safe dict: string id, ISO dates, UTC ISO timestamps, private columns dropped.
 
-
-import datetime
-
-
-def serialize(doc: dict | None) -> dict | None:
-    """Mongo document -> JSON-safe dict with UTC ISO8601 timestamps."""
-    if not doc:
+    Fields that only existed in the old Mongo documents live in `extra` and are merged
+    back in, so nothing the clients relied on disappears.
+    """
+    if row is None:
         return None
-    doc = dict(doc)
-    doc["id"] = str(doc.pop("_id"))
-    for k, v in list(doc.items()):
-        if isinstance(v, datetime.datetime):
-            if v.tzinfo is None:
-                v = v.replace(tzinfo=datetime.timezone.utc)
-            doc[k] = v.isoformat()
-    return doc
+    out: dict = dict(getattr(row, "extra", None) or {})
+    for column in row.__table__.columns:
+        if column.key in PRIVATE_COLUMNS:
+            continue
+        value = getattr(row, column.key)
+        if isinstance(value, dt.datetime):
+            value = (value if value.tzinfo else value.replace(tzinfo=dt.timezone.utc)).isoformat()
+        elif isinstance(value, dt.date):
+            value = value.isoformat()
+        out[column.key] = value
+    out["id"] = str(row.id)
+    return out
+
+
+def escape_like(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def contains(column, text: str):
+    """Case-insensitive substring match, served by the trigram indexes."""
+    return column.ilike(f"%{escape_like(text.strip())}%", escape="\\")
+
+
+def utcnow() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)

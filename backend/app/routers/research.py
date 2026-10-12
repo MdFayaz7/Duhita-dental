@@ -1,23 +1,23 @@
-from datetime import datetime, timezone
-
-from bson import ObjectId
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import delete, select
 
-from ..db import get_db, serialize
+from ..db import SessionDep, serialize
 from ..security import current_admin
+from ..tables import Research
 from ..uploads import PDF_TYPES, delete_upload, save_upload
 
 router = APIRouter(prefix="/api/research", tags=["research"])
 
 
 @router.get("")
-async def list_papers():
-    cursor = get_db().research.find().sort("created_at", -1)
-    return {"items": [serialize(d) for d in await cursor.to_list(200)]}
+async def list_papers(session: SessionDep):
+    rows = await session.scalars(select(Research).order_by(Research.created_at.desc()).limit(200))
+    return {"items": [serialize(r) for r in rows]}
 
 
 @router.post("", status_code=201, dependencies=[Depends(current_admin)])
 async def create_paper(
+    session: SessionDep,
     title: str = Form(...),
     authors: str = Form(...),
     publication: str = Form(""),
@@ -26,24 +26,24 @@ async def create_paper(
     description: str = Form(""),
     file: UploadFile | None = File(None),
 ):
-    doc = {
-        "title": title.strip(),
-        "authors": authors.strip(),
-        "publication": publication.strip() or None,
-        "year": year.strip() or None,
-        "category": category.strip() or None,
-        "description": description.strip() or None,
-        "file": await save_upload(file, "research", PDF_TYPES) if file else None,
-        "created_at": datetime.now(timezone.utc),
-    }
-    db = get_db()
-    result = await db.research.insert_one(doc)
-    return serialize(await db.research.find_one({"_id": result.inserted_id}))
+    paper = Research(
+        title=title.strip(),
+        authors=authors.strip(),
+        publication=publication.strip() or None,
+        year=year.strip() or None,
+        category=category.strip() or None,
+        description=description.strip() or None,
+        file=await save_upload(session, file, "research", PDF_TYPES) if file else None,
+    )
+    session.add(paper)
+    await session.commit()
+    return serialize(paper)
 
 
 @router.patch("/{paper_id}", dependencies=[Depends(current_admin)])
 async def update_paper(
-    paper_id: str,
+    paper_id: int,
+    session: SessionDep,
     title: str | None = Form(None),
     authors: str | None = Form(None),
     publication: str | None = Form(None),
@@ -52,32 +52,31 @@ async def update_paper(
     description: str | None = Form(None),
     file: UploadFile | None = File(None),
 ):
-    db = get_db()
-    current = await db.research.find_one({"_id": ObjectId(paper_id)})
-    if not current:
+    paper = await session.get(Research, paper_id)
+    if not paper:
         raise HTTPException(404, "Paper not found.")
 
     changes = {k: v for k, v in {
         "title": title, "authors": authors, "publication": publication,
         "year": year, "category": category, "description": description,
     }.items() if v is not None}
-
     if file:
-        changes["file"] = await save_upload(file, "research", PDF_TYPES)
-        await delete_upload(current.get("file"))
+        await delete_upload(session, paper.file)
+        changes["file"] = await save_upload(session, file, "research", PDF_TYPES)
     if not changes:
         raise HTTPException(400, "Nothing to update.")
 
-    res = await db.research.find_one_and_update(
-        {"_id": ObjectId(paper_id)}, {"$set": changes}, return_document=True
-    )
-    return serialize(res)
+    for key, value in changes.items():
+        setattr(paper, key, value)
+    await session.commit()
+    return serialize(paper)
 
 
 @router.delete("/{paper_id}", dependencies=[Depends(current_admin)])
-async def delete_paper(paper_id: str):
-    doc = await get_db().research.find_one_and_delete({"_id": ObjectId(paper_id)})
-    if not doc:
+async def delete_paper(paper_id: int, session: SessionDep):
+    row = (await session.execute(delete(Research).where(Research.id == paper_id).returning(Research.file))).first()
+    if not row:
         raise HTTPException(404, "Paper not found.")
-    await delete_upload(doc.get("file"))
+    await delete_upload(session, row.file)
+    await session.commit()
     return {"ok": True}

@@ -1,23 +1,27 @@
-from datetime import datetime, timezone
+import datetime as dt
 
-from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from sqlalchemy import delete as sql_delete
+from sqlalchemy import or_, select
 
-from ..db import get_db, serialize
+from .. import whatsapp
+from ..db import SessionDep, contains, serialize, utcnow
 from ..events import broadcast_event
 from ..models import AppointmentIn, AppointmentUpdate
 from ..security import current_admin
+from ..tables import Appointment
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 
 @router.post("", status_code=201)
-async def create(payload: AppointmentIn):
-    db = get_db()
-    doc = payload.model_dump()
-    doc.update(status="pending", created_at=datetime.now(timezone.utc))
-    result = await db.appointments.insert_one(doc)
-    created = {"id": str(result.inserted_id), **{k: doc[k] for k in ("name", "date", "slot", "phone", "status")}}
+async def create(payload: AppointmentIn, session: SessionDep, background: BackgroundTasks):
+    appt = Appointment(**payload.model_dump(), status="pending", source="website")
+    session.add(appt)
+    await session.commit()
+    created = {"id": str(appt.id), "name": appt.name, "date": appt.date.isoformat(), "slot": appt.slot,
+               "phone": appt.phone, "status": appt.status}
+    background.add_task(whatsapp.notify_admins_new_appointment, appt.id)
     await broadcast_event("appointment_created", created)
     await broadcast_event("stats_updated")
     return created
@@ -25,51 +29,61 @@ async def create(payload: AppointmentIn):
 
 @router.get("")
 async def list_appointments(
-    date: str | None = None,
+    session: SessionDep,
+    date: dt.date | None = None,
     status: str | None = None,
     q: str | None = None,
     limit: int = Query(200, le=500),
     _: str = Depends(current_admin),
 ):
-    query: dict = {}
+    stmt = select(Appointment)
     if date:
-        query["date"] = date
+        stmt = stmt.where(Appointment.date == date).order_by(Appointment.slot)
+    else:
+        stmt = stmt.order_by(Appointment.date.desc(), Appointment.slot)
     if status and status != "all":
-        query["status"] = status
-    if q:
-        query["$or"] = [
-            {"name": {"$regex": q, "$options": "i"}},
-            {"phone": {"$regex": q}},
-            {"patient_id": {"$regex": q, "$options": "i"}},
-        ]
-    db = get_db()
-    order = [("slot", 1)] if date else [("date", -1), ("slot", 1)]
-    cursor = db.appointments.find(query).sort(order).limit(limit)
-    return {"items": [serialize(d) for d in await cursor.to_list(limit)]}
+        stmt = stmt.where(Appointment.status == status)
+    if q and q.strip():
+        stmt = stmt.where(or_(contains(Appointment.name, q), contains(Appointment.phone, q),
+                              contains(Appointment.patient_id, q)))
+    rows = (await session.scalars(stmt.limit(limit))).all()
+    return {"items": [serialize(r) for r in rows]}
 
 
 @router.patch("/{appointment_id}")
-async def update(appointment_id: str, payload: AppointmentUpdate, _: str = Depends(current_admin)):
-    changes = {k: v for k, v in payload.model_dump().items() if v is not None}
+async def update(appointment_id: int, payload: AppointmentUpdate, session: SessionDep,
+                 background: BackgroundTasks, _: str = Depends(current_admin)):
+    changes = payload.model_dump(exclude_none=True)
     if not changes:
         raise HTTPException(400, "Nothing to update.")
-    changes["updated_at"] = datetime.now(timezone.utc)
-    res = await get_db().appointments.find_one_and_update(
-        {"_id": ObjectId(appointment_id)}, {"$set": changes}, return_document=True
-    )
-    if not res:
+    appt = await session.get(Appointment, appointment_id, with_for_update=True)
+    if not appt:
         raise HTTPException(404, "Appointment not found.")
-    serialized = serialize(res)
+
+    newly_confirmed = changes.get("status") == "confirmed" and appt.status != "confirmed"
+    for key, value in changes.items():
+        setattr(appt, key, value)
+    appt.updated_at = utcnow()
+    if newly_confirmed:
+        appt.confirmed_at = appt.updated_at
+    await session.commit()
+
+    if newly_confirmed:
+        background.add_task(whatsapp.notify_patient_confirmed, appt.id)
+    serialized = serialize(appt)
     await broadcast_event("appointment_updated", serialized)
     await broadcast_event("stats_updated")
     return serialized
 
 
 @router.delete("/{appointment_id}")
-async def delete(appointment_id: str, _: str = Depends(current_admin)):
-    res = await get_db().appointments.delete_one({"_id": ObjectId(appointment_id)})
-    if not res.deleted_count:
+async def delete(appointment_id: int, session: SessionDep, _: str = Depends(current_admin)):
+    deleted = (await session.execute(
+        sql_delete(Appointment).where(Appointment.id == appointment_id).returning(Appointment.id)
+    )).scalar_one_or_none()
+    if deleted is None:
         raise HTTPException(404, "Appointment not found.")
-    await broadcast_event("appointment_deleted", {"id": appointment_id})
+    await session.commit()
+    await broadcast_event("appointment_deleted", {"id": str(appointment_id)})
     await broadcast_event("stats_updated")
     return {"ok": True}

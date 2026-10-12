@@ -1,80 +1,86 @@
-from datetime import datetime, timezone
+import datetime as dt
 
-from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import delete as sql_delete
+from sqlalchemy import insert, select, update as sql_update
 
-from ..db import get_db, serialize
+from ..db import SessionDep, serialize
 from ..events import broadcast_event
 from ..models import ScheduleIn, ScheduleUpdate
 from ..security import current_admin
+from ..tables import Appointment, ScheduleEntry
 
 router = APIRouter(prefix="/api/schedule", tags=["schedule"], dependencies=[Depends(current_admin)])
 
 
 @router.get("")
-async def list_entries(date: str):
-    cursor = get_db().schedule.find({"date": date}).sort([("priority", 1), ("time_from", 1)])
-    return {"items": [serialize(d) for d in await cursor.to_list(300)]}
+async def list_entries(date: dt.date, session: SessionDep):
+    rows = await session.scalars(
+        select(ScheduleEntry).where(ScheduleEntry.date == date)
+        .order_by(ScheduleEntry.priority, ScheduleEntry.time_from).limit(300)
+    )
+    return {"items": [serialize(r) for r in rows]}
 
 
 @router.post("", status_code=201)
-async def create(payload: ScheduleIn):
-    doc = payload.model_dump()
-    doc["created_at"] = datetime.now(timezone.utc)
-    result = await get_db().schedule.insert_one(doc)
-    created = serialize(await get_db().schedule.find_one({"_id": result.inserted_id}))
+async def create(payload: ScheduleIn, session: SessionDep):
+    entry = ScheduleEntry(**payload.model_dump())
+    session.add(entry)
+    await session.commit()
+    created = serialize(entry)
     await broadcast_event("schedule_updated", created)
     return created
 
 
 @router.post("/copy-appointments")
-async def copy_from_appointments(date: str):
+async def copy_from_appointments(date: dt.date, session: SessionDep):
     """Pull the day's appointments into the timed schedule table."""
-    db = get_db()
-    appointments = await db.appointments.find({"date": date, "status": {"$ne": "cancelled"}}).sort("slot", 1).to_list(300)
-    existing = {(d.get("patient_name"), d.get("time_from")) for d in await db.schedule.find({"date": date}).to_list(300)}
-    rows = []
-    for i, a in enumerate(appointments, start=1):
-        key = (a.get("name"), a.get("slot"))
-        if key in existing:
-            continue
-        rows.append({
-            "date": date,
-            "time_from": a.get("slot"),
-            "time_to": None,
-            "patient_name": a.get("name"),
-            "patient_id": a.get("patient_id"),
-            "doctor": a.get("doctor"),
-            "status": a.get("status", "pending"),
-            "notes": a.get("reason") or a.get("notes"),
-            "priority": i,
-            "created_at": datetime.now(timezone.utc),
-        })
+    appointments = await session.scalars(
+        select(Appointment).where(Appointment.date == date, Appointment.status != "cancelled")
+        .order_by(Appointment.slot).limit(300)
+    )
+    existing = set((await session.execute(
+        select(ScheduleEntry.patient_name, ScheduleEntry.time_from).where(ScheduleEntry.date == date)
+    )).tuples())
+    rows = [
+        {
+            "date": date, "time_from": a.slot, "time_to": None, "patient_name": a.name,
+            "patient_id": a.patient_id, "doctor": a.doctor, "status": a.status,
+            "notes": a.reason or a.notes, "priority": i,
+        }
+        for i, a in enumerate(appointments, start=1)
+        if (a.name, a.slot) not in existing
+    ]
     if rows:
-        await db.schedule.insert_many(rows)
-        await broadcast_event("schedule_updated", {"date": date, "added": len(rows)})
+        await session.execute(insert(ScheduleEntry), rows)
+        await session.commit()
+        await broadcast_event("schedule_updated", {"date": date.isoformat(), "added": len(rows)})
     return {"added": len(rows)}
 
 
 @router.patch("/{entry_id}")
-async def update(entry_id: str, payload: ScheduleUpdate):
-    changes = {k: v for k, v in payload.model_dump().items() if v is not None}
+async def update(entry_id: int, payload: ScheduleUpdate, session: SessionDep):
+    changes = payload.model_dump(exclude_none=True)
     if not changes:
         raise HTTPException(400, "Nothing to update.")
-    res = await get_db().schedule.find_one_and_update(
-        {"_id": ObjectId(entry_id)}, {"$set": changes}, return_document=True
-    )
-    if not res:
+    entry = (await session.execute(
+        sql_update(ScheduleEntry).where(ScheduleEntry.id == entry_id).values(**changes).returning(ScheduleEntry)
+    )).scalar_one_or_none()
+    if not entry:
         raise HTTPException(404, "Schedule entry not found.")
-    serialized = serialize(res)
+    await session.commit()
+    serialized = serialize(entry)
     await broadcast_event("schedule_updated", serialized)
     return serialized
 
 
 @router.delete("/{entry_id}")
-async def delete(entry_id: str):
-    res = await get_db().schedule.delete_one({"_id": ObjectId(entry_id)})
-    if not res.deleted_count:
+async def delete(entry_id: int, session: SessionDep):
+    deleted = (await session.execute(
+        sql_delete(ScheduleEntry).where(ScheduleEntry.id == entry_id).returning(ScheduleEntry.id)
+    )).scalar_one_or_none()
+    if deleted is None:
         raise HTTPException(404, "Schedule entry not found.")
-    await broadcast_event("schedule_updated", {"id": entry_id})
+    await session.commit()
+    await broadcast_event("schedule_updated", {"id": str(entry_id)})
     return {"ok": True}
