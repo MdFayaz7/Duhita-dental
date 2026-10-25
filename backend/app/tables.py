@@ -4,14 +4,15 @@ Trigram search indexes (*_trgm) are created by the first migration when pg_trgm 
 import datetime as dt
 
 from sqlalchemy import (
-    BigInteger, Boolean, CheckConstraint, Date, DateTime, Identity, Index, Integer, LargeBinary, SmallInteger,
-    Text, func, text,
+    BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Index, Integer, LargeBinary,
+    SmallInteger, Text, func, text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column
 
-STATUSES = ("pending", "confirmed", "completed", "cancelled", "no_show")
-STATUS_CHECK = "status IN ('pending', 'confirmed', 'completed', 'cancelled', 'no_show')"
+# checked_in = waiting at the clinic, engaged = in the chair (Practo's Waiting / Engaged / Done).
+STATUSES = ("pending", "confirmed", "checked_in", "engaged", "completed", "cancelled", "no_show")
+STATUS_CHECK = "status IN ({})".format(", ".join(f"'{s}'" for s in STATUSES))
 
 
 class Base(DeclarativeBase):
@@ -59,6 +60,11 @@ class Patient(Base):
     conditions: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"), default=list)
     condition_notes: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), default=dict)
     pregnant: Mapped[str | None] = mapped_column(Text)
+    alt_phone: Mapped[str | None] = mapped_column(Text)
+    dob: Mapped[dt.date | None] = mapped_column(Date)
+    # Practo's own patient number, so a re-import updates rather than duplicates.
+    practo_id: Mapped[str | None] = mapped_column(Text, unique=True)
+    source: Mapped[str | None] = mapped_column(Text)
     allergies: Mapped[str | None] = mapped_column(Text)
     medications: Mapped[str | None] = mapped_column(Text)
     blood_group: Mapped[str | None] = mapped_column(Text)
@@ -79,6 +85,7 @@ class Appointment(Base):
         Index("ix_appointments_date_slot", "date", "slot"),
         Index("ix_appointments_status", "status"),
         Index("ix_appointments_created_at", "created_at"),
+        Index("ix_appointments_date_doctor", "date", "doctor_id"),
     )
     id: Mapped[int] = pk()
     patient_id: Mapped[str | None] = mapped_column(Text, index=True)
@@ -86,7 +93,12 @@ class Appointment(Base):
     phone: Mapped[str] = mapped_column(Text, index=True)
     date: Mapped[dt.date] = mapped_column(Date)
     slot: Mapped[str] = mapped_column(Text)
+    duration: Mapped[int] = mapped_column(SmallInteger, server_default="15", default=15)  # minutes
+    # doctor_id drives the calendar; `doctor` keeps the name for older bookings and messages.
+    doctor_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("doctors.id", ondelete="SET NULL"))
     doctor: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(Text)
+    procedures: Mapped[str | None] = mapped_column(Text)
     reason: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, server_default="pending", default="pending")
@@ -130,7 +142,9 @@ class Doctor(Base):
     bio: Mapped[str | None] = mapped_column(Text)
     photo: Mapped[str | None] = mapped_column(Text)
     order: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
-    active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), default=True)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), default=True)  # shown on the website
+    in_calendar: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), default=True)
+    color: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[dt.datetime] = created()
     extra: Mapped[dict] = extra()
 

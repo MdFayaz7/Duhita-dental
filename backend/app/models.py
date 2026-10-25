@@ -109,7 +109,9 @@ class PatientOut(PatientIn):
 
 # ---------- appointments ----------
 
-AppointmentStatus = Literal["pending", "confirmed", "completed", "cancelled", "no_show"]
+AppointmentStatus = Literal["pending", "confirmed", "checked_in", "engaged", "completed", "cancelled", "no_show"]
+Category = Literal["high_priority", "telephonic", "walkin"]
+Duration = Field(default=15, ge=5, le=240)
 
 
 class AppointmentIn(BaseModel):
@@ -127,8 +129,39 @@ class AppointmentUpdate(BaseModel):
     status: AppointmentStatus | None = None
     date: dt.date | None = None
     slot: str | None = Field(default=None, pattern=SLOT)
+    duration: int | None = Field(default=None, ge=5, le=240)
+    doctor_id: int | None = None
     doctor: str | None = None
+    category: Category | Literal[""] | None = None
+    procedures: str | None = Field(default=None, max_length=800)
     notes: str | None = None
+    # Save even though the doctor already has someone at that time.
+    force: bool = False
+
+
+class NewPatientIn(BaseModel):
+    """The few details the front desk takes when booking someone who isn't registered yet."""
+    name: str = Field(min_length=2, max_length=120)
+    phone: str = Field(pattern=PHONE)
+    email: EmailStr | None = None
+    age: int | None = Field(default=None, ge=0, le=120)
+    sex: Literal["Male", "Female", "Other"] | None = None
+
+
+class AdminBookingIn(BaseModel):
+    """An appointment made from the admin calendar, for an existing patient or a new one."""
+    patient_id: str | None = None
+    new_patient: NewPatientIn | None = None
+    doctor_id: int | None = None
+    date: dt.date
+    slot: str = Field(pattern=SLOT)
+    duration: int = Duration
+    category: Category | None = None
+    procedures: str | None = Field(default=None, max_length=800)
+    notes: str | None = Field(default=None, max_length=800)
+    status: AppointmentStatus = "confirmed"
+    notify: bool = True  # WhatsApp the patient their confirmation
+    force: bool = False
 
 
 # ---------- daily schedule ----------
@@ -167,6 +200,8 @@ class DoctorIn(BaseModel):
     photo: str | None = None
     order: int = 0
     active: bool = True
+    in_calendar: bool = True
+    color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
 
 
 # ---------- research ----------

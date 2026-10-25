@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FiCalendar, FiDownload, FiEdit2, FiPhone, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import { api } from './api';
 import { PageHead } from './AdminLayout';
 import {
-  Button, EmptyState, ErrorNote, Field, IconButton, Modal, Panel, SearchInput, Segmented, Skeleton,
-  StatusPill, STATUSES, Table, exportCsv, formatDateTime, formatSlot, inputClass, todayIso, useConfirm, useToast,
+  Button, EmptyState, ErrorNote, Field, IconButton, Panel, SearchInput, Segmented, Skeleton,
+  StatusPill, STATUSES, STATUS_LABELS, Table, exportCsv, formatDateTime, formatSlot, inputClass, todayIso, useConfirm, useToast,
 } from './ui';
 import { useLiveEvents } from '../lib/useLiveEvents';
+import { BookingModal } from './CalendarBooking';
 
 const RANGES = [
   { value: 'day', label: 'Selected day' },
@@ -24,6 +26,14 @@ export default function Appointments() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
+  const [hours, setHours] = useState(null);
+  const [doctors, setDoctors] = useState([]);
+
+  useEffect(() => {
+    Promise.all([api.clinicHours(), api.doctors()])
+      .then(([h, d]) => { setHours(h); setDoctors(d.items.filter((x) => x.in_calendar !== false)); })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setError('');
@@ -64,6 +74,9 @@ export default function Appointments() {
     };
   }, [load, q, editing]);
 
+  // Stable object, so background refreshes don't reset the open form.
+  const editDraft = useMemo(() => (editing ? { appointment: editing } : null), [editing]);
+
   const counts = useMemo(() => {
     const base = { all: items?.length || 0 };
     STATUSES.forEach((s) => { base[s] = items?.filter((a) => a.status === s).length || 0; });
@@ -74,7 +87,7 @@ export default function Appointments() {
     setItems((list) => list.map((a) => (a.id === row.id ? { ...a, status: value } : a)));
     try {
       await api.updateAppointment(row.id, { status: value });
-      toast(`${row.name} marked ${value.replace('_', ' ')}`);
+      toast(`${row.name}: ${STATUS_LABELS[value]}`);
     } catch (e) {
       toast(e.message, 'error');
       load();
@@ -102,17 +115,20 @@ export default function Appointments() {
     exportCsv(`duhita-appointments-${range === 'day' ? date : range}.csv`,
       (items || []).map((a) => ({
         Date: a.date, Time: formatSlot(a.slot), Patient: a.name, 'Patient ID': a.patient_id || '',
-        Phone: a.phone, Doctor: a.doctor || '', Reason: a.reason || '', Notes: a.notes || '',
+        Phone: a.phone, Doctor: a.doctor || '', Duration: a.duration || 15, Procedures: a.procedures || '', Reason: a.reason || '', Notes: a.notes || '',
         Status: a.status, Booked: formatDateTime(a.created_at),
       })));
 
   return (
     <>
       <PageHead
-        title="Appointments"
-        subtitle="Every booking made on the website, with its status."
+        title="Appointments list"
+        subtitle="Every booking — website, app and front desk — as a searchable list."
         actions={
           <div className="flex items-center gap-2.5">
+            <Link to="/admin/appointments" className="inline-flex items-center gap-2 rounded-xl border border-[var(--a-border)] px-3.5 py-2.5 text-[13px] text-[var(--a-muted)] hover:text-white hover:bg-white/5">
+              <FiCalendar className="w-4 h-4" /> Calendar
+            </Link>
             <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -149,7 +165,7 @@ export default function Appointments() {
         <Segmented
           value={status}
           onChange={setStatus}
-          options={[{ value: 'all', label: 'All', count: counts.all }, ...STATUSES.map((s) => ({ value: s, label: s.replace('_', ' '), count: counts[s] }))]}
+          options={[{ value: 'all', label: 'All', count: counts.all }, ...STATUSES.map((s) => ({ value: s, label: STATUS_LABELS[s], count: counts[s] }))]}
         />
       </Panel>
 
@@ -170,13 +186,16 @@ export default function Appointments() {
                       <p className="text-[12.5px] text-[var(--a-muted)]">{a.patient_id || 'Walk-in'}</p>
                     </td>
                     <td className="px-5 py-4"><a href={`tel:+91${a.phone}`} className="text-[var(--a-accent)] hover:underline">+91 {a.phone}</a></td>
-                    <td className="px-5 py-4 whitespace-nowrap">{a.date}<span className="text-[var(--a-muted)]"> · </span>{formatSlot(a.slot)}</td>
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      {a.date}<span className="text-[var(--a-muted)]"> · </span>{formatSlot(a.slot)}
+                      {a.doctor && <p className="text-[12.5px] text-[var(--a-muted)]">{a.doctor}</p>}
+                    </td>
                     <td className="px-5 py-4 max-w-[200px] truncate text-[var(--a-muted)]">{a.reason || a.notes || '—'}</td>
                     <td className="px-5 py-4 text-[12.5px] text-[var(--a-muted)] whitespace-nowrap">{formatDateTime(a.created_at)}</td>
                     <td className="px-5 py-4">
                       <select value={a.status} onChange={(e) => setStatusFor(a, e.target.value)}
                         className="rounded-lg border border-[var(--a-border)] bg-[#0e141b] px-2.5 py-1.5 text-[13px] capitalize">
-                        {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                        {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                       </select>
                     </td>
                     <td className="px-5 py-4">
@@ -215,54 +234,8 @@ export default function Appointments() {
         )}
       </Panel>
 
-      <EditModal appointment={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
+      <BookingModal draft={editDraft} hours={hours} doctors={doctors}
+        onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
     </>
-  );
-}
-
-function EditModal({ appointment, onClose, onSaved }) {
-  const toast = useToast();
-  const [form, setForm] = useState({});
-  const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-
-  useEffect(() => {
-    if (appointment) setForm({ date: appointment.date, slot: appointment.slot, doctor: appointment.doctor || '', status: appointment.status, notes: appointment.notes || '' });
-  }, [appointment]);
-
-  const save = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await api.updateAppointment(appointment.id, { ...form, doctor: form.doctor || null, notes: form.notes || null });
-      toast('Appointment updated');
-      onSaved();
-    } catch (err) {
-      toast(err.message, 'error');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal open={!!appointment} title="Edit appointment" subtitle={appointment?.name} onClose={onClose}>
-      <form onSubmit={save} className="grid gap-4">
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Date"><input type="date" value={form.date || ''} onChange={set('date')} className={inputClass} /></Field>
-          <Field label="Time"><input type="time" value={form.slot || ''} onChange={set('slot')} className={inputClass} /></Field>
-        </div>
-        <Field label="Doctor"><input value={form.doctor || ''} onChange={set('doctor')} placeholder="Assign a doctor" className={inputClass} /></Field>
-        <Field label="Status">
-          <select value={form.status || 'pending'} onChange={set('status')} className={`${inputClass} capitalize`}>
-            {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-          </select>
-        </Field>
-        <Field label="Notes"><textarea rows={3} value={form.notes || ''} onChange={set('notes')} className={inputClass} /></Field>
-        <div className="flex gap-3 pt-1">
-          <Button type="submit" disabled={busy} className="flex-1">{busy ? 'Saving…' : 'Save changes'}</Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-        </div>
-      </form>
-    </Modal>
   );
 }

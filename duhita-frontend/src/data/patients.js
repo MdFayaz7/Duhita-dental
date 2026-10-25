@@ -36,15 +36,17 @@ export const complaintChips = [
   'Child’s dental visit',
 ];
 
+// Half-hour starts within clinic hours (same as backend/app/clinic.py and the patient app).
 const slots = (from, to) => {
+  const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
   const out = [];
-  for (let m = from * 60; m < to * 60; m += 30) out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  for (let m = toMin(from); m < toMin(to); m += 30) out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
   return out;
 };
 
 export const sessions = [
-  { id: 'morning', label: 'Morning', range: '9:00 AM – 1:00 PM', slots: slots(9, 13) },
-  { id: 'evening', label: 'Evening', range: '3:00 PM – 9:00 PM', slots: slots(15, 21) },
+  { id: 'morning', label: 'Morning', range: '10:00 AM – 1:00 PM', slots: slots('10:00', '13:00') },
+  { id: 'evening', label: 'Evening', range: '4:30 PM – 8:00 PM', slots: slots('16:30', '20:00') },
 ];
 
 export const formatSlot = (t) => {

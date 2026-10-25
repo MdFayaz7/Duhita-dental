@@ -4,7 +4,8 @@ import { api } from './api';
 import { PageHead } from './AdminLayout';
 import { Button, EmptyState, ErrorNote, Field, Modal, Panel, Skeleton, inputClass, useConfirm, useToast } from './ui';
 
-const blank = { name: '', qualification: '', speciality: '', experience_years: '', bio: '', order: 0, active: true };
+const blank = { name: '', qualification: '', speciality: '', experience_years: '', bio: '', order: 0, active: true, in_calendar: true, color: '' };
+const COLORS = ['#4e79a7', '#c45a9d', '#3f9e5a', '#9c5a2b', '#7b2fbe', '#16808a', '#d23f3f', '#e0662b', '#b56a1f', '#7f56d9', '#22303c'];
 
 export default function Doctors() {
   const toast = useToast();
@@ -32,7 +33,7 @@ export default function Doctors() {
 
   return (
     <>
-      <PageHead title="Doctors" subtitle="Profiles shown on the website">
+      <PageHead title="Doctors" subtitle="Website profiles and the appointment calendar's doctor list">
         <Button onClick={() => setEditing(blank)}><FiPlus /> Add doctor</Button>
       </PageHead>
       <ErrorNote>{error}</ErrorNote>
@@ -50,7 +51,11 @@ export default function Doctors() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white truncate">{d.name}</p>
                   <p className="text-[13px] text-white/50">{d.qualification || '—'}</p>
-                  {!d.active && <span className="mt-1.5 inline-block rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/50">Hidden</span>}
+                  <span className="mt-1.5 flex flex-wrap gap-1.5">
+                    {d.color && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/8 px-2 py-0.5 text-[11.5px] text-white/60"><span className="w-2 h-2 rounded-full" style={{ background: d.color }} />Calendar</span>}
+                    {d.in_calendar === false && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/50">Not in calendar</span>}
+                    {!d.active && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/50">Hidden on website</span>}
+                  </span>
                 </div>
               </div>
               {d.speciality && <p className="mt-4 text-[13.5px] text-white/60">{d.speciality}{d.experience_years ? ` · ${d.experience_years} yrs` : ''}</p>}
@@ -93,6 +98,8 @@ function DoctorModal({ doctor, onClose, onSaved }) {
         photo: form.photo || null,
         order: Number(form.order) || 0,
         active: !!form.active,
+        in_calendar: !!form.in_calendar,
+        color: form.color || null,
       };
       const saved = doctor?.id ? await api.updateDoctor(doctor.id, body) : await api.addDoctor(body);
       toast(doctor?.id ? 'Doctor updated' : 'Doctor added');
@@ -134,6 +141,18 @@ function DoctorModal({ doctor, onClose, onSaved }) {
           <input type="checkbox" checked={!!form.active} onChange={set('active')} className="w-4 h-4 accent-[#0a84ff]" />
           Show on the website
         </label>
+        <label className="flex items-center gap-2.5 text-[14px] text-white/70">
+          <input type="checkbox" checked={!!form.in_calendar} onChange={set('in_calendar')} className="w-4 h-4 accent-[#0a84ff]" />
+          Show in the appointment calendar
+        </label>
+        <Field label="Calendar colour">
+          <div className="flex flex-wrap gap-2">
+            {COLORS.map((c) => (
+              <button key={c} type="button" onClick={() => setForm({ ...form, color: c })} aria-label={`Colour ${c}`}
+                className={`w-8 h-8 rounded-full border-2 ${form.color === c ? 'border-white' : 'border-transparent'}`} style={{ background: c }} />
+            ))}
+          </div>
+        </Field>
         <div className="flex gap-3 pt-1">
           <Button type="submit" disabled={busy} className="flex-1">{busy ? 'Saving…' : 'Save doctor'}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>

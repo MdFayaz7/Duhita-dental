@@ -30,6 +30,7 @@ DOCTORS = [
         "photo": "/images/dr-sasidhar.jpg",
         "order": 0,
         "active": True,
+        "color": "#4e79a7",
     }
 ]
 

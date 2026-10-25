@@ -87,7 +87,7 @@ export default function Treatment() {
           <aside className="lg:sticky lg:top-32 space-y-6">
             <div className="bg-slate text-white p-7 rounded-[18px]">
               <h3 className="!text-white text-[24px]">Book a Consultation</h3>
-              <p className="mt-3 text-[14px] text-white/80">Mon – Sat · 9 AM – 1 PM &amp; 3 PM – 9 PM</p>
+              <p className="mt-3 text-[14px] text-white/80">Mon – Sat · 10 AM – 1 PM &amp; 4:30 PM – 8 PM</p>
               <div className="mt-6 grid gap-3">
                 <Link to="/patients/book-appointment" className="btn bg-white text-slate hover:bg-ivory">Request Appointment</Link>
                 <a href={`tel:${site.phone}`} className="btn btn-light">Call {site.phoneDisplay}</a>

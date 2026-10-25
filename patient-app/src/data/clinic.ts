@@ -15,7 +15,7 @@ export const clinicInfo = {
     'Benz Circle, Vijayawada, Andhra Pradesh',
   ],
   hours: [
-    { label: 'Mon – Sat', value: '9:00 AM – 1:00 PM · 3:00 PM – 9:00 PM' },
+    { label: 'Mon – Sat', value: '10:00 AM – 1:00 PM · 4:30 PM – 8:00 PM' },
     { label: 'Sunday', value: 'By appointment only' },
   ],
   mapLink: 'https://www.google.com/maps/search/?api=1&query=Duhita+Multispeciality+Dental+Centre+Vijayawada',

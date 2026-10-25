@@ -118,22 +118,22 @@ async def test_patient_app_flow(client, wa):
     assert me.json()["blood_group"] == "O+" and me.json()["conditions"] == ["Asthma"]
 
     day = next_weekday()
-    booked = await client.post("/api/app/me/appointments", json={"date": day, "slot": "16:00"}, headers=h)
+    booked = await client.post("/api/app/me/appointments", json={"date": day, "slot": "17:00"}, headers=h)
     assert booked.status_code == 201 and booked.json()["source"] == "app"
     assert wa.sent[-1]["template"]["name"] == "appointment_request"
-    clash = await client.post("/api/app/me/appointments", json={"date": day, "slot": "16:00"}, headers=h)
+    clash = await client.post("/api/app/me/appointments", json={"date": day, "slot": "17:00"}, headers=h)
     assert clash.status_code == 409
 
     slots = (await client.get("/api/app/slots", params={"date": day})).json()
     evening = next(s for s in slots["sessions"] if s["id"] == "evening")
-    assert next(t for t in evening["slots"] if t["time"] == "16:00")["available"] is False
+    assert next(t for t in evening["slots"] if t["time"] == "17:00")["available"] is False
     assert (await client.get("/api/app/slots", params={"date": "soon"})).status_code == 400
 
     mine = (await client.get("/api/app/me/appointments", headers=h)).json()
     assert len(mine["upcoming"]) == 1
     cancelled = await client.post(f"/api/app/me/appointments/{booked.json()['id']}/cancel", headers=h)
     assert cancelled.json()["status"] == "cancelled"
-    assert (await client.post("/api/app/me/appointments", json={"date": day, "slot": "16:00"}, headers=h)).status_code == 201
+    assert (await client.post("/api/app/me/appointments", json={"date": day, "slot": "17:00"}, headers=h)).status_code == 201
 
     rec = await client.post("/api/app/me/records", data={"title": "Old report", "date": "2025-01-02"}, headers=h)
     assert rec.status_code == 201 and rec.json()["date"] == "2025-01-02"

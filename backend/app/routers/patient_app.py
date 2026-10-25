@@ -10,6 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Up
 from sqlalchemy import delete, func, or_, select, update
 
 from .. import whatsapp
+from ..clinic import hours_payload, is_closed, minutes, session_slots, within_hours
 from ..db import SessionDep, serialize, utcnow
 from ..events import broadcast_event
 from ..models import AppBookingIn, AppLoginIn, AppPasswordIn, AppProfileUpdate, AppRegisterIn
@@ -20,17 +21,9 @@ from ..uploads import IMAGE_TYPES, delete_upload, save_upload
 
 router = APIRouter(prefix="/api/app", tags=["patient app"])
 
-# Clinic hours, mirrored from the website's booking form.
-SESSIONS = [
-    {"id": "morning", "label": "Morning", "range": "9:00 AM – 1:00 PM", "from": 9, "to": 13},
-    {"id": "evening", "label": "Evening", "range": "3:00 PM – 9:00 PM", "from": 15, "to": 21},
-]
 BOOKING_DAYS = 30  # how far ahead a patient may book
+APP_SLOT_MINUTES = 30  # patients pick half-hour starts; the front desk works in 15-minute slots
 ACTIVE = Appointment.status != "cancelled"
-
-
-def _slots(start: int, end: int) -> list[str]:
-    return [f"{m // 60:02d}:{m % 60:02d}" for m in range(start * 60, end * 60, 30)]
 
 
 def _now() -> dt.datetime:
@@ -198,15 +191,15 @@ async def free_slots(date: str, session: SessionDep):
         raise HTTPException(400, "Use a date like 2026-09-30.")
 
     now = _now()
-    closed = day.weekday() == 6  # Sunday is by prior appointment only
+    closed = is_closed(day)
     taken = set(await session.scalars(select(Appointment.slot).where(Appointment.date == day, ACTIVE)))
+    now_minutes = now.hour * 60 + now.minute
 
     sessions = []
-    for s in SESSIONS:
+    for s in hours_payload()["sessions"]:
         times = []
-        for t in _slots(s["from"], s["to"]):
-            hour, minute = (int(x) for x in t.split(":"))
-            passed = day == now.date() and (hour, minute) <= (now.hour, now.minute)
+        for t in session_slots(s, APP_SLOT_MINUTES):
+            passed = day == now.date() and minutes(t) <= now_minutes
             times.append({"time": t, "available": not closed and not passed and t not in taken})
         sessions.append({**{k: s[k] for k in ("id", "label", "range")}, "slots": times})
 
@@ -239,11 +232,11 @@ async def book(payload: AppBookingIn, session: SessionDep, background: Backgroun
         raise HTTPException(400, "That date has already passed.")
     if day > (now + dt.timedelta(days=BOOKING_DAYS)).date():
         raise HTTPException(400, f"Appointments can be booked up to {BOOKING_DAYS} days ahead.")
-    if day.weekday() == 6:
+    if is_closed(day):
         raise HTTPException(400, "Sundays are by prior appointment only — please call the clinic.")
 
     hour, minute = (int(x) for x in payload.slot.split(":"))
-    if not any(s["from"] <= hour < s["to"] for s in SESSIONS):
+    if not within_hours(payload.slot):
         raise HTTPException(400, "That time is outside clinic hours.")
     if day == now.date() and (hour, minute) <= (now.hour, now.minute):
         raise HTTPException(400, "That time has already passed today.")

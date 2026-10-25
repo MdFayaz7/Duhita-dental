@@ -223,11 +223,19 @@ export function AdminProviders({ children }) {
 
 /* ---------- data display ---------- */
 
-export const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'];
+export const STATUSES = ['pending', 'confirmed', 'checked_in', 'engaged', 'completed', 'cancelled', 'no_show'];
+
+/** Front-desk wording, as in Practo: a checked-in patient is "waiting", one in the chair "engaged". */
+export const STATUS_LABELS = {
+  pending: 'Request', confirmed: 'Booked', checked_in: 'Waiting', engaged: 'Engaged', completed: 'Done',
+  cancelled: 'Cancelled', no_show: 'No show',
+};
 
 const STATUS_STYLES = {
   pending: 'bg-[#f2b356]/14 text-[#f2b356] border-[#f2b356]/25',
   confirmed: 'bg-[#4ea8de]/14 text-[#74c0f0] border-[#4ea8de]/25',
+  checked_in: 'bg-[#f0616d]/14 text-[#ff8a92] border-[#f0616d]/25',
+  engaged: 'bg-[#22b8cf]/14 text-[#66d9e8] border-[#22b8cf]/25',
   completed: 'bg-[#16a394]/16 text-[#5fdac9] border-[#16a394]/30',
   cancelled: 'bg-[#f0616d]/14 text-[#ff8a92] border-[#f0616d]/25',
   no_show: 'bg-white/8 text-[var(--a-muted)] border-white/12',
@@ -235,7 +243,7 @@ const STATUS_STYLES = {
 
 export const StatusPill = ({ status }) => (
   <span className={cx('inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-medium capitalize whitespace-nowrap', STATUS_STYLES[status] || STATUS_STYLES.no_show)}>
-    {String(status || '').replace('_', ' ')}
+    {STATUS_LABELS[status] || String(status || '').replace('_', ' ')}
   </span>
 );
 

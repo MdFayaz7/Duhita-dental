@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  FiCalendar, FiDownload, FiFile, FiImage, FiPhone, FiPlus, FiRefreshCw, FiTrash2, FiUser, FiUsers,
+  FiCalendar, FiDownload, FiFile, FiImage, FiPhone, FiPlus, FiRefreshCw, FiTrash2, FiUpload, FiUser, FiUsers,
 } from 'react-icons/fi';
 import { api } from './api';
 import { PageHead } from './AdminLayout';
@@ -16,6 +17,9 @@ const RECORD_KINDS = [
   { id: 'report', label: 'Report' },
   { id: 'note', label: 'Note' },
 ];
+
+const SOURCES = { practo: 'Imported from Practo', website: 'Website', app: 'Patient app', clinic: 'Front desk' };
+const ageSex = (p) => [p.age != null ? `${p.age}` : null, p.sex].filter(Boolean).join(' · ') || '—';
 
 const SORTS = [
   { value: 'newest', label: 'Newest first' },
@@ -116,7 +120,8 @@ export default function Patients() {
   const download = () =>
     exportCsv(`duhita-registrations-${todayIso()}.csv`,
       (data?.items || []).map((p) => ({
-        'Patient ID': p.patient_id, Name: p.name, Age: p.age, Sex: p.sex, Phone: p.phone,
+        'Patient ID': p.patient_id, 'Practo no.': p.practo_id || '', Name: p.name, Age: p.age ?? '', Sex: p.sex || '', Phone: p.phone,
+        'Other mobile': p.alt_phone || '', Email: p.email || '', 'Family size': p.family_size,
         Address: p.address, Profession: p.profession || '', Reference: p.referral || '',
         'Medical history': (p.conditions || []).map((c) => CONDITION_LABELS[c] || c).join('; '),
         Complaint: p.complaint, 'Registered on': formatDateTime(p.created_at),
@@ -127,8 +132,8 @@ export default function Patients() {
   return (
     <>
       <PageHead
-        title="Patient Registrations"
-        subtitle={data ? `${data.total} registration${data.total === 1 ? '' : 's'} from the website` : 'Loading…'}
+        title="Patients"
+        subtitle={data ? `${data.total.toLocaleString('en-IN')} patient${data.total === 1 ? '' : 's'} — website, app, front desk and Practo` : 'Loading…'}
         actions={
           <div className="flex items-center gap-2.5">
             <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
@@ -144,6 +149,9 @@ export default function Patients() {
             <Button variant="secondary" onClick={download} disabled={!items?.length}>
               <FiDownload /> Export CSV
             </Button>
+            <Link to="/admin/patients/import" className="inline-flex items-center gap-2 rounded-xl bg-[var(--a-accent)] px-4 py-2.5 text-[14px] font-medium text-white hover:bg-[var(--a-accent-hover)]">
+              <FiUpload /> Import from Practo
+            </Link>
           </div>
         }
       />
@@ -151,7 +159,7 @@ export default function Patients() {
 
       <Panel className="p-4 sm:p-5 flex flex-wrap items-end gap-4">
         <Field label="Search" className="flex-1 min-w-[220px]">
-          <SearchInput value={q} onChange={setQ} placeholder="Name, phone or patient ID" />
+          <SearchInput value={q} onChange={setQ} placeholder="Name, mobile, patient ID or Practo number" />
         </Field>
         <Field label="Registered from"><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} /></Field>
         <Field label="To"><input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} /></Field>
@@ -163,7 +171,7 @@ export default function Patients() {
         {items === undefined ? (
           <div className="p-5 grid gap-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14" />)}</div>
         ) : items.length === 0 ? (
-          <EmptyState icon={FiUsers} title="No registrations found." hint="Patients who fill the registration form on the website appear here." />
+          <EmptyState icon={FiUsers} title="No patients found." hint="Website and app registrations appear here; bring in the clinic's existing patients with “Import from Practo”." />
         ) : (
           <>
             <div className="hidden md:block">
@@ -172,13 +180,14 @@ export default function Patients() {
                   <tr key={p.id} className="cursor-pointer hover:bg-white/3" onClick={() => open(p)}>
                     <td className="px-5 py-4">
                       <p className="font-medium">{p.name}</p>
-                      <p className="text-[12.5px] text-[var(--a-muted)]">{p.patient_id}</p>
+                      <p className="text-[12.5px] text-[var(--a-muted)]">{p.patient_id}{p.practo_id ? ` · Practo ${p.practo_id}` : ''}</p>
                     </td>
-                    <td className="px-5 py-4 whitespace-nowrap">{p.age} · {p.sex}</td>
+                    <td className="px-5 py-4 whitespace-nowrap">{ageSex(p)}</td>
                     <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
-                      <a href={`tel:+91${p.phone}`} className="text-[var(--a-accent)] hover:underline">+91 {p.phone}</a>
+                      {p.phone ? <a href={`tel:+91${p.phone}`} className="text-[var(--a-accent)] hover:underline">+91 {p.phone}</a> : <span className="text-[var(--a-muted)]">—</span>}
+                      {p.family_size > 1 && <FamilyBadge size={p.family_size} />}
                     </td>
-                    <td className="px-5 py-4 max-w-[220px] truncate text-[var(--a-muted)]">{p.complaint}</td>
+                    <td className="px-5 py-4 max-w-[220px] truncate text-[var(--a-muted)]">{p.complaint || '—'}</td>
                     <td className="px-5 py-4 text-[12.5px] text-[var(--a-muted)]">
                       {(p.conditions || []).filter((c) => c !== 'none').length
                         ? `${p.conditions.filter((c) => c !== 'none').length} condition(s)`
@@ -202,11 +211,12 @@ export default function Patients() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium truncate">{p.name}</p>
-                        <p className="text-[12.5px] text-[var(--a-muted)]">{p.patient_id} · {p.age} {p.sex}</p>
+                        <p className="text-[12.5px] text-[var(--a-muted)]">{p.patient_id} · {ageSex(p)}</p>
+                        {p.family_size > 1 && <FamilyBadge size={p.family_size} />}
                       </div>
                       <span className="text-[12px] text-[var(--a-muted)] whitespace-nowrap">{formatDateTime(p.created_at)}</span>
                     </div>
-                    <p className="mt-2 text-[13.5px] text-[var(--a-muted)] line-clamp-2">{p.complaint}</p>
+                    {p.complaint && <p className="mt-2 text-[13.5px] text-[var(--a-muted)] line-clamp-2">{p.complaint}</p>}
                   </button>
                 </li>
               ))}
@@ -215,12 +225,18 @@ export default function Patients() {
         )}
       </Panel>
 
-      <PatientDrawer data={selected} onClose={() => setSelected(null)} onDelete={remove} onRecordsChanged={reloadSelected} />
+      <PatientDrawer data={selected} onClose={() => setSelected(null)} onDelete={remove} onRecordsChanged={reloadSelected} onOpen={open} />
     </>
   );
 }
 
-function PatientDrawer({ data, onClose, onDelete, onRecordsChanged }) {
+const FamilyBadge = ({ size }) => (
+  <span className="mt-1 flex w-fit items-center gap-1 rounded-full bg-[#7f56d9]/18 px-2 py-0.5 text-[11.5px] text-[#c4b1ff]" title="Patients sharing this mobile number">
+    <FiUsers className="w-3 h-3" /> Family of {size}
+  </span>
+);
+
+function PatientDrawer({ data, onClose, onDelete, onRecordsChanged, onOpen }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [addingRecord, setAddingRecord] = useState(false);
@@ -255,19 +271,42 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged }) {
   return (
     <Drawer open={!!p} title={p.name} subtitle={`${p.patient_id} · registered ${formatDateTime(p.created_at)}`} onClose={onClose}>
       <div className="flex gap-2 mb-5">
-        <a href={`tel:+91${p.phone}`} className="inline-flex items-center gap-2 rounded-xl bg-[var(--a-accent)] px-4 py-2.5 text-[14px] text-white"><FiPhone className="w-4 h-4" /> Call</a>
+        {p.phone && <a href={`tel:+91${p.phone}`} className="inline-flex items-center gap-2 rounded-xl bg-[var(--a-accent)] px-4 py-2.5 text-[14px] text-white"><FiPhone className="w-4 h-4" /> Call</a>}
         <Button variant="danger" onClick={() => onDelete(p)}><FiTrash2 /> Delete</Button>
       </div>
 
       <section>
         <h3 className="text-[13px] uppercase tracking-wider text-[var(--a-muted)] mb-1">Patient</h3>
-        <Row label="Age / sex" value={`${p.age} years · ${p.sex}`} />
-        <Row label="Phone" value={`+91 ${p.phone}`} />
+        <Row label="Age / sex" value={ageSex(p)} />
+        {p.dob && <Row label="Date of birth" value={p.dob} />}
+        <Row label="Phone" value={p.phone ? `+91 ${p.phone}` : ''} />
+        {p.alt_phone && <Row label="Other mobile" value={`+91 ${p.alt_phone}`} />}
+        {p.email && <Row label="Email" value={p.email} />}
+        {p.blood_group && <Row label="Blood group" value={p.blood_group} />}
         <Row label="Address" value={p.address} />
         <Row label="Profession" value={p.profession} />
         <Row label="Reference" value={[p.referral, p.referral_name].filter(Boolean).join(' — ')} />
         {p.pregnant && <Row label="Pregnancy" value={p.pregnant} />}
+        {p.practo_id && <Row label="Practo no." value={p.practo_id} />}
+        {p.practo_notes && <Row label="Practo notes" value={p.practo_notes} />}
+        {p.source && <Row label="Added via" value={SOURCES[p.source] || p.source} />}
       </section>
+
+      {data.family?.length > 0 && (
+        <section className="mt-6">
+          <h3 className="text-[13px] uppercase tracking-wider text-[var(--a-muted)] mb-2">Family on this mobile number</h3>
+          <ul className="grid gap-2">
+            {data.family.map((f) => (
+              <li key={f.patient_id}>
+                <button onClick={() => onOpen(f)} className="w-full flex items-center justify-between gap-3 rounded-xl bg-white/4 px-4 py-3 text-left text-[13.5px] hover:bg-white/8">
+                  <span className="flex items-center gap-2"><FiUser className="w-3.5 h-3.5 text-[var(--a-muted)]" /> {f.name}</span>
+                  <span className="text-[12px] text-[var(--a-muted)]">{f.patient_id}{f.age != null ? ` · ${f.age}y` : ''}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-6">
         <h3 className="text-[13px] uppercase tracking-wider text-[var(--a-muted)] mb-2">Medical history</h3>
@@ -285,10 +324,12 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged }) {
         )}
       </section>
 
-      <section className="mt-6">
-        <h3 className="text-[13px] uppercase tracking-wider text-[var(--a-muted)] mb-2">Chief complaint</h3>
-        <p className="rounded-xl bg-white/4 p-4 text-[14px] leading-relaxed">{p.complaint}</p>
-      </section>
+      {p.complaint && (
+        <section className="mt-6">
+          <h3 className="text-[13px] uppercase tracking-wider text-[var(--a-muted)] mb-2">Chief complaint</h3>
+          <p className="rounded-xl bg-white/4 p-4 text-[14px] leading-relaxed">{p.complaint}</p>
+        </section>
+      )}
 
       <section className="mt-6">
         <h3 className="text-[13px] uppercase tracking-wider text-[var(--a-muted)] mb-2">Appointments</h3>

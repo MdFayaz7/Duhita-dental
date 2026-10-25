@@ -2,6 +2,7 @@ import datetime as dt
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy.orm import aliased
 
 from ..db import SessionDep, contains, serialize
 from ..events import broadcast_event
@@ -63,21 +64,30 @@ async def list_patients(
 ):
     filters = []
     if q and q.strip():
-        filters.append(or_(contains(Patient.name, q), contains(Patient.phone, q), contains(Patient.patient_id, q)))
+        filters.append(or_(contains(Patient.name, q), contains(Patient.phone, q), contains(Patient.patient_id, q),
+                           contains(Patient.alt_phone, q), Patient.practo_id == q.strip()))
     if date_from:
         filters.append(Patient.created_at >= dt.datetime.combine(date_from, dt.time.min, IST))
     if date_to:
         filters.append(Patient.created_at < dt.datetime.combine(date_to + dt.timedelta(days=1), dt.time.min, IST))
 
     order = {"newest": Patient.created_at.desc(), "oldest": Patient.created_at.asc(), "name": Patient.name.asc()}[sort]
-    # One round trip: the page plus the total, via a window count.
+    # One round trip: the page, the total (window count) and each patient's family size.
     rows = (await session.execute(
-        select(Patient, func.count().over().label("total")).where(*filters).order_by(order).offset(skip).limit(limit)
+        select(Patient, func.count().over().label("total"), _family_size().label("family_size"))
+        .where(*filters).order_by(order).offset(skip).limit(limit)
     )).all()
     total = rows[0].total if rows else (
         await session.scalar(select(func.count()).select_from(Patient).where(*filters)) if skip else 0
     )
-    return {"total": total, "items": [serialize(r.Patient) for r in rows]}
+    return {"total": total, "items": [{**serialize(r.Patient), "family_size": r.family_size} for r in rows]}
+
+
+def _family_size():
+    """How many patients share this one's mobile number (1 = no family on file)."""
+    other = aliased(Patient)
+    return (select(func.count()).select_from(other).where(other.phone == Patient.phone, Patient.phone != "")
+            .correlate(Patient).scalar_subquery())
 
 
 @router.get("/{patient_id}")
@@ -92,10 +102,17 @@ async def patient_detail(patient_id: str, session: SessionDep, _: str = Depends(
         select(Record).where(Record.patient_id == patient.patient_id)
         .order_by(Record.date.desc().nulls_last(), Record.created_at.desc()).limit(200)
     )
+    # Family = everyone else on the same mobile number (Practo keeps households together this way).
+    family = (await session.execute(
+        select(Patient.patient_id, Patient.name, Patient.age, Patient.sex)
+        .where(Patient.phone == patient.phone, Patient.phone != "", Patient.id != patient.id)
+        .order_by(Patient.created_at).limit(30)
+    )).all() if patient.phone else []
     return {
         "patient": serialize(patient),
         "appointments": [serialize(a) for a in history],
         "records": [serialize(r) for r in records],
+        "family": [f._asdict() for f in family],
     }
 
 

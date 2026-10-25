@@ -32,6 +32,8 @@ const AdminLogin = lazy(() => import('./admin/Login'));
 const AdminLayout = lazy(() => import('./admin/AdminLayout'));
 const AdminOverview = lazy(() => import('./admin/Overview'));
 const AdminAppointments = lazy(() => import('./admin/Appointments'));
+const AdminCalendar = lazy(() => import('./admin/Calendar'));
+const AdminImportPatients = lazy(() => import('./admin/ImportPatients'));
 const AdminSchedule = lazy(() => import('./admin/Schedule'));
 const AdminPatients = lazy(() => import('./admin/Patients'));
 const AdminSettings = lazy(() => import('./admin/Settings'));
@@ -54,9 +56,11 @@ export default function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminOverview />} />
-            <Route path="appointments" element={<AdminAppointments />} />
+            <Route path="appointments" element={<AdminCalendar />} />
+            <Route path="appointments/list" element={<AdminAppointments />} />
             <Route path="schedule" element={<AdminSchedule />} />
             <Route path="patients" element={<AdminPatients />} />
+            <Route path="patients/import" element={<AdminImportPatients />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="doctors" element={<AdminDoctors />} />
             <Route path="research" element={<AdminResearch />} />

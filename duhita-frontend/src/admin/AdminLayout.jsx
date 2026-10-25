@@ -15,7 +15,7 @@ const GROUPS = [
       { to: '/admin', label: 'Overview', icon: FiGrid, end: true },
       { to: '/admin/appointments', label: 'Appointments', icon: FiCalendar },
       { to: '/admin/schedule', label: 'Daily Schedule', icon: FiClock },
-      { to: '/admin/patients', label: 'Registrations', icon: FiUsers },
+      { to: '/admin/patients', label: 'Patients', icon: FiUsers },
       { to: '/admin/doctors', label: 'Doctors', icon: FiUserCheck },
     ],
   },
@@ -48,27 +48,29 @@ export default function AdminLayout() {
   }, [navigate]);
 
   useEffect(() => setOpen(false), [pathname]);
+  // The calendar needs the width: the desktop menu shrinks to an icon rail there, as in Practo.
+  const compact = pathname === '/admin/appointments';
 
   const signOut = () => {
     setToken(null);
     navigate('/admin/login', { replace: true });
   };
 
-  const nav = (
-    <nav className="px-3 py-4 grid gap-6 overflow-y-auto">
+  const nav = (rail) => (
+    <nav className={cx('py-4 grid gap-6 overflow-y-auto', rail ? 'px-2' : 'px-3')}>
       {GROUPS.map((group) => (
         <div key={group.label}>
-          <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/30">{group.label}</p>
+          {!rail && <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/30">{group.label}</p>}
           <div className="grid gap-0.5">
             {group.items.map(({ to, label, icon: Icon, end }) => (
-              <NavLink key={to} to={to} end={end}
+              <NavLink key={to} to={to} end={end} title={rail ? label : undefined} aria-label={rail ? label : undefined}
                 className={({ isActive }) =>
-                  cx('relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] transition-colors',
+                  cx('relative flex items-center gap-3 rounded-lg py-2.5 text-[14px] transition-colors', rail ? 'justify-center px-0' : 'px-3',
                     isActive
                       ? 'bg-[var(--a-accent-soft)] text-white font-medium before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[var(--a-accent)]'
                       : 'text-[var(--a-muted)] hover:bg-white/5 hover:text-[var(--a-text)]')}>
                 <Icon className="w-[17px] h-[17px] shrink-0" />
-                {label}
+                {!rail && label}
               </NavLink>
             ))}
           </div>
@@ -81,24 +83,28 @@ export default function AdminLayout() {
     <AdminProviders>
       <div className="admin min-h-screen lg:flex">
         {/* Sidebar — desktop */}
-        <aside className="hidden lg:flex lg:w-[264px] lg:shrink-0 lg:flex-col lg:sticky lg:top-0 lg:h-screen border-r border-[var(--a-border)] bg-[#0e141b]">
-          <div className="flex items-center gap-3 px-5 py-5 border-b border-[var(--a-border)]">
+        <aside className={cx('hidden lg:flex lg:shrink-0 lg:flex-col lg:sticky lg:top-0 lg:h-screen border-r border-[var(--a-border)] bg-[#0e141b]', compact ? 'lg:w-[64px]' : 'lg:w-[264px]')}>
+          <div className={cx('flex items-center gap-3 py-5 border-b border-[var(--a-border)]', compact ? 'justify-center px-2' : 'px-5')}>
             <img src="/images/brand/duhita-logo-sm.png" alt="" className="h-9 w-auto" />
-            <span className="leading-tight">
-              <span className="block text-[14.5px] font-semibold">Duhita Dental</span>
-              <span className="block text-[11.5px] text-[var(--a-muted)]">Admin dashboard</span>
-            </span>
+            {!compact && (
+              <span className="leading-tight">
+                <span className="block text-[14.5px] font-semibold">Duhita Dental</span>
+                <span className="block text-[11.5px] text-[var(--a-muted)]">Admin dashboard</span>
+              </span>
+            )}
           </div>
-          <div className="flex-1 overflow-y-auto">{nav}</div>
+          <div className="flex-1 overflow-y-auto">{nav(compact)}</div>
           <div className="border-t border-[var(--a-border)] p-3">
-            <div className="flex items-center gap-3 rounded-lg px-3 py-2.5">
-              <span className="w-8 h-8 rounded-full bg-[var(--a-accent)] grid place-items-center text-[13px] font-semibold text-white">
+            <div className={cx('flex items-center gap-3 rounded-lg py-2.5', compact ? 'flex-col px-0' : 'px-3')}>
+              <span className="w-8 h-8 rounded-full bg-[var(--a-accent)] grid place-items-center text-[13px] font-semibold text-white" title={user}>
                 {(user || 'A').charAt(0).toUpperCase()}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13.5px]">{user || '—'}</span>
-                <span className="block text-[11.5px] text-[var(--a-muted)]">Signed in</span>
-              </span>
+              {!compact && (
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px]">{user || '—'}</span>
+                  <span className="block text-[11.5px] text-[var(--a-muted)]">Signed in</span>
+                </span>
+              )}
               <button onClick={signOut} aria-label="Sign out" title="Sign out"
                 className="w-8 h-8 grid place-items-center rounded-lg text-[var(--a-muted)] hover:bg-[#f0616d]/15 hover:text-[#ff8a92]">
                 <FiLogOut className="w-4 h-4" />
@@ -121,7 +127,7 @@ export default function AdminLayout() {
 
         {open && (
           <div className="lg:hidden fixed inset-x-0 top-[57px] bottom-0 z-40 overflow-y-auto bg-[#0e141b] border-t border-[var(--a-border)]">
-            {nav}
+            {nav(false)}
             <div className="px-6 pb-8">
               <button onClick={signOut} className="flex items-center gap-2 text-[14px] text-[#ff8a92]">
                 <FiLogOut /> Sign out of {user}

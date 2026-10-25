@@ -92,11 +92,16 @@ export const api = {
 
   patients: (params = {}) => request(`/api/patients?${new URLSearchParams(params)}`),
   patient: (patientId) => request(`/api/patients/${patientId}`),
+  importPreview: (form) => request('/api/patients/import/preview', { method: 'POST', form }),
+  importCommit: (form) => request('/api/patients/import/commit', { method: 'POST', form }),
   deletePatient: (patientId) => request(`/api/patients/${patientId}`, { method: 'DELETE' }),
   addPatientRecord: (patientId, form) => request(`/api/patients/${patientId}/records`, { method: 'POST', form }),
   deletePatientRecord: (patientId, recordId) => request(`/api/patients/${patientId}/records/${recordId}`, { method: 'DELETE' }),
 
   appointments: (params = {}) => request(`/api/appointments?${new URLSearchParams(params)}`),
+  calendar: (params) => request(`/api/appointments/calendar?${new URLSearchParams(params)}`),
+  bookAppointment: (body) => request('/api/appointments/admin', { method: 'POST', body }),
+  clinicHours: () => request('/api/clinic/hours', { auth: false }),
   updateAppointment: (id, body) => request(`/api/appointments/${id}`, { method: 'PATCH', body }),
   deleteAppointment: (id) => request(`/api/appointments/${id}`, { method: 'DELETE' }),
 

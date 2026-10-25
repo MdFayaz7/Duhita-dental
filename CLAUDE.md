@@ -52,3 +52,21 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
 - New bookings WhatsApp the admins a Confirm button (Meta Cloud API, approved templates); confirming — by that
   button or the dashboard — WhatsApps the patient once. Setup and template text: `backend/README.md`.
 - Tests need a real Postgres: `TEST_DATABASE_URL=... pytest` in `backend/`.
+- Clinic hours (10:00–13:00, 16:30–20:00, Sunday by appointment), slot length, durations and booking categories live in
+  `backend/app/clinic.py` and are served at `/api/clinic/hours`. The website's `src/data/patients.js` / `site.js`,
+  `index.html` (JSON-LD) and `patient-app/src/data/clinic.ts` repeat them as text — change them together.
+
+## Admin calendar & patients
+
+- `/admin/appointments` is a Practo-style calendar (`admin/Calendar.jsx`, `admin/CalendarBooking.jsx`): day view has a
+  column per doctor, week view starts on Sunday, click a slot to book, drag to reschedule. The old table is at
+  `/admin/appointments/list`. Doctors appear in the calendar when `in_calendar` is true (independent of `active`,
+  which only controls the website) and are drawn in their `color`.
+- Statuses: pending (website/app request) → confirmed (booked) → checked_in (waiting) → engaged → completed, plus
+  cancelled / no_show. Booking or moving onto a doctor's occupied time returns 409 unless `force` is sent.
+- Families: there is no family table. Patients who share a mobile number are a family (`family_size` in the list,
+  `family` in the detail). Every member keeps their own patient ID.
+- Practo import (`/admin/patients/import`, `app/practo_import.py`, `routers/patients_import.py`): preview then commit,
+  stateless (the file is sent twice). Matches by Practo number, then mobile + name; only fills blanks, never
+  overwrites, so re-importing is safe. New IDs use the Practo registration month (`DDyymm-nnnn`).
+

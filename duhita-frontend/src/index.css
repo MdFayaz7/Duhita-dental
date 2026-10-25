@@ -335,6 +335,11 @@ main img:not(.no-zoom):not(.hero-media):hover {
 }
 
 /* ---------- Admin dashboard theme ---------- */
+/* Calendar slots outside clinic hours: still bookable, but visibly shaded. */
+.cal-closed {
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 6px, transparent 6px 12px);
+  background-color: rgba(0, 0, 0, 0.25);
+}
 .admin {
   --a-bg: #0b0f14;
   --a-surface: #131a22;

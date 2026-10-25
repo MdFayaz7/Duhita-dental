@@ -12,7 +12,7 @@ export const site = {
     'Benz Circle, Vijayawada, Andhra Pradesh',
   ],
   hours: [
-    { label: 'Mon – Sat', value: '9:00 AM – 1:00 PM · 3:00 PM – 9:00 PM' },
+    { label: 'Mon – Sat', value: '10:00 AM – 1:00 PM · 4:30 PM – 8:00 PM' },
     { label: 'Sunday', value: 'By appointment only' },
   ],
   social: {
@@ -78,7 +78,7 @@ export const whyChoose = [
   },
   {
     icon: 'clock',
-    title: 'Evening Hours Till 9 PM',
+    title: 'Evening Hours Till 8 PM',
     body: 'Morning and late-evening slots, six days a week, so dental care fits around school and work.',
   },
   {
@@ -110,7 +110,7 @@ export const homeFaqs = [
   },
   {
     q: 'What are your clinic timings?',
-    a: 'Monday to Saturday, 9:00 AM – 1:00 PM and 3:00 PM – 9:00 PM. Sunday consultations are available by prior appointment.',
+    a: 'Monday to Saturday, 10:00 AM – 1:00 PM and 4:30 PM – 8:00 PM. Sunday consultations are available by prior appointment.',
   },
   {
     q: 'Do you handle dental emergencies?',
