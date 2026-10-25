@@ -2,8 +2,9 @@ export const site = {
   name: 'Duhita Dental',
   fullName: 'Duhita Multispeciality Dental Centre',
   tagline: 'Precision. Comfort. Care since 1997.',
-  phone: '+919440313066',
-  phoneDisplay: '+91 94403 13066',
+  phone: '+918662474066',
+  phoneDisplay: '0866 247 4066',
+  // WhatsApp needs the clinic mobile; calls go to the landline above.
   whatsapp: 'https://wa.me/919440313066',
   email: 'duhitadent@gmail.com',
   addressLines: [
@@ -114,7 +115,7 @@ export const homeFaqs = [
   },
   {
     q: 'Do you handle dental emergencies?',
-    a: 'Yes. Severe toothache, swelling, a knocked-out or broken tooth — call us on +91 94403 13066 and we will fit you in on priority.',
+    a: 'Yes. Severe toothache, swelling, a knocked-out or broken tooth — call us on 0866 247 4066 and we will fit you in on priority.',
   },
   {
     q: 'Is root canal treatment painful?',

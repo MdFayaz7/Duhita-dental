@@ -5,7 +5,7 @@ import useSeo from '../hooks/useSeo';
 
 export default function Contact() {
   useSeo(
-    'Contact Duhita Dental | Dentist Near Benz Circle, Vijayawada | +91 94403 13066',
+    'Contact Duhita Dental | Dentist Near Benz Circle, Vijayawada | 0866 247 4066',
     'Book an appointment at Duhita Multispeciality Dental Centre, Shanthi Plaza, Krishna Nagar, near Benz Circle, Vijayawada. Open Mon–Sat 10 AM–1 PM & 4:30 PM–8 PM.',
     { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );

@@ -4,8 +4,9 @@ export const clinicInfo = {
   name: 'Duhita Dental',
   fullName: 'Duhita Multispeciality Dental Centre',
   tagline: 'Precision. Comfort. Care since 1997.',
-  phone: '+919440313066',
-  phoneDisplay: '+91 94403 13066',
+  phone: '+918662474066',
+  phoneDisplay: '0866 247 4066',
+  // WhatsApp needs the clinic mobile; calls go to the landline above.
   whatsapp: 'https://wa.me/919440313066',
   email: 'duhitadent@gmail.com',
   website: 'https://duhitadental.com',

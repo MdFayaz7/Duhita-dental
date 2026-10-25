@@ -22,7 +22,7 @@ export default function Treatment() {
     provider: {
       '@type': 'Dentist',
       name: 'Duhita Multispeciality Dental Centre',
-      telephone: '+91-9440313066',
+      telephone: '+91-866-247-4066',
       url: 'https://duhitadental.com',
     },
   } : null;
