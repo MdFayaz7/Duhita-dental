@@ -1,7 +1,8 @@
 import datetime as dt
-from typing import Literal
+from decimal import Decimal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 # ---------- auth ----------
 
@@ -232,3 +233,71 @@ class GalleryUpdate(BaseModel):
     caption: str | None = None
     category: GalleryCategory | None = None
     order: int | None = None
+
+
+# ---------- billing ----------
+
+Money = Annotated[Decimal, Field(ge=0, le=Decimal("9999999.99"), max_digits=12, decimal_places=2)]
+PaymentMode = Literal["cash", "card", "upi", "cheque", "bank", "other"]
+# FDI tooth numbers: permanent 11-48, primary (child) 51-85.
+TEETH = {q * 10 + n for q in (1, 2, 3, 4) for n in range(1, 9)} | {q * 10 + n for q in (5, 6, 7, 8) for n in range(1, 6)}
+
+
+class ProcedureIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    cost: Money = Decimal(0)
+    active: bool = True
+
+
+class InvoiceItemIn(BaseModel):
+    procedure_id: int | None = None
+    name: str = Field(min_length=1, max_length=160)
+    doctor_id: int | None = None
+    date: dt.date
+    teeth: list[int] = Field(default_factory=list, max_length=52)
+    unit_cost: Money = Decimal(0)
+    qty: int = Field(default=1, ge=1, le=999)
+    discount_value: Money = Decimal(0)
+    discount_type: Literal["pct", "inr"] = "pct"
+    tax_pct: Decimal = Field(default=Decimal(0), ge=0, le=100, max_digits=5, decimal_places=2)
+    notes: str | None = Field(default=None, max_length=500)
+
+    @field_validator("teeth")
+    @classmethod
+    def valid_teeth(cls, teeth: list[int]) -> list[int]:
+        bad = [t for t in teeth if t not in TEETH]
+        if bad:
+            raise ValueError(f"Not a tooth number: {', '.join(map(str, bad))}")
+        return sorted(set(teeth))
+
+    @model_validator(mode="after")
+    def discount_in_range(self):
+        if self.discount_type == "pct" and self.discount_value > 100:
+            raise ValueError("A percentage discount can't be more than 100%.")
+        if self.discount_type == "inr" and self.discount_value > self.unit_cost * self.qty:
+            raise ValueError(f"The discount on {self.name} is more than its cost.")
+        return self
+
+
+class InvoiceIn(BaseModel):
+    patient_id: str = Field(min_length=3, max_length=20)
+    number: int | None = Field(default=None, ge=1, le=99_999_999)  # blank = next free bill number
+    doctor_id: int | None = None
+    date: dt.date
+    notes: str | None = Field(default=None, max_length=1000)
+    items: list[InvoiceItemIn] = Field(min_length=1, max_length=100)
+
+
+class PaymentIn(BaseModel):
+    amount: Money
+    mode: PaymentMode = "cash"
+    date: dt.date | None = None
+    reference: str | None = Field(default=None, max_length=120)
+    notes: str | None = Field(default=None, max_length=500)
+
+    @field_validator("amount")
+    @classmethod
+    def positive(cls, amount: Decimal) -> Decimal:
+        if amount <= 0:
+            raise ValueError("Enter an amount above zero.")
+        return amount

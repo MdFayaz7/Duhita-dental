@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   FiCheck, FiClock, FiEdit2, FiPhone, FiTrash2, FiUser, FiUserPlus, FiUsers, FiX, FiMessageCircle,
 } from 'react-icons/fi';
@@ -350,6 +351,12 @@ export function AppointmentDrawer({ appointment, doctor, onClose, onEdit, onStat
 
         <div className="flex flex-wrap gap-2 border-t border-[var(--a-border)] pt-4">
           <Button variant="secondary" onClick={() => onEdit(a)}><FiEdit2 /> Edit / reschedule</Button>
+          {a.patient_id && (
+            <>
+              <Link to={`/admin/patients/${a.patient_id}/invoices/new`} className="inline-flex items-center gap-2 h-[38px] px-4 rounded-[3px] border border-[#c8c8c8] text-[14px] text-[var(--a-text)] hover:bg-[#f5f5f5]">Create invoice</Link>
+              <Link to={`/admin/patients/${a.patient_id}`} className="inline-flex items-center gap-2 h-[38px] px-4 rounded-[3px] border border-[#c8c8c8] text-[14px] text-[var(--a-text)] hover:bg-[#f5f5f5]">Patient record</Link>
+            </>
+          )}
           {!['cancelled', 'completed'].includes(a.status) && (
             <>
               <Button variant="secondary" onClick={() => onStatus(a, 'no_show')}>No show</Button>

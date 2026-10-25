@@ -9,7 +9,7 @@ from ..events import broadcast_event
 from ..models import PatientIn
 from ..patients_service import IST, RecordForm, add_patient, add_record
 from ..security import current_admin
-from ..tables import Appointment, Patient, Record
+from ..tables import Appointment, Invoice, Patient, Record
 from ..uploads import delete_upload
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
@@ -118,6 +118,8 @@ async def patient_detail(patient_id: str, session: SessionDep, _: str = Depends(
 
 @router.delete("/{patient_id}")
 async def delete_patient(patient_id: str, session: SessionDep, _: str = Depends(current_admin)):
+    if await session.scalar(select(Invoice.id).where(Invoice.patient_id == patient_id.upper()).limit(1)):
+        raise HTTPException(400, "This patient has invoices, so their record has to be kept.")
     deleted = (await session.execute(
         delete(Patient).where(Patient.patient_id == patient_id).returning(Patient.id)
     )).scalar_one_or_none()

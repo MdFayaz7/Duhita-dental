@@ -273,8 +273,10 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged, onOpen }) {
   return (
     <Drawer open={!!p} title={p.name} subtitle={`${p.patient_id} · registered ${formatDateTime(p.created_at)}`} onClose={onClose}>
       <div className="flex gap-2 mb-5">
-        {p.phone && <a href={`tel:+91${p.phone}`} className="inline-flex items-center gap-2 rounded bg-[var(--a-accent)] px-4 py-2.5 text-[14px] text-white"><FiPhone className="w-4 h-4" /> Call</a>}
-        <Button variant="danger" onClick={() => onDelete(p)}><FiTrash2 /> Delete</Button>
+        <Link to={`/admin/patients/${p.patient_id}`} className="inline-flex items-center gap-2 rounded-[3px] bg-[var(--a-accent)] px-4 h-[38px] text-[14px] text-white hover:bg-[var(--a-accent-hover)]">Open full record</Link>
+        <Link to={`/admin/patients/${p.patient_id}/invoices/new`} className="inline-flex items-center gap-2 rounded-[3px] border border-[#c8c8c8] px-4 h-[38px] text-[14px] text-[var(--a-text)] hover:bg-[#f5f5f5]">New invoice</Link>
+        {p.phone && <a href={`tel:+91${p.phone}`} className="inline-flex items-center gap-2 rounded-[3px] border border-[#c8c8c8] px-3 h-[38px] text-[14px] text-[var(--a-text)] hover:bg-[#f5f5f5]" aria-label="Call"><FiPhone className="w-4 h-4" /></a>}
+        <Button variant="danger" onClick={() => onDelete(p)} aria-label="Delete patient"><FiTrash2 /></Button>
       </div>
 
       <section>

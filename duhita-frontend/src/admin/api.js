@@ -111,6 +111,23 @@ export const api = {
   updateSchedule: (id, body) => request(`/api/schedule/${id}`, { method: 'PATCH', body }),
   deleteSchedule: (id) => request(`/api/schedule/${id}`, { method: 'DELETE' }),
 
+  procedures: (all = false) => request(`/api/procedures${all ? '?include_inactive=true' : ''}`),
+  addProcedure: (body) => request('/api/procedures', { method: 'POST', body }),
+  updateProcedure: (id, body) => request(`/api/procedures/${id}`, { method: 'PATCH', body }),
+  deleteProcedure: (id) => request(`/api/procedures/${id}`, { method: 'DELETE' }),
+
+  invoices: (params = {}) => request(`/api/invoices?${new URLSearchParams(params)}`),
+  invoice: (id) => request(`/api/invoices/${id}`),
+  nextInvoiceNumber: () => request('/api/invoices/next-number'),
+  createInvoice: (body) => request('/api/invoices', { method: 'POST', body }),
+  updateInvoice: (id, body) => request(`/api/invoices/${id}`, { method: 'PUT', body }),
+  cancelInvoice: (id) => request(`/api/invoices/${id}/cancel`, { method: 'POST' }),
+  deleteInvoice: (id) => request(`/api/invoices/${id}`, { method: 'DELETE' }),
+  addPayment: (invoiceId, body) => request(`/api/invoices/${invoiceId}/payments`, { method: 'POST', body }),
+  deletePayment: (id) => request(`/api/payments/${id}`, { method: 'DELETE' }),
+  patientBilling: (patientId) => request(`/api/patients/${patientId}/billing`),
+  patientTimeline: (patientId) => request(`/api/patients/${patientId}/timeline`),
+
   doctors: () => request('/api/doctors?include_inactive=true'),
   addDoctor: (body) => request('/api/doctors', { method: 'POST', body }),
   updateDoctor: (id, body) => request(`/api/doctors/${id}`, { method: 'PATCH', body }),

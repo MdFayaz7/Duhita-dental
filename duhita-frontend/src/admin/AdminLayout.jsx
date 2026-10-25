@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiGrid, FiCalendar, FiClock, FiUsers, FiUserCheck, FiFileText, FiImage, FiLayers,
-  FiHeart, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiSearch, FiX, FiVideo,
+  FiCreditCard, FiHeart, FiSettings, FiLogOut, FiExternalLink, FiMenu, FiSearch, FiX, FiVideo,
 } from 'react-icons/fi';
 import { api, getToken, setToken } from './api';
 import { AdminProviders, cx } from './ui';
@@ -16,6 +16,7 @@ const GROUPS = [
       { to: '/admin/appointments', label: 'Appointments', icon: FiCalendar },
       { to: '/admin/schedule', label: 'Daily Schedule', icon: FiClock },
       { to: '/admin/patients', label: 'Patients', icon: FiUsers },
+      { to: '/admin/billing', label: 'Billing', icon: FiCreditCard },
       { to: '/admin/doctors', label: 'Doctors', icon: FiUserCheck },
     ],
   },
@@ -59,7 +60,7 @@ export default function AdminLayout() {
     document.head.appendChild(link);
   }, []);
   // The calendar needs the width: the desktop menu shrinks to an icon rail there, as in Practo.
-  const compact = pathname === '/admin/appointments';
+  const compact = pathname === '/admin/appointments' || /\/invoices\/(new|\d+\/edit)$/.test(pathname);
 
   const signOut = () => {
     setToken(null);

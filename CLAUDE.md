@@ -70,3 +70,15 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
   stateless (the file is sent twice). Matches by Practo number, then mobile + name; only fills blanks, never
   overwrites, so re-importing is safe. New IDs use the Practo registration month (`DDyymm-nnnn`).
 
+## Billing
+
+- Tables `procedures` (fee list), `invoices` + `invoice_items`, `payments` — money is NUMERIC(12,2)/Decimal throughout.
+  Totals are computed server-side in `app/billing.py` and cached on the invoice (`subtotal/discount/tax/total/paid`);
+  the admin's live preview in `admin/billingUi.jsx` mirrors the same formula (tax applies after discount).
+- Bill numbers are unique and editable; blank = max + 1 under an advisory lock. Cancelling keeps the number used;
+  invoices with payments can't be cancelled, deleted or reduced below the amount received. Patients with invoices
+  can't be deleted.
+- Screens: `/admin/patients/:id` (timeline / invoices / payments), `/admin/patients/:id/invoices/new` and
+  `/admin/invoices/:id/edit` (Practo-style editor with FDI teeth chart), `/admin/billing` (invoice list, fee list),
+  `/admin/print/invoice/:id` (A4 printout, opens the print dialog; letterhead from `src/data/site.js`).
+

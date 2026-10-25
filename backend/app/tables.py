@@ -3,12 +3,14 @@
 Trigram search indexes (*_trgm) are created by the first migration when pg_trgm is available."""
 import datetime as dt
 
+from decimal import Decimal
+
 from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Identity, Index, Integer, LargeBinary,
-    SmallInteger, Text, func, text,
+    Numeric, SmallInteger, Text, func, text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column, relationship
 
 # checked_in = waiting at the clinic, engaged = in the chair (Practo's Waiting / Engaged / Done).
 STATUSES = ("pending", "confirmed", "checked_in", "engaged", "completed", "cancelled", "no_show")
@@ -233,3 +235,90 @@ class WhatsAppMessage(Base):
     payload: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), default=dict)
     created_at: Mapped[dt.datetime] = created()
     updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# ---------------------------------------------------------------- billing
+# Money is NUMERIC(12,2) end to end (Decimal in Python): no float rounding on bills.
+
+def money(default: str | None = "0") -> Mapped[Decimal]:
+    return mapped_column(Numeric(12, 2), server_default=default, default=Decimal(default or 0), nullable=False)
+
+
+class Procedure(Base):
+    """The clinic's list of treatments and their standard fees (Practo's "Procedures" catalogue)."""
+    __tablename__ = "procedures"
+    __table_args__ = (Index("ix_procedures_name", text("lower(name)"), unique=True),)
+    id: Mapped[int] = pk()
+    name: Mapped[str] = mapped_column(Text)
+    cost: Mapped[Decimal] = money()
+    active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), default=True)
+    created_at: Mapped[dt.datetime] = created()
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'cancelled')", name="ck_invoices_status"),
+        Index("ix_invoices_patient_date", "patient_id", "date"),
+        Index("ix_invoices_date", "date"),
+    )
+    id: Mapped[int] = pk()
+    number: Mapped[int] = mapped_column(Integer, unique=True)  # the bill number printed on the invoice
+    patient_id: Mapped[str] = mapped_column(Text)
+    doctor_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("doctors.id", ondelete="SET NULL"))
+    date: Mapped[dt.date] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, server_default="active", default="active")
+    # Cached from the items on every save so lists and reports are one cheap query.
+    subtotal: Mapped[Decimal] = money()
+    discount: Mapped[Decimal] = money()
+    tax: Mapped[Decimal] = money()
+    total: Mapped[Decimal] = money()
+    paid: Mapped[Decimal] = money()
+    created_at: Mapped[dt.datetime] = created()
+    updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    items: Mapped[list["InvoiceItem"]] = relationship(
+        back_populates="invoice", cascade="all, delete-orphan", order_by="InvoiceItem.position", lazy="selectin")
+
+
+class InvoiceItem(Base):
+    __tablename__ = "invoice_items"
+    __table_args__ = (
+        CheckConstraint("discount_type IN ('pct', 'inr')", name="ck_invoice_items_discount_type"),
+        Index("ix_invoice_items_invoice", "invoice_id", "position"),
+    )
+    id: Mapped[int] = pk()
+    invoice_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("invoices.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(SmallInteger, server_default="0", default=0)
+    procedure_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("procedures.id", ondelete="SET NULL"))
+    name: Mapped[str] = mapped_column(Text)
+    doctor_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("doctors.id", ondelete="SET NULL"))
+    date: Mapped[dt.date] = mapped_column(Date)
+    teeth: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger), server_default=text("'{}'"), default=list)
+    unit_cost: Mapped[Decimal] = money()
+    qty: Mapped[int] = mapped_column(SmallInteger, server_default="1", default=1)
+    discount_value: Mapped[Decimal] = money()
+    discount_type: Mapped[str] = mapped_column(Text, server_default="pct", default="pct")
+    tax_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), server_default="0", default=Decimal(0))
+    total: Mapped[Decimal] = money()
+    notes: Mapped[str | None] = mapped_column(Text)
+    invoice: Mapped[Invoice] = relationship(back_populates="items")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_payments_amount"),
+        CheckConstraint("mode IN ('cash', 'card', 'upi', 'cheque', 'bank', 'other')", name="ck_payments_mode"),
+        Index("ix_payments_patient_date", "patient_id", "date"),
+        Index("ix_payments_invoice", "invoice_id"),
+    )
+    id: Mapped[int] = pk()
+    patient_id: Mapped[str] = mapped_column(Text)
+    invoice_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("invoices.id", ondelete="SET NULL"))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    mode: Mapped[str] = mapped_column(Text, server_default="cash", default="cash")
+    reference: Mapped[str | None] = mapped_column(Text)
+    date: Mapped[dt.date] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = created()
