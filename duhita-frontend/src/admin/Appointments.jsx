@@ -126,10 +126,10 @@ export default function Appointments() {
         subtitle="Every booking — website, app and front desk — as a searchable list."
         actions={
           <div className="flex items-center gap-2.5">
-            <Link to="/admin/appointments" className="inline-flex items-center gap-2 rounded-xl border border-[var(--a-border)] px-3.5 py-2.5 text-[13px] text-[var(--a-muted)] hover:text-white hover:bg-white/5">
+            <Link to="/admin/appointments" className="inline-flex items-center gap-2 rounded border border-[var(--a-border)] px-3.5 py-2.5 text-[13px] text-[var(--a-muted)] hover:text-[var(--a-text)] hover:bg-black/3">
               <FiCalendar className="w-4 h-4" /> Calendar
             </Link>
-            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -180,12 +180,12 @@ export default function Appointments() {
             <div className="hidden md:block">
               <Table head={['Patient', 'Contact', 'Date & time', 'Reason', 'Booked', 'Status', '']}>
                 {items.map((a) => (
-                  <tr key={a.id} className="hover:bg-white/3">
+                  <tr key={a.id} className="hover:bg-black/3">
                     <td className="px-5 py-4">
                       <p className="font-medium">{a.name}</p>
                       <p className="text-[12.5px] text-[var(--a-muted)]">{a.patient_id || 'Walk-in'}</p>
                     </td>
-                    <td className="px-5 py-4"><a href={`tel:+91${a.phone}`} className="text-[var(--a-accent)] hover:underline">+91 {a.phone}</a></td>
+                    <td className="px-5 py-4"><a href={`tel:+91${a.phone}`} className="text-[#1a9ad6] hover:underline">+91 {a.phone}</a></td>
                     <td className="px-5 py-4 whitespace-nowrap">
                       {a.date}<span className="text-[var(--a-muted)]"> · </span>{formatSlot(a.slot)}
                       {a.doctor && <p className="text-[12.5px] text-[var(--a-muted)]">{a.doctor}</p>}
@@ -194,7 +194,7 @@ export default function Appointments() {
                     <td className="px-5 py-4 text-[12.5px] text-[var(--a-muted)] whitespace-nowrap">{formatDateTime(a.created_at)}</td>
                     <td className="px-5 py-4">
                       <select value={a.status} onChange={(e) => setStatusFor(a, e.target.value)}
-                        className="rounded-lg border border-[var(--a-border)] bg-[#0e141b] px-2.5 py-1.5 text-[13px] capitalize">
+                        className="rounded-lg border border-[var(--a-border)] bg-[var(--a-input)] px-2.5 py-1.5 text-[13px] capitalize">
                         {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                       </select>
                     </td>

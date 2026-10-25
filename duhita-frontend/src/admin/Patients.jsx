@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   FiCalendar, FiDownload, FiFile, FiImage, FiPhone, FiPlus, FiRefreshCw, FiTrash2, FiUpload, FiUser, FiUsers,
 } from 'react-icons/fi';
@@ -36,7 +36,9 @@ const CONDITION_LABELS = {
 export default function Patients() {
   const toast = useToast();
   const confirm = useConfirm();
-  const [q, setQ] = useState('');
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(params.get('q') || '');
+  useEffect(() => { if (params.get('q') != null) setQ(params.get('q')); }, [params]);
   const [sort, setSort] = useState('newest');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -136,7 +138,7 @@ export default function Patients() {
         subtitle={data ? `${data.total.toLocaleString('en-IN')} patient${data.total === 1 ? '' : 's'} — website, app, front desk and Practo` : 'Loading…'}
         actions={
           <div className="flex items-center gap-2.5">
-            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -149,7 +151,7 @@ export default function Patients() {
             <Button variant="secondary" onClick={download} disabled={!items?.length}>
               <FiDownload /> Export CSV
             </Button>
-            <Link to="/admin/patients/import" className="inline-flex items-center gap-2 rounded-xl bg-[var(--a-accent)] px-4 py-2.5 text-[14px] font-medium text-white hover:bg-[var(--a-accent-hover)]">
+            <Link to="/admin/patients/import" className="inline-flex items-center gap-2 rounded bg-[var(--a-accent)] px-4 py-2.5 text-[14px] font-medium text-white hover:bg-[var(--a-accent-hover)]">
               <FiUpload /> Import from Practo
             </Link>
           </div>
@@ -177,14 +179,14 @@ export default function Patients() {
             <div className="hidden md:block">
               <Table head={['Patient', 'Age / sex', 'Phone', 'Chief complaint', 'Medical history', 'Registered on', '']} minWidth={980}>
                 {items.map((p) => (
-                  <tr key={p.id} className="cursor-pointer hover:bg-white/3" onClick={() => open(p)}>
+                  <tr key={p.id} className="cursor-pointer hover:bg-black/3" onClick={() => open(p)}>
                     <td className="px-5 py-4">
                       <p className="font-medium">{p.name}</p>
                       <p className="text-[12.5px] text-[var(--a-muted)]">{p.patient_id}{p.practo_id ? ` · Practo ${p.practo_id}` : ''}</p>
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">{ageSex(p)}</td>
                     <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
-                      {p.phone ? <a href={`tel:+91${p.phone}`} className="text-[var(--a-accent)] hover:underline">+91 {p.phone}</a> : <span className="text-[var(--a-muted)]">—</span>}
+                      {p.phone ? <a href={`tel:+91${p.phone}`} className="text-[#1a9ad6] hover:underline">+91 {p.phone}</a> : <span className="text-[var(--a-muted)]">—</span>}
                       {p.family_size > 1 && <FamilyBadge size={p.family_size} />}
                     </td>
                     <td className="px-5 py-4 max-w-[220px] truncate text-[var(--a-muted)]">{p.complaint || '—'}</td>
@@ -231,7 +233,7 @@ export default function Patients() {
 }
 
 const FamilyBadge = ({ size }) => (
-  <span className="mt-1 flex w-fit items-center gap-1 rounded-full bg-[#7f56d9]/18 px-2 py-0.5 text-[11.5px] text-[#c4b1ff]" title="Patients sharing this mobile number">
+  <span className="mt-1 flex w-fit items-center gap-1 rounded-full bg-[#7f56d9]/18 px-2 py-0.5 text-[11.5px] text-[#6941c6]" title="Patients sharing this mobile number">
     <FiUsers className="w-3 h-3" /> Family of {size}
   </span>
 );
@@ -271,7 +273,7 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged, onOpen }) {
   return (
     <Drawer open={!!p} title={p.name} subtitle={`${p.patient_id} · registered ${formatDateTime(p.created_at)}`} onClose={onClose}>
       <div className="flex gap-2 mb-5">
-        {p.phone && <a href={`tel:+91${p.phone}`} className="inline-flex items-center gap-2 rounded-xl bg-[var(--a-accent)] px-4 py-2.5 text-[14px] text-white"><FiPhone className="w-4 h-4" /> Call</a>}
+        {p.phone && <a href={`tel:+91${p.phone}`} className="inline-flex items-center gap-2 rounded bg-[var(--a-accent)] px-4 py-2.5 text-[14px] text-white"><FiPhone className="w-4 h-4" /> Call</a>}
         <Button variant="danger" onClick={() => onDelete(p)}><FiTrash2 /> Delete</Button>
       </div>
 
@@ -298,7 +300,7 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged, onOpen }) {
           <ul className="grid gap-2">
             {data.family.map((f) => (
               <li key={f.patient_id}>
-                <button onClick={() => onOpen(f)} className="w-full flex items-center justify-between gap-3 rounded-xl bg-white/4 px-4 py-3 text-left text-[13.5px] hover:bg-white/8">
+                <button onClick={() => onOpen(f)} className="w-full flex items-center justify-between gap-3 rounded bg-black/3 px-4 py-3 text-left text-[13.5px] hover:bg-black/5">
                   <span className="flex items-center gap-2"><FiUser className="w-3.5 h-3.5 text-[var(--a-muted)]" /> {f.name}</span>
                   <span className="text-[12px] text-[var(--a-muted)]">{f.patient_id}{f.age != null ? ` · ${f.age}y` : ''}</span>
                 </button>
@@ -315,7 +317,7 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged, onOpen }) {
         ) : (
           <div className="flex flex-wrap gap-2">
             {conditions.map((c) => (
-              <span key={c} className="rounded-full border border-[#f2b356]/25 bg-[#f2b356]/12 px-3 py-1.5 text-[12.5px] text-[#f2b356]">
+              <span key={c} className="rounded-full border border-[#b7701a]/25 bg-[#b7701a]/12 px-3 py-1.5 text-[12.5px] text-[#b7701a]">
                 {CONDITION_LABELS[c] || c}
                 {p.condition_notes?.[c] ? `: ${p.condition_notes[c]}` : ''}
               </span>
@@ -327,7 +329,7 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged, onOpen }) {
       {p.complaint && (
         <section className="mt-6">
           <h3 className="text-[13px] uppercase tracking-wider text-[var(--a-muted)] mb-2">Chief complaint</h3>
-          <p className="rounded-xl bg-white/4 p-4 text-[14px] leading-relaxed">{p.complaint}</p>
+          <p className="rounded bg-black/3 p-4 text-[14px] leading-relaxed">{p.complaint}</p>
         </section>
       )}
 
@@ -337,7 +339,7 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged, onOpen }) {
           : data.appointments?.length ? (
             <ul className="grid gap-2">
               {data.appointments.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/4 px-4 py-3 text-[13.5px]">
+                <li key={a.id} className="flex items-center justify-between gap-3 rounded bg-black/3 px-4 py-3 text-[13.5px]">
                   <span className="flex items-center gap-2"><FiCalendar className="w-3.5 h-3.5 text-[var(--a-muted)]" /> {a.date} · {formatSlot(a.slot)}</span>
                   <StatusPill status={a.status} />
                 </li>
@@ -355,7 +357,7 @@ function PatientDrawer({ data, onClose, onDelete, onRecordsChanged, onOpen }) {
           : data.records?.length ? (
             <ul className="grid gap-2">
               {data.records.map((r) => (
-                <li key={r.id} className="flex items-center gap-3 rounded-xl bg-white/4 px-4 py-3 text-[13.5px]">
+                <li key={r.id} className="flex items-center gap-3 rounded bg-black/3 px-4 py-3 text-[13.5px]">
                   <div className="min-w-0 flex-1">
                     <p className="truncate">{r.title}</p>
                     <p className="text-[12px] text-[var(--a-muted)]">
@@ -430,7 +432,7 @@ function RecordModal({ open, patientId, onClose, onSaved }) {
         <Field label="Notes (optional)"><textarea rows={3} value={form.notes} onChange={set('notes')} className={inputClass} /></Field>
         <Field label="Attach a file (optional)">
           <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="text-[13.5px] text-white/70 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3.5 file:py-2 file:text-[13px] file:font-semibold file:text-white/80" />
+            className="text-[13.5px] text-[var(--a-muted)] file:mr-3 file:rounded-full file:border-0 file:bg-black/6 file:px-3.5 file:py-2 file:text-[13px] file:font-semibold file:text-[var(--a-text)]" />
         </Field>
         <div className="flex gap-3 pt-1">
           <Button type="submit" disabled={busy} className="flex-1">{busy ? 'Saving…' : 'Save record'}</Button>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FiAlertCircle, FiCalendar, FiChevronLeft, FiChevronRight, FiList, FiPlus, FiUserPlus, FiUsers,
+  FiAlertCircle, FiChevronLeft, FiChevronRight, FiList, FiPlus, FiUserPlus,
 } from 'react-icons/fi';
 import { api } from './api';
 import {
@@ -10,7 +10,7 @@ import {
 import { useLiveEvents } from '../lib/useLiveEvents';
 import { AppointmentDrawer, BookingModal, CATEGORY_LABELS, saveWithClashCheck } from './CalendarBooking';
 
-const ROW_H = 28; // px per slot row
+const ROW_H = 40; // px per 15-minute row (Practo's spacing)
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; // weeks start on Sunday, as in Practo
 const FALLBACK_COLORS = ['#4e79a7', '#c45a9d', '#3f9e5a', '#9c5a2b', '#7b2fbe', '#16808a', '#d23f3f', '#e0662b', '#b56a1f', '#7f56d9', '#22303c'];
 const VIEWS = [{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }];
@@ -76,6 +76,15 @@ function layout(items) {
   });
   if (cluster.length) flush();
   return out;
+}
+
+/** The next 15-minute start inside clinic hours (skips the lunch break; first slot tomorrow-style after closing). */
+function nextOpenSlot(hours) {
+  const step = hours?.slot_minutes || 15;
+  const sessions = (hours?.sessions || [{ from: '10:00', to: '13:00' }]).map((x) => [mins(x.from), mins(x.to)]);
+  const now = Math.ceil(nowMinutes() / step) * step;
+  const open = sessions.find(([, to]) => now < to);
+  return hhmm(open ? Math.max(open[0], now) : sessions[0][0]);
 }
 
 const readPrefs = () => {
@@ -166,7 +175,7 @@ export default function Calendar() {
   const shift = (dir) => setAnchor((a) => (view === 'day' ? addDays(a, dir) : view === 'week' ? addDays(a, 7 * dir) : addMonths(a, dir)));
 
   const newBooking = (preset = {}) => {
-    const slot = preset.slot || hhmm(Math.max(mins(hours?.sessions?.[0]?.from || '10:00'), Math.ceil(nowMinutes() / 15) * 15));
+    const slot = preset.slot || nextOpenSlot(hours);
     setDraft({
       date: preset.date || (view === 'day' ? anchor : todayIso()),
       slot,
@@ -214,15 +223,44 @@ export default function Calendar() {
   );
 
   return (
-    <div className="-mx-4 sm:-mx-6 lg:-mx-9 -my-6 lg:-my-8 flex min-h-screen">
-      {/* Doctors & categories */}
-      <aside className="hidden lg:flex w-[230px] shrink-0 flex-col border-r border-[var(--a-border)] bg-[#0e141b]">
-        <div className="p-4 border-b border-[var(--a-border)]">
-          <Button className="w-full" onClick={() => newBooking()} disabled={!hours}><FiPlus /> New appointment</Button>
+    // Fills the area under the admin top bar (60px), like Practo's calendar screen.
+    <div className="flex flex-col h-[calc(100vh-56px)] lg:h-[calc(100vh-60px)] bg-white">
+      {/* Title bar: Calendar · date range · Today · Day/Week/Month */}
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 sm:px-5 py-2.5 bg-[var(--a-toolbar)] border-b border-[var(--a-border)]">
+        <h1 className="text-[24px] font-light text-[#333]">Calendar</h1>
+        <span className="hidden md:block text-[13px] uppercase tracking-wide text-[#777] truncate max-w-[300px]">Duhita Multispeciality Dental Centre</span>
+        <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} aria-label="Doctor"
+          className="lg:hidden h-[34px] rounded-[3px] border border-[#c8c8c8] bg-white px-2 text-[13px]">
+          <option value="all">All doctors</option>
+          {doctors.map((d) => <option key={d.id} value={String(d.id)}>{d.name}</option>)}
+          <option value="none">Not assigned</option>
+        </select>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <div className="flex items-center">
+            <button onClick={() => shift(-1)} aria-label="Previous" className="w-8 h-8 grid place-items-center text-[#555] hover:text-black"><FiChevronLeft className="w-5 h-5" /></button>
+            <span className="min-w-[150px] text-center text-[15px] font-medium text-[#333]">{rangeLabel(view, start, end, anchor)}</span>
+            <button onClick={() => shift(1)} aria-label="Next" className="w-8 h-8 grid place-items-center text-[#555] hover:text-black"><FiChevronRight className="w-5 h-5" /></button>
+          </div>
+          <Button variant="secondary" onClick={() => setAnchor(todayIso())}>Today</Button>
+          <Segmented options={VIEWS} value={view} onChange={setView} />
+          <Link to="/admin/appointments/list" title="List view"
+            className="inline-flex items-center gap-1.5 h-[38px] px-3 rounded-[3px] border border-[#c8c8c8] bg-white text-[14px] text-[#555] hover:bg-[#f5f5f5]">
+            <FiList /> <span className="hidden sm:inline">List</span>
+          </Link>
+          <Button variant="secondary" className="xl:hidden" onClick={() => setShowToday(true)}>Today’s schedule</Button>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 grid content-start gap-5">
-          <div>
-            <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/35">Doctors</p>
+      </header>
+      {error && <div className="px-5 pt-3"><ErrorNote>{error}</ErrorNote></div>}
+
+      <div className="flex flex-1 min-h-0">
+        {/* Doctors & categories */}
+        <aside className="hidden lg:flex w-[250px] shrink-0 flex-col border-r border-[var(--a-border)] bg-white">
+          <button onClick={() => newBooking()} disabled={!hours}
+            className="flex items-center justify-center gap-2.5 h-[52px] border-b border-[var(--a-border)] text-[15px] text-[#333] hover:bg-[#fafafa] disabled:opacity-50">
+            <FiPlus className="w-[18px] h-[18px] text-[var(--a-accent)]" /> New Appointment
+          </button>
+          <div className="flex-1 overflow-y-auto">
+            <p className="px-5 pt-4 pb-2 text-[14px] font-medium uppercase text-[#444] bg-[var(--a-panel)] border-b border-[var(--a-border)]">Doctors</p>
             <DoctorRow label="All doctors" count={counts.all} active={doctorId === 'all'} onClick={() => setDoctorId('all')} />
             {doctors.map((d) => (
               <DoctorRow key={d.id} label={d.name} color={d.color} count={counts[String(d.id)] || 0}
@@ -233,66 +271,41 @@ export default function Calendar() {
                 active={doctorId === 'none'} onClick={() => setDoctorId('none')} />
             )}
             {!doctors.length && (
-              <p className="px-2 text-[12.5px] text-[var(--a-muted)]">Add doctors on the <Link to="/admin/doctors" className="text-[var(--a-accent)]">Doctors</Link> page.</p>
+              <p className="px-5 py-3 text-[13px] text-[var(--a-muted)]">Add doctors on the <Link to="/admin/doctors" className="text-[var(--a-link)]">Doctors</Link> page.</p>
             )}
-          </div>
-          {hours && (
-            <div>
-              <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/35">Categories</p>
-              {hours.categories.map((c) => (
-                <p key={c.id} className="flex items-center gap-2.5 px-2 py-1.5 text-[13px] text-[var(--a-muted)]">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: c.color }} />{c.label}
+
+            {hours && (
+              <div className="mt-4 mx-5 pt-4 border-t border-[var(--a-border)]">
+                <p className="flex items-center justify-between pb-2 text-[14px] font-medium uppercase text-[#444]">
+                  Categories <Link to="/admin/appointments/list" className="text-[12px] normal-case text-[var(--a-link)]">VIEW ALL</Link>
                 </p>
-              ))}
-            </div>
-          )}
-          {pending.length > 0 && (
-            <div>
-              <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#f2b356]">
-                Requests to confirm · {pending.length}
-              </p>
-              <div className="grid gap-1">
+                {hours.categories.map((c) => (
+                  <p key={c.id} className="flex items-center gap-2.5 py-1.5 text-[14px] text-[#555]">
+                    <span className="w-3 h-3 rounded-full" style={{ background: c.color }} />{c.label} Appointment
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {pending.length > 0 && (
+              <div className="mt-4 mx-5 pt-4 pb-4 border-t border-[var(--a-border)]">
+                <p className="pb-2 text-[14px] font-medium uppercase text-[#444]">
+                  Online requests <span className="ml-1 inline-grid place-items-center min-w-[22px] h-[20px] px-1 rounded-[3px] bg-[#ffb74d] text-[12px] text-white">{pending.length}</span>
+                </p>
                 {pending.slice(0, 8).map((a) => (
                   <button key={a.id} onClick={() => { setOpenId(a.id); setAnchor(a.date); }}
-                    className="text-left rounded-lg px-2 py-1.5 hover:bg-white/5">
-                    <span className="block text-[13px] truncate">{a.name}</span>
-                    <span className="block text-[11.5px] text-[var(--a-muted)]">{fmt(a.date, { day: 'numeric', month: 'short' })} · {formatSlot(a.slot)}</span>
+                    className="w-full text-left py-1.5 hover:text-[var(--a-link)]">
+                    <span className="block text-[14px] uppercase truncate text-[#333]">{a.name}</span>
+                    <span className="block text-[12px] text-[#888]">{fmt(a.date, { day: 'numeric', month: 'short' })} · {formatSlot(a.slot)}</span>
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Calendar */}
-      <section className="flex-1 min-w-0 flex flex-col">
-        <header className="flex flex-wrap items-center gap-2.5 px-4 sm:px-5 py-3 border-b border-[var(--a-border)]">
-          <h1 className="text-[20px] font-semibold tracking-tight mr-2">Calendar</h1>
-          <div className="flex items-center gap-1">
-            <button onClick={() => shift(-1)} aria-label="Previous" className="w-9 h-9 grid place-items-center rounded-lg hover:bg-white/8"><FiChevronLeft /></button>
-            <span className="min-w-[150px] text-center text-[14px] font-medium">{rangeLabel(view, start, end, anchor)}</span>
-            <button onClick={() => shift(1)} aria-label="Next" className="w-9 h-9 grid place-items-center rounded-lg hover:bg-white/8"><FiChevronRight /></button>
+            )}
           </div>
-          <Button size="sm" variant="secondary" onClick={() => setAnchor(todayIso())}>Today</Button>
-          <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} aria-label="Doctor"
-            className="lg:hidden rounded-lg border border-[var(--a-border)] bg-[#0e141b] px-2.5 py-2 text-[13px]">
-            <option value="all">All doctors</option>
-            {doctors.map((d) => <option key={d.id} value={String(d.id)}>{d.name}</option>)}
-            <option value="none">Not assigned</option>
-          </select>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Segmented options={VIEWS} value={view} onChange={setView} />
-            <Button size="sm" variant="secondary" className="xl:hidden" onClick={() => setShowToday(true)}>Today’s list</Button>
-            <Link to="/admin/appointments/list" className="inline-flex items-center gap-2 rounded-xl border border-[var(--a-border)] px-3 py-2 text-[13px] text-[var(--a-muted)] hover:text-white hover:bg-white/5">
-              <FiList /> List
-            </Link>
-            <Button size="sm" className="lg:hidden" onClick={() => newBooking()} disabled={!hours}><FiPlus /></Button>
-          </div>
-        </header>
-        {error && <div className="px-5 pt-3"><ErrorNote>{error}</ErrorNote></div>}
+        </aside>
 
-        <div className="flex-1 min-h-0">
+        {/* Grid */}
+        <section className="flex-1 min-w-0 min-h-0 relative">
           {!hours || items === null ? (
             <div className="p-5 grid gap-3">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
           ) : view === 'month' ? (
@@ -306,7 +319,7 @@ export default function Calendar() {
                 ? dayColumns(anchor, doctorId, doctors, visible, byId, hours)
                 : Array.from({ length: 7 }, (_, i) => {
                   const date = addDays(start, i);
-                  return { key: date, date, label: fmt(date, { weekday: 'short' }), sub: fmt(date, { day: 'numeric', month: 'short' }), closed: hours.closed_weekdays.includes(weekday(date)), today: date === todayIso() };
+                  return { key: date, date, label: `${fmt(date, { weekday: 'short' })} ${fmt(date, { day: 'numeric', month: 'short' })}`.toUpperCase(), closed: hours.closed_weekdays.includes(weekday(date)), today: date === todayIso() };
                 })}
               colorOf={colorOf}
               onSlot={(column, slot) => newBooking({ date: column.date, slot, ...(column.doctorId ? { doctor_id: column.doctorId } : {}) })}
@@ -314,12 +327,14 @@ export default function Calendar() {
               onMove={move}
             />
           )}
-        </div>
-      </section>
+          <button onClick={() => newBooking()} disabled={!hours} aria-label="New appointment"
+            className="lg:hidden absolute right-4 bottom-4 z-30 w-14 h-14 rounded-full bg-[var(--a-accent)] text-white shadow-lg grid place-items-center"><FiPlus className="w-6 h-6" /></button>
+        </section>
 
-      {/* Today */}
-      <aside className="hidden xl:flex w-[290px] shrink-0 flex-col border-l border-[var(--a-border)] bg-[#0e141b]">{todayPanel}</aside>
-      <Drawer open={showToday} title="Today’s schedule" onClose={() => setShowToday(false)}>{todayPanel}</Drawer>
+        {/* Today */}
+        <aside className="hidden xl:flex w-[300px] shrink-0 flex-col border-l border-[var(--a-border)] bg-white">{todayPanel}</aside>
+      </div>
+      <Drawer open={showToday} title="Today’s Schedule" onClose={() => setShowToday(false)}>{todayPanel}</Drawer>
 
       <BookingModal draft={draft} hours={hours} doctors={doctors} onClose={() => setDraft(null)}
         onSaved={(saved) => { setDraft(null); if (saved?.date) setAnchor(saved.date); load(); }} />
@@ -353,11 +368,11 @@ function dayColumns(date, doctorId, doctors, items, byId, hours) {
 function DoctorRow({ label, color, count, active, onClick }) {
   return (
     <button onClick={onClick}
-      className={cx('w-full flex items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[13.5px] transition-colors',
-        active ? 'bg-[var(--a-accent-soft)] text-white' : 'text-[var(--a-muted)] hover:bg-white/5 hover:text-white')}>
-      {color ? <span className="w-2.5 h-2.5 shrink-0 rounded-full" style={{ background: color }} /> : <FiUsers className="w-3.5 h-3.5 shrink-0" />}
+      className={cx('w-full flex items-center gap-3 px-5 h-[40px] text-left text-[14px] uppercase transition-colors',
+        active ? 'bg-[var(--a-selected)] text-white' : 'text-[#444] hover:bg-[#f5f5f5]')}>
+      {color ? <span className="w-3 h-3 shrink-0 rounded-full" style={{ background: color }} /> : null}
       <span className="flex-1 truncate">{label}</span>
-      <span className="text-[12px] tabular-nums text-white/40">{count}</span>
+      <span className={cx('text-[14px] tabular-nums', active ? 'text-white' : 'text-[#666]')}>{count}</span>
     </button>
   );
 }
@@ -386,7 +401,7 @@ function TimeGrid({ hours, items, columns, colorOf, onSlot, onOpen, onMove }) {
   const rows = [];
   for (let m = gridStart; m < gridEnd; m += step) rows.push(m);
   const isOpen = (m) => sessions.some(([f, t]) => m >= f && m < t);
-  const minWidth = columns.length > 1 ? (columns[0].doctorId !== undefined ? 170 : 120) : 240;
+  const minWidth = columns.length > 1 ? (columns[0].doctorId !== undefined ? 160 : 118) : 240;
 
   const byColumn = (c) => items.filter((a) => a.date === c.date && (c.filter ? c.filter(a) : true));
 
@@ -400,26 +415,31 @@ function TimeGrid({ hours, items, columns, colorOf, onSlot, onOpen, onMove }) {
   };
 
   return (
-    <div className="h-[calc(100vh-61px)] overflow-auto">
-      <div className="grid" style={{ gridTemplateColumns: `60px repeat(${columns.length}, minmax(${minWidth}px, 1fr))` }}>
+    <div className="absolute inset-0 overflow-auto">
+      <div className="grid" style={{ gridTemplateColumns: `72px repeat(${columns.length}, minmax(${minWidth}px, 1fr))` }}>
         {/* header row */}
-        <div className="sticky top-0 left-0 z-30 bg-[var(--a-bg)] border-b border-[var(--a-border)]" />
+        <div className="sticky top-0 left-0 z-30 bg-white border-b border-r border-[var(--a-border)] grid place-items-center text-[#999]">
+          <span className="text-[12px]">IST</span>
+        </div>
         {columns.map((c) => (
-          <div key={c.key} className={cx('sticky top-0 z-20 border-b border-l border-[var(--a-border)] px-2 py-2.5 text-center',
-            c.today ? 'bg-[#13302c]' : 'bg-[var(--a-bg)]')}>
-            <p className="flex items-center justify-center gap-1.5 text-[12.5px] font-semibold truncate">
-              {c.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.color }} />}
+          <div key={c.key} title={c.closed ? 'Clinic closed (by appointment only)' : undefined} className={cx('sticky top-0 z-20 h-[46px] grid place-items-center border-b border-r border-[var(--a-border)] px-2 text-center',
+            c.today ? 'bg-[#7c8191] text-white' : 'bg-white text-[#666]')}>
+            <p className="flex items-center justify-center gap-1.5 text-[13px] truncate max-w-full">
+              {c.color && <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: c.color }} />}
               <span className="truncate">{c.label}</span>
             </p>
-            {c.sub && <p className={cx('text-[11.5px]', c.today ? 'text-[#7fe3d3]' : 'text-[var(--a-muted)]')}>{c.sub}{c.closed ? ' · closed' : ''}</p>}
           </div>
         ))}
 
         {/* time gutter */}
-        <div className="sticky left-0 z-10 bg-[var(--a-bg)]">
+        <div className="sticky left-0 z-10 bg-white border-r border-[var(--a-border)]">
           {rows.map((m) => (
-            <div key={m} style={{ height: ROW_H }} className={cx('pr-2 text-right text-[10.5px] leading-none pt-1', m % 60 === 0 ? 'text-[var(--a-muted)] font-medium' : 'text-white/25')}>
+            <div key={m} style={{ height: ROW_H }} className="relative border-b border-[var(--a-grid)] pr-2 pt-1 text-right text-[12px] leading-none text-[#888]">
               {formatSlot(hhmm(m))}
+              {m <= now && now < m + step && columns.some((c) => c.today) && (
+                <span className="absolute right-0 border-y-[5px] border-y-transparent border-l-[6px] border-l-[var(--a-accent)]"
+                  style={{ top: ((now - m) / step) * ROW_H - 5 }} />
+              )}
             </div>
           ))}
         </div>
@@ -429,7 +449,7 @@ function TimeGrid({ hours, items, columns, colorOf, onSlot, onOpen, onMove }) {
           const laid = layout(byColumn(c));
           const showNow = c.today && now >= gridStart && now < gridEnd;
           return (
-            <div key={c.key} className="relative border-l border-[var(--a-border)]">
+            <div key={c.key} className="relative border-r border-[var(--a-border)]">
               {rows.map((m) => {
                 const closed = c.closed || !isOpen(m);
                 const target = dropAt === `${c.key}|${m}`;
@@ -440,10 +460,11 @@ function TimeGrid({ hours, items, columns, colorOf, onSlot, onOpen, onMove }) {
                     onDragOver={(e) => { e.preventDefault(); if (!target) setDropAt(`${c.key}|${m}`); }}
                     onDragLeave={() => target && setDropAt(null)}
                     onDrop={(e) => drop(e, c, m)}
-                    className={cx('group block w-full border-b text-left transition-colors',
-                      m % 60 === 45 ? 'border-white/10' : 'border-white/[0.04]',
-                      target ? 'bg-[var(--a-accent)]/30' : closed ? 'cal-closed hover:bg-white/5' : 'hover:bg-[var(--a-accent-soft)]')}>
-                    <span className="hidden group-hover:block pl-1.5 text-[10.5px] text-[#7fe3d3]">+ {formatSlot(hhmm(m))}</span>
+                    className={cx('group block w-full border-b border-[var(--a-grid)] text-left transition-colors',
+                      target ? 'bg-[var(--a-accent)]/25'
+                        : closed ? 'cal-closed hover:bg-[#e2e2e2]'
+                          : c.today ? 'bg-[#fdf3e6] hover:bg-[#fbe6cc]' : 'hover:bg-[#f3f6ff]')}>
+                    <span className="hidden group-hover:block pl-2 text-[12px] text-[#888]">+ {formatSlot(hhmm(m))}</span>
                   </button>
                 );
               })}
@@ -452,17 +473,15 @@ function TimeGrid({ hours, items, columns, colorOf, onSlot, onOpen, onMove }) {
                 <AppointmentBlock key={a.id} a={a} color={colorOf(a)}
                   style={{
                     top: ((start - gridStart) / step) * ROW_H + 1,
-                    height: Math.max(((end - start) / step) * ROW_H - 2, 22),
-                    left: `calc(${(lane / lanes) * 100}% + 2px)`,
-                    width: `calc(${100 / lanes}% - 4px)`,
+                    height: Math.max(((end - start) / step) * ROW_H - 2, 24),
+                    left: `calc(${(lane / lanes) * 100}% + 3px)`,
+                    width: `calc(${100 / lanes}% - 6px)`,
                   }}
                   onOpen={onOpen} />
               ))}
 
               {showNow && (
-                <div className="pointer-events-none absolute inset-x-0 z-[15] h-0.5 bg-[#f59f00]" style={{ top: ((now - gridStart) / step) * ROW_H }}>
-                  <span className="absolute -left-1 -top-[3px] w-2 h-2 rounded-full bg-[#f59f00]" />
-                </div>
+                <div className="pointer-events-none absolute inset-x-0 z-[15] h-[2px] bg-[var(--a-accent)]" style={{ top: ((now - gridStart) / step) * ROW_H }} />
               )}
             </div>
           );
@@ -472,28 +491,29 @@ function TimeGrid({ hours, items, columns, colorOf, onSlot, onOpen, onMove }) {
   );
 }
 
-const CATEGORY_COLORS = { high_priority: '#e8743b', telephonic: '#5b8fd0', walkin: '#3fae6a' };
+const CATEGORY_COLORS = { high_priority: '#f26b3a', telephonic: '#5b8fd0', walkin: '#3fae6a' };
 
+/** Practo-style block: a pale tint of the doctor's colour with a solid bar on the left. */
 function AppointmentBlock({ a, color, style, onOpen }) {
   const off = !holdsTime(a);
-  const tall = style.height > 40;
+  const tall = style.height > 44;
   return (
     <button type="button" draggable={!off}
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', a.id); e.dataTransfer.effectAllowed = 'move'; }}
       onClick={(e) => { e.stopPropagation(); onOpen(a); }}
       title={`${formatSlot(a.slot)} · ${a.name} · ${STATUS_LABELS[a.status]}${a.procedures ? ` · ${a.procedures}` : ''}`}
-      className={cx('absolute z-10 overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-left text-[11.5px] leading-tight shadow-sm transition-[filter] hover:brightness-125',
-        a.status === 'pending' && 'outline outline-1 outline-dashed outline-[#f2b356]/80',
-        off && 'opacity-45 line-through')}
-      style={{ ...style, borderLeftColor: color, background: `${color}${a.status === 'completed' ? '30' : '55'}` }}>
-      <span className="flex items-center gap-1 font-semibold text-white truncate">
-        {a.category && <span className="w-1.5 h-1.5 shrink-0 rounded-full" style={{ background: CATEGORY_COLORS[a.category] }} title={CATEGORY_LABELS[a.category]} />}
-        <span className="truncate">{a.name}</span>
+      className={cx('absolute z-10 overflow-hidden rounded-[2px] border-l-[4px] px-1.5 py-[3px] text-left leading-tight transition-shadow hover:shadow-md',
+        a.status === 'pending' && 'outline outline-1 outline-dashed outline-[#e0861a] -outline-offset-1',
+        off && 'opacity-50')}
+      style={{ ...style, borderLeftColor: color, background: `color-mix(in srgb, ${color} ${a.status === 'completed' ? 14 : 30}%, white)` }}>
+      <span className="flex items-center gap-1 text-[13px] uppercase text-[#333] truncate">
+        {a.category && <span className="w-2 h-2 shrink-0 rounded-full" style={{ background: CATEGORY_COLORS[a.category] }} title={CATEGORY_LABELS[a.category]} />}
+        <span className={cx('truncate', off && 'line-through')}>{a.name}</span>
       </span>
-      <span className="block truncate text-white/70">
+      <span className="block truncate text-[11.5px] text-[#555]">
         {formatSlot(a.slot)}{a.status !== 'confirmed' ? ` · ${STATUS_LABELS[a.status]}` : ''}
       </span>
-      {tall && a.procedures && <span className="block truncate text-white/60">{a.procedures}</span>}
+      {tall && a.procedures && <span className="block truncate text-[11.5px] text-[#666]">{a.procedures}</span>}
     </button>
   );
 }
@@ -509,31 +529,33 @@ function MonthGrid({ start, end, anchor, items, colorOf, hours, onDay }) {
   const t = todayIso();
 
   return (
-    <div className="h-[calc(100vh-61px)] overflow-auto p-3 sm:p-4">
-      <div className="grid grid-cols-7 gap-px rounded-xl overflow-hidden border border-[var(--a-border)] bg-[var(--a-border)] min-w-[640px]">
-        {DOW.map((d) => <div key={d} className="bg-[var(--a-surface)] px-2 py-2 text-[11.5px] font-semibold uppercase tracking-wider text-[var(--a-muted)]">{d}</div>)}
+    <div className="absolute inset-0 overflow-auto">
+      <div className="grid grid-cols-7 min-w-[700px] border-l border-[var(--a-border)]">
+        {DOW.map((d) => (
+          <div key={d} className="sticky top-0 z-10 h-[46px] grid place-items-center bg-white border-b border-r border-[var(--a-border)] text-[13px] uppercase text-[#666]">{d}</div>
+        ))}
         {days.map((d) => {
           const list = (byDay[d] || []).sort((x, y) => x.slot.localeCompare(y.slot));
           const inMonth = d.slice(0, 7) === month;
           const closed = hours.closed_weekdays.includes(weekday(d));
           return (
             <button key={d} onClick={() => onDay(d)}
-              className={cx('min-h-[112px] p-2 text-left align-top transition-colors hover:bg-white/5',
-                inMonth ? (closed ? 'bg-[#10161d]' : 'bg-[var(--a-bg)]') : 'bg-[#0a0e13] opacity-50')}>
+              className={cx('min-h-[118px] p-2 text-left align-top border-b border-r border-[var(--a-border)] transition-colors hover:bg-[#f3f6ff]',
+                d === t ? 'bg-[#fdf3e6]' : !inMonth ? 'bg-[#fafafa] text-[#bbb]' : closed ? 'bg-[#f3f3f3]' : 'bg-white')}>
               <span className="flex items-center justify-between">
-                <span className={cx('grid place-items-center w-6 h-6 rounded-full text-[12.5px]', d === t ? 'bg-[var(--a-accent)] text-white font-semibold' : 'text-white/80')}>
+                <span className={cx('grid place-items-center w-7 h-7 rounded-full text-[13px]', d === t ? 'bg-[var(--a-accent)] text-white' : inMonth ? 'text-[#444]' : 'text-[#bbb]')}>
                   {Number(d.slice(8))}
                 </span>
-                {list.length > 0 && <span className="text-[11px] text-[var(--a-muted)]">{list.length}</span>}
+                {list.length > 0 && <span className="text-[12px] text-[#888]">{list.length} appt{list.length > 1 ? 's' : ''}</span>}
               </span>
-              <span className="mt-1.5 grid gap-0.5">
+              <span className="mt-1.5 grid gap-[3px]">
                 {list.slice(0, 3).map((a) => (
-                  <span key={a.id} className="flex items-center gap-1.5 truncate text-[11.5px] text-white/80">
-                    <span className="w-1.5 h-1.5 shrink-0 rounded-full" style={{ background: colorOf(a) }} />
-                    <span className="truncate">{formatSlot(a.slot)} {a.name}</span>
+                  <span key={a.id} className="truncate rounded-[2px] border-l-[3px] px-1.5 py-[1px] text-[11.5px] uppercase text-[#333]"
+                    style={{ borderLeftColor: colorOf(a), background: `color-mix(in srgb, ${colorOf(a)} 25%, white)` }}>
+                    {formatSlot(a.slot)} {a.name}
                   </span>
                 ))}
-                {list.length > 3 && <span className="text-[11px] text-[var(--a-muted)]">+{list.length - 3} more</span>}
+                {list.length > 3 && <span className="text-[12px] text-[var(--a-link)]">+{list.length - 3} more</span>}
               </span>
             </button>
           );
@@ -545,55 +567,70 @@ function MonthGrid({ start, end, anchor, items, colorOf, hours, onDay }) {
 
 /* ---------------------------------------------------------------- today's schedule */
 
-const TODAY_TABS = [
-  { key: 'all', label: 'Today', match: holdsTime, tone: 'bg-white/12 text-white' },
-  { key: 'waiting', label: 'Waiting', match: (a) => a.status === 'checked_in', tone: 'bg-[#f0616d] text-white' },
-  { key: 'engaged', label: 'Engaged', match: (a) => a.status === 'engaged', tone: 'bg-[#22b8cf] text-white' },
-  { key: 'done', label: 'Done', match: (a) => a.status === 'completed', tone: 'bg-[#2f9e44] text-white' },
+const COUNTERS = [
+  { key: 'all', label: 'Today', match: holdsTime, tone: 'bg-[#6d6d6d]' },
+  { key: 'waiting', label: 'Waiting', match: (a) => a.status === 'checked_in', tone: 'bg-[var(--a-waiting)]' },
+  { key: 'engaged', label: 'Engaged', match: (a) => a.status === 'engaged', tone: 'bg-[var(--a-engaged)]' },
+  { key: 'done', label: 'Done', match: (a) => a.status === 'completed', tone: 'bg-[var(--a-done)]' },
+];
+const CHANNELS = [
+  { key: 'all', label: 'All', match: () => true },
+  { key: 'online', label: 'Online', match: (a) => a.source === 'website' || a.source === 'app' },
+  { key: 'offline', label: 'Offline', match: (a) => a.source !== 'website' && a.source !== 'app' },
 ];
 const QUICK = { pending: ['confirmed', 'Confirm'], confirmed: ['checked_in', 'Check in'], checked_in: ['engaged', 'Engage'], engaged: ['completed', 'Done'] };
 
 function TodayPanel({ items, colorOf, onOpen, onStatus, onWalkIn }) {
-  const [tab, setTab] = useState('all');
-  const active = TODAY_TABS.find((t) => t.key === tab);
-  const list = items.filter(active.match).sort((x, y) => x.slot.localeCompare(y.slot));
+  const [counter, setCounter] = useState('all');
+  const [channel, setChannel] = useState('all');
+  const inChannel = items.filter(CHANNELS.find((c) => c.key === channel).match);
+  const list = inChannel.filter(COUNTERS.find((c) => c.key === counter).match).sort((x, y) => x.slot.localeCompare(y.slot));
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="p-4 border-b border-[var(--a-border)] grid gap-3">
-        <p className="text-[14px] font-semibold">Today’s schedule</p>
-        <Button variant="secondary" onClick={onWalkIn}><FiUserPlus /> Add walk-in</Button>
-        <div className="grid grid-cols-4 gap-1.5">
-          {TODAY_TABS.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={cx('rounded-lg py-1.5 text-center transition-colors', tab === t.key ? 'bg-white/8 ring-1 ring-white/15' : 'hover:bg-white/5')}>
-              <span className="block text-[10px] uppercase tracking-wider text-[var(--a-muted)]">{t.label}</span>
-              <span className={cx('mx-auto mt-1 grid place-items-center min-w-[28px] w-fit px-1.5 rounded text-[12.5px] font-semibold', t.tone)}>
-                {items.filter(t.match).length}
-              </span>
-            </button>
-          ))}
-        </div>
+    <div className="flex h-full flex-col bg-white">
+      <div className="px-4 pt-4 pb-3 border-b border-[var(--a-border)]">
+        <p className="text-[15px] text-[#333]">Today’s Schedule</p>
+        <Button variant="outline" className="mt-3 w-full" onClick={onWalkIn}><FiUserPlus /> Add Walk-in Appointment</Button>
+      </div>
+      <div className="flex justify-center gap-6 bg-[var(--a-toolbar)] border-b border-[var(--a-border)]">
+        {CHANNELS.map((c) => (
+          <button key={c.key} onClick={() => setChannel(c.key)}
+            className={cx('py-2.5 text-[15px] border-b-[3px] -mb-px', channel === c.key ? 'border-[var(--a-accent)] text-[#333] font-medium' : 'border-transparent text-[#666] hover:text-[#333]')}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 border-b border-[var(--a-border)]">
+        {COUNTERS.map((c) => (
+          <button key={c.key} onClick={() => setCounter(c.key)}
+            className={cx('relative py-3 text-center', counter === c.key && 'bg-[#fafafa]')}>
+            <span className={cx('block text-[11px] uppercase', counter === c.key ? 'text-[#333] font-medium' : 'text-[#777]')}>{c.label}</span>
+            <span className={cx('mx-auto mt-1.5 grid place-items-center min-w-[34px] w-fit h-[26px] px-2 rounded-[3px] text-[14px] text-white', c.tone)}>
+              {inChannel.filter(c.match).length}
+            </span>
+            {counter === c.key && <span className="absolute left-1/2 -translate-x-1/2 bottom-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-[var(--a-border)]" />}
+          </button>
+        ))}
       </div>
       <div className="flex-1 overflow-y-auto">
         {list.length === 0 ? (
-          <p className="px-4 py-8 text-center text-[13px] text-[var(--a-muted)]"><FiCalendar className="mx-auto mb-2" />No appointments</p>
+          <p className="px-4 py-4 text-[15px] text-[#555]">No appointments</p>
         ) : (
           <ul className="divide-y divide-[var(--a-border)]">
             {list.map((a) => {
               const quick = QUICK[a.status];
               return (
-                <li key={a.id} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-white/3">
-                  <span className="w-1 self-stretch rounded-full" style={{ background: colorOf(a) }} />
+                <li key={a.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#fafafa]">
+                  <span className="w-[4px] self-stretch rounded-[1px]" style={{ background: colorOf(a) }} />
                   <button onClick={() => onOpen(a)} className="min-w-0 flex-1 text-left">
-                    <span className="block text-[13.5px] truncate">{a.name}</span>
-                    <span className="block text-[11.5px] text-[var(--a-muted)] truncate">
+                    <span className="block text-[14px] uppercase truncate text-[#333]">{a.name}</span>
+                    <span className="block text-[12px] text-[#888] truncate">
                       {formatSlot(a.slot)} · {STATUS_LABELS[a.status]}{a.doctor ? ` · ${a.doctor}` : ''}
                     </span>
                   </button>
                   {quick && (
                     <button onClick={() => onStatus(a, quick[0])}
-                      className="shrink-0 rounded-md border border-[var(--a-border)] px-2 py-1 text-[11.5px] text-[var(--a-muted)] hover:text-white hover:bg-white/8">
+                      className="shrink-0 rounded-[3px] border border-[#c8c8c8] bg-white px-2.5 py-1 text-[12px] text-[#555] hover:border-[var(--a-accent)] hover:text-[var(--a-accent)]">
                       {quick[1]}
                     </button>
                   )}
@@ -604,8 +641,8 @@ function TodayPanel({ items, colorOf, onOpen, onStatus, onWalkIn }) {
         )}
       </div>
       {items.some((a) => a.status === 'pending') && (
-        <p className="m-3 flex items-start gap-2 rounded-lg bg-[#f2b356]/10 px-3 py-2 text-[12px] text-[#f2b356]">
-          <FiAlertCircle className="mt-0.5 shrink-0" /> Some of today’s bookings are still requests — confirm them so the patient is told.
+        <p className="m-3 flex items-start gap-2 rounded-[3px] bg-[#fff3e3] border border-[#f7cf9b] px-3 py-2 text-[12.5px] text-[#9a5a12]">
+          <FiAlertCircle className="mt-0.5 shrink-0" /> Some of today’s bookings are online requests — confirm them so the patient is told.
         </p>
       )}
     </div>

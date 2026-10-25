@@ -28,20 +28,20 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="admin min-h-screen grid place-items-center px-5 py-10">
+    <div className="admin min-h-screen grid place-items-center px-5 py-10 bg-[var(--a-rail)]" style={{ fontFamily: "Roboto, 'Helvetica Neue', Arial, sans-serif" }}>
       <div className="w-full max-w-[400px]">
         <div className="text-center">
-          <img src="/images/brand/duhita-logo-sm.png" alt="" className="h-16 w-auto mx-auto" />
-          <h1 className="mt-5 text-[26px] font-bold text-white">Duhita Admin</h1>
-          <p className="mt-1.5 text-[14px] text-[var(--a-muted)]">Sign in to manage the website</p>
+          <span className="mx-auto grid place-items-center w-20 h-20 rounded-full bg-white"><img src="/images/brand/duhita-logo-sm.png" alt="" className="h-14 w-auto" /></span>
+          <h1 className="mt-5 text-[26px] font-normal !text-white">Duhita Admin</h1>
+          <p className="mt-1.5 text-[14px] text-white/70">Sign in to the clinic dashboard</p>
         </div>
 
-        <form onSubmit={submit} className="mt-8 grid gap-4 rounded-2xl border border-[var(--a-border)] bg-[var(--a-surface)] p-6">
+        <form onSubmit={submit} className="mt-8 grid gap-4 rounded-[4px] bg-white p-6 shadow-xl">
           <ErrorNote>{error}</ErrorNote>
           <label className="grid gap-1.5">
             <span className="text-[13px] text-[var(--a-muted)]">Username</span>
             <span className="relative block">
-              <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--a-muted)]" />
               <input autoFocus required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })}
                 className={`${inputClass} pl-10`} autoComplete="username" />
             </span>
@@ -49,7 +49,7 @@ export default function AdminLogin() {
           <label className="grid gap-1.5">
             <span className="text-[13px] text-[var(--a-muted)]">Password</span>
             <span className="relative block">
-              <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--a-muted)]" />
               <input required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className={`${inputClass} pl-10`} autoComplete="current-password" />
             </span>
@@ -57,7 +57,7 @@ export default function AdminLogin() {
           <Button type="submit" disabled={busy} className="mt-1">{busy ? 'Signing in…' : 'Sign In'}</Button>
         </form>
 
-        <p className="mt-6 text-center text-[12.5px] text-white/30">Duhita Multispeciality Dental Centre · Vijayawada</p>
+        <p className="mt-6 text-center text-[12.5px] text-white/60">Duhita Multispeciality Dental Centre · Vijayawada</p>
       </div>
     </div>
   );

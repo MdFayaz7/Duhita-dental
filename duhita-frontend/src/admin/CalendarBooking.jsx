@@ -55,14 +55,14 @@ function PatientPicker({ onPick, onNew }) {
       <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} className={inputClass}
         placeholder="Search by name, mobile, patient ID or Practo number" />
       {results && (
-        <ul className="max-h-64 overflow-y-auto rounded-xl border border-[var(--a-border)] divide-y divide-[var(--a-border)]">
+        <ul className="max-h-64 overflow-y-auto rounded border border-[var(--a-border)] divide-y divide-[var(--a-border)]">
           {results.map((p) => (
             <li key={p.patient_id}>
-              <button type="button" onClick={() => onPick(p)} className="w-full text-left px-3.5 py-2.5 hover:bg-white/5">
+              <button type="button" onClick={() => onPick(p)} className="w-full text-left px-3.5 py-2.5 hover:bg-black/3">
                 <span className="flex items-center justify-between gap-3">
                   <span className="font-medium truncate">{p.name}</span>
                   {p.family_size > 1 && (
-                    <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-[#7f56d9]/18 px-2 py-0.5 text-[11.5px] text-[#c4b1ff]">
+                    <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-[#7f56d9]/18 px-2 py-0.5 text-[11.5px] text-[#6941c6]">
                       <FiUsers className="w-3 h-3" /> Family of {p.family_size}
                     </span>
                   )}
@@ -75,7 +75,7 @@ function PatientPicker({ onPick, onNew }) {
             </li>
           ))}
           <li>
-            <button type="button" onClick={startNew} className="w-full text-left px-3.5 py-2.5 text-[var(--a-accent)] hover:bg-white/5 inline-flex items-center gap-2">
+            <button type="button" onClick={startNew} className="w-full text-left px-3.5 py-2.5 text-[var(--a-accent)] hover:bg-black/3 inline-flex items-center gap-2">
               <FiUserPlus /> {results.length ? 'Not listed — add a new patient' : `No match — add “${q.trim()}” as a new patient`}
             </button>
           </li>
@@ -183,15 +183,15 @@ export function BookingModal({ draft, hours, doctors, onClose, onSaved }) {
         <section className="grid gap-2">
           <span className="text-[13px] text-[var(--a-muted)]">Patient</span>
           {patient ? (
-            <div className="flex items-center gap-3 rounded-xl border border-[var(--a-border)] bg-[#0e141b] px-3.5 py-3">
-              <span className="w-9 h-9 grid place-items-center rounded-full bg-white/8"><FiUser /></span>
+            <div className="flex items-center gap-3 rounded border border-[var(--a-border)] bg-[var(--a-input)] px-3.5 py-3">
+              <span className="w-9 h-9 grid place-items-center rounded-full bg-black/5"><FiUser /></span>
               <span className="min-w-0 flex-1">
                 <span className="block font-medium truncate">{patient.name}</span>
                 <span className="block text-[12.5px] text-[var(--a-muted)]">
                   {patient.patient_id || 'No patient ID'} · {patient.phone ? `+91 ${patient.phone}` : 'no mobile'}
                 </span>
                 {patient.family_size > 1 && (
-                  <span className="block text-[12px] text-[#c4b1ff] mt-0.5">
+                  <span className="block text-[12px] text-[#6941c6] mt-0.5">
                     Shares this mobile number with {patient.family_size - 1} other{patient.family_size > 2 ? 's' : ''} — check it’s the right family member.
                   </span>
                 )}
@@ -199,10 +199,10 @@ export function BookingModal({ draft, hours, doctors, onClose, onSaved }) {
               {!editing && <Button type="button" size="sm" variant="ghost" onClick={() => setPatient(null)}>Change</Button>}
             </div>
           ) : newPatient ? (
-            <div className="grid gap-3 rounded-xl border border-[var(--a-accent)]/30 bg-[var(--a-accent-soft)] p-3.5">
+            <div className="grid gap-3 rounded border border-[var(--a-accent)]/30 bg-[var(--a-accent-soft)] p-3.5">
               <div className="flex items-center justify-between">
-                <span className="text-[13px] font-medium text-[#7fe3d3]">New patient — a patient ID is created on save</span>
-                <button type="button" onClick={() => setNewPatient(null)} aria-label="Back to search" className="text-[var(--a-muted)] hover:text-white"><FiX /></button>
+                <span className="text-[13px] font-medium text-[#0e8a7d]">New patient — a patient ID is created on save</span>
+                <button type="button" onClick={() => setNewPatient(null)} aria-label="Back to search" className="text-[var(--a-muted)] hover:text-[var(--a-text)]"><FiX /></button>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <Field label="Name *"><input value={newPatient.name} onChange={setNp('name')} className={inputClass} /></Field>
@@ -265,7 +265,7 @@ export function BookingModal({ draft, hours, doctors, onClose, onSaved }) {
               </select>
             </Field>
             {form.status === 'confirmed' && (
-              <label className="flex items-center gap-2.5 text-[14px] text-white/75 mt-5">
+              <label className="flex items-center gap-2.5 text-[14px] text-[var(--a-text)] mt-5">
                 <input type="checkbox" checked={!!form.notify} onChange={set('notify')} className="w-4 h-4 accent-[#16a394]" />
                 Send the patient a WhatsApp confirmation
               </label>
@@ -318,8 +318,8 @@ export function AppointmentDrawer({ appointment, doctor, onClose, onEdit, onStat
           <span className="flex gap-2">
             {a.phone && (
               <>
-                <a href={`tel:+91${a.phone}`} className="inline-flex items-center gap-2 rounded-lg border border-[var(--a-border)] px-3 py-2 text-[13px] hover:bg-white/5"><FiPhone className="w-3.5 h-3.5" /> Call</a>
-                <a href={`https://wa.me/91${a.phone}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-[var(--a-border)] px-3 py-2 text-[13px] hover:bg-white/5"><FiMessageCircle className="w-3.5 h-3.5" /> WhatsApp</a>
+                <a href={`tel:+91${a.phone}`} className="inline-flex items-center gap-2 rounded-lg border border-[var(--a-border)] px-3 py-2 text-[13px] hover:bg-black/3"><FiPhone className="w-3.5 h-3.5" /> Call</a>
+                <a href={`https://wa.me/91${a.phone}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-[var(--a-border)] px-3 py-2 text-[13px] hover:bg-black/3"><FiMessageCircle className="w-3.5 h-3.5" /> WhatsApp</a>
               </>
             )}
           </span>

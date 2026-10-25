@@ -33,7 +33,7 @@ export default function Settings() {
   };
 
   const Status = ({ ok, label }) => (
-    <span className={`inline-flex items-center gap-2 text-[14px] ${ok ? 'text-[#5fdac9]' : 'text-[#ff8a92]'}`}>
+    <span className={`inline-flex items-center gap-2 text-[14px] ${ok ? 'text-[#0e8a7d]' : 'text-[#d93a46]'}`}>
       {ok ? <FiCheckCircle /> : <FiXCircle />} {label}
     </span>
   );
@@ -44,7 +44,7 @@ export default function Settings() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel className="p-6">
-          <span className="w-10 h-10 grid place-items-center rounded-xl bg-[var(--a-accent-soft)] text-[var(--a-accent)]"><FiLock /></span>
+          <span className="w-10 h-10 grid place-items-center rounded bg-[var(--a-accent-soft)] text-[var(--a-accent)]"><FiLock /></span>
           <h2 className="text-[17px] font-semibold mt-4">Change password</h2>
           <p className="mt-1.5 text-[13.5px] text-[var(--a-muted)]">Signed in as <strong className="text-[var(--a-text)]">{user || '—'}</strong>.</p>
           <form onSubmit={save} className="mt-5 grid gap-4">
@@ -59,7 +59,7 @@ export default function Settings() {
         </Panel>
 
         <Panel className="p-6">
-          <span className="w-10 h-10 grid place-items-center rounded-xl bg-white/6 text-[var(--a-muted)]"><FiActivity /></span>
+          <span className="w-10 h-10 grid place-items-center rounded bg-black/4 text-[var(--a-muted)]"><FiActivity /></span>
           <h2 className="text-[17px] font-semibold mt-4">System status</h2>
           <div className="mt-5 grid gap-3">
             <div className="flex items-center justify-between gap-4 border-b border-[var(--a-border)] pb-3">
@@ -75,7 +75,7 @@ export default function Settings() {
               <code className="text-[13px] text-[var(--a-text)]">{api.base}</code>
             </div>
           </div>
-          <p className="mt-5 text-[12.5px] leading-relaxed text-white/35">
+          <p className="mt-5 text-[12.5px] leading-relaxed text-[var(--a-muted)]">
             Sessions last 12 hours. If the dashboard signs you out unexpectedly, the API was restarted or the token expired.
           </p>
         </Panel>

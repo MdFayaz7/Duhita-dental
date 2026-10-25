@@ -86,19 +86,19 @@ export default function ImportPatients() {
   return (
     <>
       <PageHead title="Import patients from Practo" subtitle="Bring the clinic’s existing patient list into this dashboard"
-        actions={<Link to="/admin/patients" className="inline-flex items-center gap-2 rounded-xl border border-[var(--a-border)] px-3.5 py-2.5 text-[13px] text-[var(--a-muted)] hover:text-white hover:bg-white/5"><FiArrowLeft /> Patients</Link>} />
+        actions={<Link to="/admin/patients" className="inline-flex items-center gap-2 rounded border border-[var(--a-border)] px-3.5 py-2.5 text-[13px] text-[var(--a-muted)] hover:text-[var(--a-text)] hover:bg-black/3"><FiArrowLeft /> Patients</Link>} />
       <ErrorNote>{error}</ErrorNote>
 
       {result ? (
         <Panel className="p-6 sm:p-8 text-center">
-          <FiCheckCircle className="mx-auto w-10 h-10 text-[#5fdac9]" />
+          <FiCheckCircle className="mx-auto w-10 h-10 text-[#0e8a7d]" />
           <h2 className="mt-4 text-[20px] font-semibold">Import complete</h2>
           <p className="mt-2 text-[14px] text-[var(--a-muted)]">
             {n(result.created)} new patients added · {n(result.updated)} existing patients filled in
             {result.family_numbers ? ` · ${n(result.patients_in_families)} patients grouped into ${n(result.family_numbers)} families` : ''}
           </p>
           <div className="mt-6 flex justify-center gap-3">
-            <Link to="/admin/patients" className="inline-flex items-center gap-2 rounded-xl bg-[var(--a-accent)] px-4 py-2.5 text-[14px] font-medium text-white">View patients</Link>
+            <Link to="/admin/patients" className="inline-flex items-center gap-2 rounded bg-[var(--a-accent)] px-4 py-2.5 text-[14px] font-medium text-white">View patients</Link>
             <Button variant="secondary" onClick={() => { setFile(null); setPreview(null); setResult(null); }}>Import another file</Button>
           </div>
         </Panel>
@@ -106,10 +106,10 @@ export default function ImportPatients() {
         <>
           <Panel className="p-5 sm:p-6 grid gap-5 lg:grid-cols-[1fr_1.1fr]">
             <div className="text-[14px] leading-relaxed text-[var(--a-muted)]">
-              <h2 className="text-[15px] font-semibold text-white mb-2">1. Export from Practo</h2>
+              <h2 className="text-[15px] font-semibold text-[var(--a-text)] mb-2">1. Export from Practo</h2>
               <ol className="list-decimal pl-5 grid gap-1.5">
-                <li>In Practo Ray, open <b className="text-white/85">Patients</b> and use <b className="text-white/85">Export</b> to download the full list as Excel or CSV.</li>
-                <li>If you can’t find an export option, ask Practo support for a <b className="text-white/85">full patient data export</b>. They provide one on request.</li>
+                <li>In Practo Ray, open <b className="text-[var(--a-text)]">Patients</b> and use <b className="text-[var(--a-text)]">Export</b> to download the full list as Excel or CSV.</li>
+                <li>If you can’t find an export option, ask Practo support for a <b className="text-[var(--a-text)]">full patient data export</b>. They provide one on request.</li>
                 <li>Upload the file here. Nothing is saved until you check the preview and press Import.</li>
               </ol>
               <p className="mt-3 text-[13px]">Patients who share a mobile number (families) are all kept, each with their own patient ID, and shown together as a family.</p>
@@ -118,8 +118,8 @@ export default function ImportPatients() {
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={(e) => { e.preventDefault(); setDragging(false); choose(e.dataTransfer.files?.[0]); }}
-              className={cx('grid place-items-center rounded-2xl border-2 border-dashed px-6 py-10 text-center cursor-pointer transition-colors',
-                dragging ? 'border-[var(--a-accent)] bg-[var(--a-accent-soft)]' : 'border-white/15 hover:border-white/30')}>
+              className={cx('grid place-items-center rounded-md border-2 border-dashed px-6 py-10 text-center cursor-pointer transition-colors',
+                dragging ? 'border-[var(--a-accent)] bg-[var(--a-accent-soft)]' : 'border-[var(--a-border)] hover:border-[var(--a-border)]')}>
               <span>
                 {busy === 'preview' ? <FiRefreshCw className="mx-auto w-8 h-8 animate-spin text-[var(--a-accent)]" /> : <FiUploadCloud className="mx-auto w-8 h-8 text-[var(--a-accent)]" />}
                 <span className="mt-3 block text-[15px] font-medium">{file ? file.name : '2. Choose or drop the Practo file'}</span>
@@ -158,9 +158,9 @@ export default function ImportPatients() {
                 <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
                   {preview.fields.map((f) => (
                     <label key={f} className="grid grid-cols-[140px_1fr] items-center gap-3 text-[13.5px]">
-                      <span className={cx(IMPORTANT.includes(f) ? 'text-white' : 'text-[var(--a-muted)]')}>{FIELD_LABELS[f] || f}{f === 'name' ? ' *' : ''}</span>
+                      <span className={cx(IMPORTANT.includes(f) ? 'text-[var(--a-text)]' : 'text-[var(--a-muted)]')}>{FIELD_LABELS[f] || f}{f === 'name' ? ' *' : ''}</span>
                       <select value={mapping[f] || ''} onChange={(e) => { setMapping({ ...mapping, [f]: e.target.value || undefined }); setDirty(true); }}
-                        className="min-w-0 rounded-lg border border-[var(--a-border)] bg-[#0e141b] px-2.5 py-2 text-[13px]">
+                        className="min-w-0 rounded-lg border border-[var(--a-border)] bg-[var(--a-input)] px-2.5 py-2 text-[13px]">
                         <option value="">Not in file</option>
                         {preview.headers.filter(Boolean).map((h) => <option key={h} value={h}>{h}</option>)}
                       </select>
@@ -168,7 +168,7 @@ export default function ImportPatients() {
                   ))}
                 </div>
                 {!mapping.phone && (
-                  <p className="mt-4 flex items-center gap-2 text-[13px] text-[#f2b356]"><FiAlertTriangle /> No mobile column chosen: patients can’t be grouped into families or matched to website registrations.</p>
+                  <p className="mt-4 flex items-center gap-2 text-[13px] text-[#b7701a]"><FiAlertTriangle /> No mobile column chosen: patients can’t be grouped into families or matched to website registrations.</p>
                 )}
               </Panel>
 
@@ -178,7 +178,7 @@ export default function ImportPatients() {
                   {preview.sample.map((r, i) => (
                     <tr key={i}>
                       <td className="px-5 py-3 font-medium">{r.name}</td>
-                      <td className="px-5 py-3">{r.phone || <span className="text-[#f2b356]">missing</span>}{r.alt_phone && <span className="block text-[12px] text-[var(--a-muted)]">+ {r.alt_phone}</span>}</td>
+                      <td className="px-5 py-3">{r.phone || <span className="text-[#b7701a]">missing</span>}{r.alt_phone && <span className="block text-[12px] text-[var(--a-muted)]">+ {r.alt_phone}</span>}</td>
                       <td className="px-5 py-3 text-[var(--a-muted)]">{[r.age, r.sex].filter((v) => v != null && v !== '').join(' · ') || '—'}</td>
                       <td className="px-5 py-3 text-[var(--a-muted)]">{r.practo_id || '—'}</td>
                       <td className="px-5 py-3 text-[var(--a-muted)]">{r.registered_on || '—'}</td>
@@ -191,11 +191,11 @@ export default function ImportPatients() {
               <div className="mt-5 grid gap-5 lg:grid-cols-2">
                 {preview.sample_families.length > 0 && (
                   <Panel className="p-5">
-                    <h2 className="flex items-center gap-2 text-[15px] font-semibold"><FiUsers className="text-[#c4b1ff]" /> Families found</h2>
+                    <h2 className="flex items-center gap-2 text-[15px] font-semibold"><FiUsers className="text-[#6941c6]" /> Families found</h2>
                     <p className="text-[13px] text-[var(--a-muted)] mb-3">Each person keeps their own patient ID and history. They’re linked by the shared mobile number.</p>
                     <ul className="grid gap-2 text-[13.5px]">
                       {preview.sample_families.map((f) => (
-                        <li key={f.phone} className="rounded-xl bg-white/4 px-4 py-2.5">
+                        <li key={f.phone} className="rounded bg-black/3 px-4 py-2.5">
                           <span className="text-[var(--a-muted)]">+91 {f.phone}</span> · {f.members.join(', ')}
                         </li>
                       ))}
@@ -204,13 +204,13 @@ export default function ImportPatients() {
                 )}
                 {preview.problems.length > 0 && (
                   <Panel className="p-5">
-                    <h2 className="flex items-center gap-2 text-[15px] font-semibold"><FiFileText className="text-[#f2b356]" /> Rows to look at</h2>
+                    <h2 className="flex items-center gap-2 text-[15px] font-semibold"><FiFileText className="text-[#b7701a]" /> Rows to look at</h2>
                     <p className="text-[13px] text-[var(--a-muted)] mb-3">The first {preview.problems.length}. Rows without a name are skipped; the rest are still imported.</p>
                     <ul className="grid gap-1.5 text-[13px] max-h-64 overflow-y-auto">
                       {preview.problems.map((p) => (
                         <li key={p.row} className="flex justify-between gap-3">
                           <span>Row {p.row} · {p.name || <em className="text-[var(--a-muted)]">no name</em>}</span>
-                          <span className="text-[#f2b356]">{p.issues.join(', ')}</span>
+                          <span className="text-[#b7701a]">{p.issues.join(', ')}</span>
                         </li>
                       ))}
                     </ul>
@@ -222,7 +222,7 @@ export default function ImportPatients() {
                 <Button onClick={run} disabled={!!busy || dirty || !s.to_create && !s.to_update}>
                   {busy === 'commit' ? <><FiRefreshCw className="animate-spin" /> Importing…</> : `Import ${n(s.to_create + s.to_update)} patients`}
                 </Button>
-                {dirty && <span className="text-[13px] text-[#f2b356]">Re-check with the new columns first.</span>}
+                {dirty && <span className="text-[13px] text-[#b7701a]">Re-check with the new columns first.</span>}
               </div>
             </>
           )}
@@ -233,7 +233,7 @@ export default function ImportPatients() {
 }
 
 function Stat({ label, value, hint, tone }) {
-  const tones = { accent: 'text-[#5fdac9]', violet: 'text-[#c4b1ff]', warn: 'text-[#f2b356]' };
+  const tones = { accent: 'text-[#0e8a7d]', violet: 'text-[#6941c6]', warn: 'text-[#b7701a]' };
   return (
     <Panel className="p-4">
       <p className="text-[12px] text-[var(--a-muted)]">{label}</p>

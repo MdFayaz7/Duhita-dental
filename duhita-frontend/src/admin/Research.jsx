@@ -37,26 +37,26 @@ export default function ResearchAdmin() {
       </PageHead>
       <ErrorNote>{error}</ErrorNote>
 
-      {items === null ? <div className="grid gap-4 lg:grid-cols-2">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-[196px] rounded-2xl" />)}</div> : items.length === 0 ? (
+      {items === null ? <div className="grid gap-4 lg:grid-cols-2">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-[196px] rounded-md" />)}</div> : items.length === 0 ? (
         <Panel><EmptyState icon={FiFileText} title="No papers uploaded yet." hint="Upload a PDF with its title, authors and a short description." /></Panel>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {items.map((p) => (
             <Panel key={p.id} className="p-5 flex gap-4">
-              <span className="w-11 h-11 shrink-0 rounded-xl bg-[#0a84ff]/15 text-[#5ac8fa] grid place-items-center"><FiFileText /></span>
+              <span className="w-11 h-11 shrink-0 rounded bg-[#0a84ff]/15 text-[#1c7fb3] grid place-items-center"><FiFileText /></span>
               <div className="min-w-0 flex-1">
-                {p.category && <p className="text-[11.5px] uppercase tracking-wider text-white/40">{p.category}</p>}
-                <h2 className="font-semibold text-white leading-snug">{p.title}</h2>
-                <p className="mt-1 text-[13.5px] text-white/60">{p.authors}</p>
+                {p.category && <p className="text-[11.5px] uppercase tracking-wider text-[var(--a-muted)]">{p.category}</p>}
+                <h2 className="font-semibold text-[var(--a-text)] leading-snug">{p.title}</h2>
+                <p className="mt-1 text-[13.5px] text-[var(--a-muted)]">{p.authors}</p>
                 {(p.publication || p.year) && (
-                  <p className="text-[12.5px] text-white/40">{[p.publication, p.year].filter(Boolean).join(' · ')}</p>
+                  <p className="text-[12.5px] text-[var(--a-muted)]">{[p.publication, p.year].filter(Boolean).join(' · ')}</p>
                 )}
                 {p.description && <p className="mt-3 text-[13.5px] text-[var(--a-muted)] line-clamp-3">{p.description}</p>}
-                <p className="mt-2 text-[12px] text-white/30">Uploaded {formatDateTime(p.created_at)}</p>
+                <p className="mt-2 text-[12px] text-[var(--a-muted)]">Uploaded {formatDateTime(p.created_at)}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {p.file && (
                     <a href={api.url(p.file)} target="_blank" rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/12 px-3.5 py-2 text-[13px] text-white/75 hover:bg-white/10">
+                      className="inline-flex items-center gap-2 rounded border border-[var(--a-border)] px-3.5 py-2 text-[13px] text-[var(--a-text)] hover:bg-black/6">
                       <FiDownload /> View PDF
                     </a>
                   )}
@@ -119,9 +119,9 @@ function PaperModal({ paper, onClose, onSaved }) {
         </div>
         <Field label="Description"><textarea rows={4} value={form.description || ''} onChange={set('description')} className={inputClass} /></Field>
         <Field label="PDF file" hint={paper?.file ? 'Choosing a new file replaces the current PDF.' : 'PDF only, up to 15 MB.'}>
-          <label className="flex items-center gap-3 rounded-xl border border-dashed border-white/15 px-4 py-3.5 cursor-pointer hover:border-white/30">
-            <FiUpload className="text-white/50" />
-            <span className="text-[13.5px] text-white/60">{file ? file.name : paper?.file ? 'Replace PDF' : 'Choose a PDF'}</span>
+          <label className="flex items-center gap-3 rounded border border-dashed border-[var(--a-border)] px-4 py-3.5 cursor-pointer hover:border-[var(--a-border)]">
+            <FiUpload className="text-[var(--a-muted)]" />
+            <span className="text-[13.5px] text-[var(--a-muted)]">{file ? file.name : paper?.file ? 'Replace PDF' : 'Choose a PDF'}</span>
             <input type="file" accept="application/pdf" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </label>
         </Field>

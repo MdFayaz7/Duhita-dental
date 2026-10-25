@@ -5,39 +5,41 @@ export const cx = (...c) => c.filter(Boolean).join(' ');
 
 /* ---------- buttons & surfaces ---------- */
 
+// Practo Ray buttons: solid orange for the main action, white with a grey border for the rest.
 const VARIANTS = {
-  primary: 'bg-[var(--a-accent)] text-white hover:bg-[var(--a-accent-hover)]',
-  secondary: 'bg-white/6 text-[var(--a-text)] hover:bg-white/12 border border-[var(--a-border)]',
-  ghost: 'text-[var(--a-muted)] hover:text-[var(--a-text)] hover:bg-white/6',
-  danger: 'bg-[#f0616d]/12 text-[#ff8a92] hover:bg-[#f0616d]/22 border border-[#f0616d]/25',
+  primary: 'bg-[var(--a-accent)] text-white border border-[var(--a-accent)] hover:bg-[var(--a-accent-hover)]',
+  secondary: 'bg-white text-[var(--a-text)] border border-[#c8c8c8] hover:bg-[#f5f5f5]',
+  outline: 'bg-white text-[var(--a-accent)] border border-[var(--a-accent)] hover:bg-[var(--a-accent-soft)]',
+  ghost: 'text-[var(--a-muted)] hover:text-[var(--a-text)] hover:bg-black/4',
+  danger: 'bg-white text-[#d93a46] border border-[#e8a1a6] hover:bg-[#fdecee]',
 };
 
 export function Button({ variant = 'primary', size = 'md', className = '', ...props }) {
-  const sizing = size === 'sm' ? 'px-3 py-2 text-[13px] min-h-[36px]' : 'px-4 py-2.5 text-[14px] min-h-[42px]';
+  const sizing = size === 'sm' ? 'px-3 py-1.5 text-[13px] min-h-[32px]' : 'px-4 py-2 text-[14px] min-h-[38px]';
   return (
-    <button className={cx('inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed', VARIANTS[variant], sizing, className)} {...props} />
+    <button className={cx('inline-flex items-center justify-center gap-2 rounded-[3px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed', VARIANTS[variant], sizing, className)} {...props} />
   );
 }
 
 export function IconButton({ label, tone = 'default', className = '', ...props }) {
   const tones = {
-    default: 'text-[var(--a-muted)] hover:text-[var(--a-text)] hover:bg-white/8',
-    danger: 'text-[var(--a-muted)] hover:text-[#ff8a92] hover:bg-[#f0616d]/15',
+    default: 'text-[var(--a-muted)] hover:text-[var(--a-text)] hover:bg-black/5',
+    danger: 'text-[var(--a-muted)] hover:text-[#d93a46] hover:bg-[#f0616d]/15',
   };
-  return <button aria-label={label} title={label} className={cx('w-9 h-9 grid place-items-center rounded-lg transition-colors', tones[tone], className)} {...props} />;
+  return <button aria-label={label} title={label} className={cx('w-8 h-8 grid place-items-center rounded-[3px] transition-colors', tones[tone], className)} {...props} />;
 }
 
 export const Panel = ({ className = '', ...props }) => (
-  <div className={cx('rounded-2xl border border-[var(--a-border)] bg-[var(--a-surface)]', className)} {...props} />
+  <div className={cx('rounded-[4px] border border-[var(--a-border)] bg-[var(--a-surface)]', className)} {...props} />
 );
 
 export const Skeleton = ({ className = '' }) => (
-  <div className={cx('animate-pulse rounded-lg bg-white/6', className)} />
+  <div className={cx('animate-pulse rounded-lg bg-black/4', className)} />
 );
 
 export const EmptyState = ({ icon: Icon = FiInbox, title, hint, action }) => (
   <div className="py-16 px-6 text-center">
-    <span className="w-12 h-12 mx-auto grid place-items-center rounded-2xl bg-white/5 text-[var(--a-muted)]"><Icon className="w-5 h-5" /></span>
+    <span className="w-12 h-12 mx-auto grid place-items-center rounded-md bg-black/3 text-[var(--a-muted)]"><Icon className="w-5 h-5" /></span>
     <p className="mt-4 text-[15px] text-[var(--a-text)]">{title}</p>
     {hint && <p className="mt-1.5 text-[13.5px] text-[var(--a-muted)] max-w-sm mx-auto">{hint}</p>}
     {action && <div className="mt-6">{action}</div>}
@@ -46,7 +48,7 @@ export const EmptyState = ({ icon: Icon = FiInbox, title, hint, action }) => (
 
 export const ErrorNote = ({ children }) =>
   children ? (
-    <p className="flex items-start gap-2 rounded-xl border border-[#f0616d]/30 bg-[#f0616d]/10 px-3.5 py-3 text-[13.5px] text-[#ff8a92]">
+    <p className="flex items-start gap-2 rounded border border-[#f0616d]/30 bg-[#f0616d]/10 px-3.5 py-3 text-[13.5px] text-[#d93a46]">
       <FiAlertCircle className="mt-0.5 shrink-0" /> {children}
     </p>
   ) : null;
@@ -54,14 +56,14 @@ export const ErrorNote = ({ children }) =>
 /* ---------- forms ---------- */
 
 export const inputClass =
-  'w-full min-h-[44px] rounded-xl border border-[var(--a-border)] bg-[#0e141b] px-3.5 py-2.5 text-[14.5px] text-[var(--a-text)] placeholder:text-white/25 outline-none transition-colors focus:border-[var(--a-accent)] focus:ring-2 focus:ring-[var(--a-accent)]/25';
+  'w-full min-h-[38px] rounded-[3px] border border-[#c8c8c8] bg-white px-3 py-2 text-[14px] text-[var(--a-text)] placeholder:text-[#9a9a9a] outline-none transition-colors focus:border-[var(--a-link)]';
 
 export function Field({ label, hint, error, children, className = '' }) {
   return (
     <label className={cx('grid gap-1.5', className)}>
-      {label && <span className="text-[13px] text-[var(--a-muted)]">{label}</span>}
+      {label && <span className="text-[13px] text-[#555]">{label}</span>}
       {children}
-      {error ? <span className="text-[12.5px] text-[#ff8a92]">{error}</span> : hint && <span className="text-[12.5px] text-white/35">{hint}</span>}
+      {error ? <span className="text-[12.5px] text-[#d93a46]">{error}</span> : hint && <span className="text-[12.5px] text-[var(--a-muted)]">{hint}</span>}
     </label>
   );
 }
@@ -73,7 +75,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search…' }) {
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`${inputClass} pl-10 pr-9`} />
       {value && (
         <button type="button" onClick={() => onChange('')} aria-label="Clear search"
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center rounded-md text-[var(--a-muted)] hover:bg-white/8">
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center rounded-md text-[var(--a-muted)] hover:bg-black/5">
           <FiX className="w-3.5 h-3.5" />
         </button>
       )}
@@ -83,13 +85,13 @@ export function SearchInput({ value, onChange, placeholder = 'Search…' }) {
 
 export function Segmented({ options, value, onChange }) {
   return (
-    <div role="tablist" className="inline-flex flex-wrap gap-1 rounded-xl border border-[var(--a-border)] bg-[#0e141b] p-1">
+    <div role="tablist" className="inline-flex flex-wrap rounded-[3px] border border-[#c8c8c8] bg-white overflow-hidden">
       {options.map((o) => (
         <button key={o.value} role="tab" aria-selected={value === o.value} onClick={() => onChange(o.value)}
-          className={cx('rounded-lg px-3.5 py-2 text-[13px] font-medium transition-colors',
-            value === o.value ? 'bg-[var(--a-accent)] text-white' : 'text-[var(--a-muted)] hover:text-[var(--a-text)]')}>
+          className={cx('px-4 py-[7px] text-[14px] transition-colors border-r border-[#c8c8c8] last:border-r-0',
+            value === o.value ? 'bg-[var(--a-selected)] text-white' : 'text-[#555] hover:bg-[#f5f5f5]')}>
           {o.label}
-          {o.count != null && <span className={cx('ml-2 rounded-full px-1.5 py-0.5 text-[11px]', value === o.value ? 'bg-white/20' : 'bg-white/8')}>{o.count}</span>}
+          {o.count != null && <span className={cx('ml-2 rounded-full px-1.5 py-0.5 text-[11px]', value === o.value ? 'bg-white/25' : 'bg-black/6')}>{o.count}</span>}
         </button>
       ))}
     </div>
@@ -111,13 +113,13 @@ export function Modal({ open, title, subtitle, onClose, children, wide }) {
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="admin fixed inset-0 z-[90] grid place-items-end sm:place-items-center bg-black/75 backdrop-blur-sm sm:p-6" onClick={onClose}>
+    <div className="admin fixed inset-0 z-[90] grid place-items-end sm:place-items-center bg-[rgba(20,25,60,0.55)] sm:p-6" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        className={cx('w-full max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-[var(--a-border)] bg-[var(--a-surface)]', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}
-        style={{ animation: 'a-slide-up .25s ease' }}>
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[var(--a-border)] bg-[var(--a-surface)] px-5 sm:px-6 py-4">
+        className={cx('w-full max-h-[92vh] overflow-y-auto rounded-t-lg sm:rounded-[4px] bg-white shadow-2xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}
+        style={{ animation: 'a-in .2s ease' }}>
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[var(--a-border)] bg-[var(--a-panel)] px-5 sm:px-6 py-3.5">
           <div>
-            <h2 className="text-[17px] font-semibold">{title}</h2>
+            <h2 className="text-[16px] font-medium">{title}</h2>
             {subtitle && <p className="text-[13px] text-[var(--a-muted)] mt-0.5">{subtitle}</p>}
           </div>
           <IconButton label="Close" onClick={onClose}><FiX /></IconButton>
@@ -141,12 +143,12 @@ export function Drawer({ open, title, subtitle, onClose, children }) {
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="admin fixed inset-0 z-[90] flex justify-end bg-black/70 backdrop-blur-sm" onClick={onClose}>
+    <div className="admin fixed inset-0 z-[90] flex justify-end bg-[rgba(20,25,60,0.35)]" onClick={onClose}>
       <aside role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        className="w-full sm:w-[460px] h-full overflow-y-auto border-l border-[var(--a-border)] bg-[var(--a-surface)] a-in">
-        <div className="sticky top-0 flex items-start justify-between gap-4 border-b border-[var(--a-border)] bg-[var(--a-surface)] px-5 py-4">
+        className="w-full sm:w-[440px] h-full overflow-y-auto bg-white shadow-2xl a-in">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[var(--a-border)] bg-[var(--a-panel)] px-5 py-3.5">
           <div>
-            <h2 className="text-[17px] font-semibold">{title}</h2>
+            <h2 className="text-[16px] font-medium">{title}</h2>
             {subtitle && <p className="text-[13px] text-[var(--a-muted)] mt-0.5">{subtitle}</p>}
           </div>
           <IconButton label="Close" onClick={onClose}><FiX /></IconButton>
@@ -196,8 +198,8 @@ export function AdminProviders({ children }) {
         <div className="admin fixed bottom-5 left-1/2 -translate-x-1/2 lg:left-auto lg:right-6 lg:translate-x-0 z-[95] grid gap-2 w-[min(92vw,380px)]">
           {toasts.map((t) => (
             <div key={t.id} role="status"
-              className={cx('a-in flex items-start gap-3 rounded-xl border px-4 py-3 text-[14px] shadow-xl backdrop-blur',
-                t.tone === 'error' ? 'border-[#f0616d]/30 bg-[#2a151a]/95 text-[#ff8a92]' : 'border-[var(--a-accent)]/30 bg-[#102520]/95 text-[#7fe3d3]')}>
+              className={cx('a-in flex items-start gap-3 rounded-[3px] px-4 py-3 text-[14px] text-white shadow-lg',
+                t.tone === 'error' ? 'bg-[#e53935]' : 'bg-[#323232]')}>
               {t.tone === 'error' ? <FiAlertCircle className="mt-0.5 shrink-0" /> : <FiCheckCircle className="mt-0.5 shrink-0" />}
               {t.message}
             </div>
@@ -206,7 +208,7 @@ export function AdminProviders({ children }) {
 
         <Modal open={!!ask} title={ask?.title || 'Are you sure?'} onClose={() => close(false)}>
           <div className="flex gap-3.5">
-            <span className="w-10 h-10 shrink-0 grid place-items-center rounded-xl bg-[#f0616d]/12 text-[#ff8a92]"><FiAlertTriangle /></span>
+            <span className="w-10 h-10 shrink-0 grid place-items-center rounded bg-[#f0616d]/12 text-[#d93a46]"><FiAlertTriangle /></span>
             <p className="text-[14.5px] leading-relaxed text-[var(--a-muted)]">{ask?.message}</p>
           </div>
           <div className="mt-6 flex gap-3">
@@ -231,18 +233,19 @@ export const STATUS_LABELS = {
   cancelled: 'Cancelled', no_show: 'No show',
 };
 
+// Solid chips in Practo's status colours (Waiting red, Engaged cyan, Done green).
 const STATUS_STYLES = {
-  pending: 'bg-[#f2b356]/14 text-[#f2b356] border-[#f2b356]/25',
-  confirmed: 'bg-[#4ea8de]/14 text-[#74c0f0] border-[#4ea8de]/25',
-  checked_in: 'bg-[#f0616d]/14 text-[#ff8a92] border-[#f0616d]/25',
-  engaged: 'bg-[#22b8cf]/14 text-[#66d9e8] border-[#22b8cf]/25',
-  completed: 'bg-[#16a394]/16 text-[#5fdac9] border-[#16a394]/30',
-  cancelled: 'bg-[#f0616d]/14 text-[#ff8a92] border-[#f0616d]/25',
-  no_show: 'bg-white/8 text-[var(--a-muted)] border-white/12',
+  pending: 'bg-[#ffb74d] text-white',
+  confirmed: 'bg-[#5c6bc0] text-white',
+  checked_in: 'bg-[var(--a-waiting)] text-white',
+  engaged: 'bg-[var(--a-engaged)] text-white',
+  completed: 'bg-[var(--a-done)] text-white',
+  cancelled: 'bg-[#bdbdbd] text-white',
+  no_show: 'bg-[#8d8d8d] text-white',
 };
 
 export const StatusPill = ({ status }) => (
-  <span className={cx('inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-medium capitalize whitespace-nowrap', STATUS_STYLES[status] || STATUS_STYLES.no_show)}>
+  <span className={cx('inline-flex items-center rounded-[3px] px-2 py-[3px] text-[12px] font-medium whitespace-nowrap', STATUS_STYLES[status] || STATUS_STYLES.no_show)}>
     {STATUS_LABELS[status] || String(status || '').replace('_', ' ')}
   </span>
 );
@@ -251,8 +254,8 @@ export const Table = ({ head, children, minWidth = 860 }) => (
   <div className="overflow-x-auto">
     <table className="w-full text-[14px]" style={{ minWidth }}>
       <thead>
-        <tr className="border-b border-[var(--a-border)] text-[11.5px] uppercase tracking-wider text-[var(--a-muted)]">
-          {head.map((h) => <th key={h} className="px-5 py-3.5 text-left font-medium whitespace-nowrap">{h}</th>)}
+        <tr className="border-b border-[var(--a-border)] bg-[var(--a-panel)] text-[12px] uppercase text-[#666]">
+          {head.map((h) => <th key={h} className="px-5 py-3 text-left font-medium whitespace-nowrap">{h}</th>)}
         </tr>
       </thead>
       <tbody className="divide-y divide-[var(--a-border)]">{children}</tbody>

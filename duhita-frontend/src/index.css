@@ -334,39 +334,53 @@ main img:not(.no-zoom):not(.hero-media):hover {
   }
 }
 
-/* ---------- Admin dashboard theme ---------- */
-/* Calendar slots outside clinic hours: still bookable, but visibly shaded. */
+/* ---------- Admin dashboard theme (Practo Ray look: indigo rail, white surfaces, orange actions) ---------- */
+/* Calendar slots outside clinic hours: still bookable, but greyed like Practo. */
 .cal-closed {
-  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 6px, transparent 6px 12px);
-  background-color: rgba(0, 0, 0, 0.25);
+  background-color: #ececec;
 }
 .admin {
-  --a-bg: #0b0f14;
-  --a-surface: #131a22;
-  --a-raised: #182230;
-  --a-border: rgba(148, 163, 184, 0.14);
-  --a-text: #e6edf3;
-  --a-muted: #8b98a5;
-  --a-accent: #16a394;
-  --a-accent-hover: #12867a;
-  --a-accent-soft: rgba(22, 163, 148, 0.14);
-  background: var(--a-bg);
+  --a-bg: #ffffff;
+  --a-surface: #ffffff;
+  --a-raised: #f7f7f7;
+  --a-panel: #f5f5f5;
+  --a-toolbar: #eeeeee;
+  --a-input: #ffffff;
+  --a-border: #dcdcdc;
+  --a-grid: #e6e6e6;
+  --a-text: #333333;
+  --a-muted: #777777;
+  --a-accent: #f39a2b;
+  --a-accent-hover: #e0861a;
+  --a-accent-soft: #fff3e3;
+  --a-link: #14bef0;
+  --a-rail: #3c4bb5;
+  --a-rail-active: #5262c9;
+  --a-selected: #7a7a7a;
+  --a-waiting: #f44336;
+  --a-engaged: #26c6da;
+  --a-done: #1aab2a;
+  /* No background here: overlays and the toast layer share this class and must stay see-through. */
   color: var(--a-text);
-  font-family: var(--font-sans);
+  font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
 }
 .admin :is(h1, h2, h3) {
-  font-family: var(--font-sans);
-  font-weight: 600;
+  font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
   color: var(--a-text);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 .admin ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 .admin ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.22);
+  background: #c8c8c8;
   border-radius: 8px;
+  border: 2px solid #fff;
+}
+.admin ::-webkit-scrollbar-track {
+  background: transparent;
 }
 @keyframes a-in {
   from { opacity: 0; transform: translateY(6px); }

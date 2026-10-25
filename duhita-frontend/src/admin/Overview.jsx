@@ -8,10 +8,10 @@ import { useLiveEvents } from '../lib/useLiveEvents';
 
 const Kpi = ({ icon: Icon, label, value, sub, to, tone = 'text-[var(--a-accent)] bg-[var(--a-accent-soft)]' }) => {
   const inner = (
-    <Panel className="p-5 h-full transition-colors hover:border-white/25">
+    <Panel className="p-5 h-full transition-colors hover:border-[var(--a-border)]">
       <div className="flex items-center justify-between">
-        <span className={`w-10 h-10 grid place-items-center rounded-xl ${tone}`}><Icon className="w-[18px] h-[18px]" /></span>
-        {sub && <span className="text-[12px] font-medium text-[var(--a-muted)] bg-white/5 border border-white/5 px-2 py-0.5 rounded-md">{sub}</span>}
+        <span className={`w-10 h-10 grid place-items-center rounded ${tone}`}><Icon className="w-[18px] h-[18px]" /></span>
+        {sub && <span className="text-[12px] font-medium text-[var(--a-muted)] bg-black/3 border border-[var(--a-border)] px-2 py-0.5 rounded-md">{sub}</span>}
       </div>
       <p className="mt-4 text-[28px] font-semibold leading-none">{value}</p>
       <p className="mt-2 text-[13px] text-[var(--a-muted)]">{label}</p>
@@ -24,7 +24,7 @@ const SectionHead = ({ title, to, linkLabel }) => (
   <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-[var(--a-border)]">
     <h2 className="text-[15.5px] font-semibold">{title}</h2>
     {to && (
-      <Link to={to} className="inline-flex items-center gap-1.5 text-[13px] text-[var(--a-accent)] hover:underline">
+      <Link to={to} className="inline-flex items-center gap-1.5 text-[13px] text-[#1a9ad6] hover:underline">
         {linkLabel} <FiArrowRight className="w-3.5 h-3.5" />
       </Link>
     )}
@@ -88,7 +88,7 @@ export default function Overview() {
         subtitle={today}
         actions={
           <div className="flex items-center gap-3">
-            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -120,7 +120,7 @@ export default function Overview() {
               value={stats.appointments_pending}
               sub={stats.appointments_pending > 0 ? 'Pending' : 'All clear'}
               to="/admin/appointments"
-              tone="text-[#f2b356] bg-[#f2b356]/14"
+              tone="text-[#b7701a] bg-[#b7701a]/14"
             />
             <Kpi
               icon={FiUsers}
@@ -128,7 +128,7 @@ export default function Overview() {
               value={stats.patients_total}
               sub={stats.patients_this_week > 0 ? `+${stats.patients_this_week} this wk` : 'Total records'}
               to="/admin/patients"
-              tone="text-[#74c0f0] bg-[#4ea8de]/14"
+              tone="text-[#1c6fb3] bg-[#4ea8de]/14"
             />
             <Kpi
               icon={FiUserCheck}
@@ -136,11 +136,11 @@ export default function Overview() {
               value={stats.doctors}
               sub="Specialists"
               to="/admin/doctors"
-              tone="text-[#c9a6f5] bg-[#a97bf0]/14"
+              tone="text-[#6941c6] bg-[#a97bf0]/14"
             />
           </>
         ) : (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[136px] rounded-2xl" />)
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[136px] rounded-md" />)
         )}
       </div>
 
@@ -218,11 +218,11 @@ export default function Overview() {
                 [FiFileText, 'Research papers', stats.research, '/admin/research'],
               ].map(([Icon, label, count, to]) => (
                 <li key={label}>
-                  <Link to={to} className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-white/4">
+                  <Link to={to} className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-black/3">
                     <Icon className="w-4 h-4 text-[var(--a-muted)]" />
                     <span className="flex-1 text-[14px]">{label}</span>
                     <span className="text-[14px] text-[var(--a-muted)]">{count}</span>
-                    <FiArrowRight className="w-4 h-4 text-white/25" />
+                    <FiArrowRight className="w-4 h-4 text-[var(--a-muted)]" />
                   </Link>
                 </li>
               ))}

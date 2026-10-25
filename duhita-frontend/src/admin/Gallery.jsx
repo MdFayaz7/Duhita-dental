@@ -91,9 +91,9 @@ export default function GalleryAdmin() {
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); upload([...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'))); }}
-        className="rounded-2xl border border-dashed border-white/12 p-4"
+        className="rounded-md border border-dashed border-[var(--a-border)] p-4"
       >
-        {items === null ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] rounded-2xl" />)}</div> : items.length === 0 ? (
+        {items === null ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] rounded-md" />)}</div> : items.length === 0 ? (
           <EmptyState icon={FiImage} title="No photos yet." hint="Click “Upload photos”, or drag image files onto this area." />
         ) : (
           <>
@@ -105,19 +105,19 @@ export default function GalleryAdmin() {
                     <img src={api.url(img.src)} alt={img.caption || ''} loading="lazy" className="w-full h-full object-cover" />
                     <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 p-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-gradient-to-t from-black/85 to-transparent pt-10">
                       <button onClick={() => move(index, -1)} aria-label="Move earlier" disabled={index === 0}
-                        className="w-9 h-9 grid place-items-center rounded-lg bg-white/15 text-white hover:bg-white/25 disabled:opacity-30">←</button>
+                        className="w-9 h-9 grid place-items-center rounded-lg bg-black/9 text-[var(--a-text)] hover:bg-black/15 disabled:opacity-30">←</button>
                       <button onClick={() => move(index, 1)} aria-label="Move later" disabled={index === items.length - 1}
-                        className="w-9 h-9 grid place-items-center rounded-lg bg-white/15 text-white hover:bg-white/25 disabled:opacity-30">→</button>
+                        className="w-9 h-9 grid place-items-center rounded-lg bg-black/9 text-[var(--a-text)] hover:bg-black/15 disabled:opacity-30">→</button>
                       <span className="flex-1" />
                       <button onClick={() => setEditing(img)} aria-label="Edit caption"
-                        className="w-9 h-9 grid place-items-center rounded-lg bg-white/15 text-white hover:bg-white/25"><FiEdit2 /></button>
+                        className="w-9 h-9 grid place-items-center rounded-lg bg-black/9 text-[var(--a-text)] hover:bg-black/15"><FiEdit2 /></button>
                       <button onClick={() => remove(img)} aria-label="Delete photo"
                         className="w-9 h-9 grid place-items-center rounded-lg bg-[#f0616d] text-white hover:bg-[#d8515d]"><FiTrash2 /></button>
                     </div>
                   </div>
                   <p className="px-3.5 py-3 text-[13px] text-[var(--a-muted)] line-clamp-2">
-                    <span className="text-white/30 mr-1.5">{index + 1}.</span>
-                    {img.caption || <span className="text-white/30">No caption</span>}
+                    <span className="text-[var(--a-muted)] mr-1.5">{index + 1}.</span>
+                    {img.caption || <span className="text-[var(--a-muted)]">No caption</span>}
                   </p>
                 </Panel>
               ))}
@@ -156,7 +156,7 @@ function CaptionModal({ image, onClose, onSaved }) {
     <Modal open={!!image} title="Edit photo" onClose={onClose}>
       <form onSubmit={save} className="grid gap-4">
         <ErrorNote>{error}</ErrorNote>
-        {image && <img src={api.url(image.src)} alt="" className="w-full rounded-xl" />}
+        {image && <img src={api.url(image.src)} alt="" className="w-full rounded" />}
         <Field label="Caption" hint="Shown under the photo in the full-screen viewer">
           <input value={caption} onChange={(e) => setCaption(e.target.value)} className={inputClass} />
         </Field>

@@ -3,7 +3,7 @@ import { FiChevronLeft, FiChevronRight, FiClock, FiCopy, FiEdit2, FiPlus, FiPrin
 import { api } from './api';
 import { PageHead } from './AdminLayout';
 import {
-  Button, EmptyState, ErrorNote, Field, IconButton, Modal, Panel, Skeleton, StatusPill, STATUSES,
+  Button, EmptyState, ErrorNote, Field, IconButton, Modal, Panel, Skeleton, StatusPill, STATUSES, STATUS_LABELS,
   Table, formatSlot, inputClass, todayIso, useConfirm, useToast,
 } from './ui';
 import { useLiveEvents } from '../lib/useLiveEvents';
@@ -113,7 +113,7 @@ export default function Schedule() {
         subtitle="The clinic's running order for the day."
         actions={
           <div className="flex items-center gap-2.5">
-            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+            <div className="hidden sm:inline-flex items-center gap-2 text-[12px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -154,13 +154,13 @@ export default function Schedule() {
             <div className="hidden md:block">
               <Table head={['#', 'Time', 'Patient', 'Doctor', 'Status', 'Notes', '']} minWidth={900}>
                 {rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-white/3">
+                  <tr key={row.id} className="hover:bg-black/3">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-7 h-7 grid place-items-center rounded-lg bg-white/8 text-[13px]">{row.priority}</span>
+                        <span className="w-7 h-7 grid place-items-center rounded-lg bg-black/5 text-[13px]">{row.priority}</span>
                         <div className="grid">
-                          <button onClick={() => move(row, -1)} aria-label="Move up" className="text-[10px] leading-none text-[var(--a-muted)] hover:text-white">▲</button>
-                          <button onClick={() => move(row, 1)} aria-label="Move down" className="text-[10px] leading-none text-[var(--a-muted)] hover:text-white">▼</button>
+                          <button onClick={() => move(row, -1)} aria-label="Move up" className="text-[10px] leading-none text-[var(--a-muted)] hover:text-[var(--a-text)]">▲</button>
+                          <button onClick={() => move(row, 1)} aria-label="Move down" className="text-[10px] leading-none text-[var(--a-muted)] hover:text-[var(--a-text)]">▼</button>
                         </div>
                       </div>
                     </td>
@@ -172,8 +172,8 @@ export default function Schedule() {
                     <td className="px-5 py-4 text-[var(--a-muted)]">{row.doctor || '—'}</td>
                     <td className="px-5 py-4">
                       <select value={row.status} onChange={(e) => setStatusFor(row, e.target.value)}
-                        className="rounded-lg border border-[var(--a-border)] bg-[#0e141b] px-2.5 py-1.5 text-[13px] capitalize">
-                        {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                        className="rounded-lg border border-[var(--a-border)] bg-[var(--a-input)] px-2.5 py-1.5 text-[13px] capitalize">
+                        {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                       </select>
                     </td>
                     <td className="px-5 py-4 max-w-[200px] truncate text-[var(--a-muted)]">{row.notes || '—'}</td>
@@ -266,7 +266,7 @@ function EntryModal({ entry, date, onClose, onSaved }) {
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Status">
             <select value={form.status} onChange={set('status')} className={`${inputClass} capitalize`}>
-              {STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+              {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
           </Field>
           <Field label="Order"><input type="number" min="1" value={form.priority} onChange={set('priority')} className={inputClass} /></Field>

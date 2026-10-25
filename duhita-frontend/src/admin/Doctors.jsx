@@ -38,27 +38,27 @@ export default function Doctors() {
       </PageHead>
       <ErrorNote>{error}</ErrorNote>
 
-      {items === null ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[184px] rounded-2xl" />)}</div> : items.length === 0 ? (
+      {items === null ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[184px] rounded-md" />)}</div> : items.length === 0 ? (
         <Panel><EmptyState icon={FiUserCheck} title="No doctors added yet." hint="Add the clinic's doctors so patients can see who treats them." /></Panel>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((d) => (
             <Panel key={d.id} className="p-5">
               <div className="flex items-start gap-4">
-                <span className="w-14 h-14 shrink-0 rounded-xl overflow-hidden bg-white/8 grid place-items-center text-white/40">
+                <span className="w-14 h-14 shrink-0 rounded overflow-hidden bg-black/5 grid place-items-center text-[var(--a-muted)]">
                   {d.photo ? <img src={api.url(d.photo)} alt="" className="w-full h-full object-cover" /> : <FiUserCheck />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white truncate">{d.name}</p>
-                  <p className="text-[13px] text-white/50">{d.qualification || '—'}</p>
+                  <p className="font-semibold text-[var(--a-text)] truncate">{d.name}</p>
+                  <p className="text-[13px] text-[var(--a-muted)]">{d.qualification || '—'}</p>
                   <span className="mt-1.5 flex flex-wrap gap-1.5">
-                    {d.color && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/8 px-2 py-0.5 text-[11.5px] text-white/60"><span className="w-2 h-2 rounded-full" style={{ background: d.color }} />Calendar</span>}
-                    {d.in_calendar === false && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/50">Not in calendar</span>}
-                    {!d.active && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/50">Hidden on website</span>}
+                    {d.color && <span className="inline-flex items-center gap-1.5 rounded-full bg-black/5 px-2 py-0.5 text-[11.5px] text-[var(--a-muted)]"><span className="w-2 h-2 rounded-full" style={{ background: d.color }} />Calendar</span>}
+                    {d.in_calendar === false && <span className="rounded-full bg-black/6 px-2 py-0.5 text-[11.5px] text-[var(--a-muted)]">Not in calendar</span>}
+                    {!d.active && <span className="rounded-full bg-black/6 px-2 py-0.5 text-[11.5px] text-[var(--a-muted)]">Hidden on website</span>}
                   </span>
                 </div>
               </div>
-              {d.speciality && <p className="mt-4 text-[13.5px] text-white/60">{d.speciality}{d.experience_years ? ` · ${d.experience_years} yrs` : ''}</p>}
+              {d.speciality && <p className="mt-4 text-[13.5px] text-[var(--a-muted)]">{d.speciality}{d.experience_years ? ` · ${d.experience_years} yrs` : ''}</p>}
               <div className="mt-5 flex gap-2">
                 <Button variant="secondary" className="flex-1" onClick={() => setEditing(d)}><FiEdit2 /> Edit</Button>
                 <Button variant="danger" onClick={() => remove(d)} aria-label={`Delete ${d.name}`}><FiTrash2 /></Button>
@@ -131,17 +131,17 @@ function DoctorModal({ doctor, onClose, onSaved }) {
         </div>
         <Field label="Short bio"><textarea rows={3} value={form.bio || ''} onChange={set('bio')} className={inputClass} /></Field>
         <Field label="Photo" hint="JPG, PNG or WebP">
-          <label className="flex items-center gap-3 rounded-xl border border-dashed border-white/15 px-4 py-3 cursor-pointer hover:border-white/30">
-            <FiUpload className="text-white/50" />
-            <span className="text-[13.5px] text-white/60">{file ? file.name : 'Choose a photo'}</span>
+          <label className="flex items-center gap-3 rounded border border-dashed border-[var(--a-border)] px-4 py-3 cursor-pointer hover:border-[var(--a-border)]">
+            <FiUpload className="text-[var(--a-muted)]" />
+            <span className="text-[13.5px] text-[var(--a-muted)]">{file ? file.name : 'Choose a photo'}</span>
             <input type="file" accept="image/*,.heic,.heif" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </label>
         </Field>
-        <label className="flex items-center gap-2.5 text-[14px] text-white/70">
+        <label className="flex items-center gap-2.5 text-[14px] text-[var(--a-muted)]">
           <input type="checkbox" checked={!!form.active} onChange={set('active')} className="w-4 h-4 accent-[#0a84ff]" />
           Show on the website
         </label>
-        <label className="flex items-center gap-2.5 text-[14px] text-white/70">
+        <label className="flex items-center gap-2.5 text-[14px] text-[var(--a-muted)]">
           <input type="checkbox" checked={!!form.in_calendar} onChange={set('in_calendar')} className="w-4 h-4 accent-[#0a84ff]" />
           Show in the appointment calendar
         </label>
@@ -149,7 +149,7 @@ function DoctorModal({ doctor, onClose, onSaved }) {
           <div className="flex flex-wrap gap-2">
             {COLORS.map((c) => (
               <button key={c} type="button" onClick={() => setForm({ ...form, color: c })} aria-label={`Colour ${c}`}
-                className={`w-8 h-8 rounded-full border-2 ${form.color === c ? 'border-white' : 'border-transparent'}`} style={{ background: c }} />
+                className={`w-8 h-8 rounded-full border-2 ${form.color === c ? 'border-[var(--a-text)]' : 'border-transparent'}`} style={{ background: c }} />
             ))}
           </div>
         </Field>

@@ -109,12 +109,12 @@ export default function FeedbackAdmin() {
             <div key={u.name}>
               <div className="flex justify-between gap-3 text-[13px]">
                 <span className="truncate">{u.name}</span>
-                <span className={u.error ? 'text-[#ff8a92]' : 'text-[var(--a-muted)]'}>
+                <span className={u.error ? 'text-[#d93a46]' : 'text-[var(--a-muted)]'}>
                   {u.error || (u.progress >= 1 ? 'Done' : `${Math.round(u.progress * 100)}%`)}
                 </span>
               </div>
               {!u.error && (
-                <div className="mt-1.5 h-1.5 rounded-full bg-white/8 overflow-hidden">
+                <div className="mt-1.5 h-1.5 rounded-full bg-black/5 overflow-hidden">
                   <div className="h-full bg-[var(--a-accent)] transition-[width] duration-200" style={{ width: `${u.progress * 100}%` }} />
                 </div>
               )}
@@ -126,11 +126,11 @@ export default function FeedbackAdmin() {
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); upload([...e.dataTransfer.files]); }}
-        className="rounded-2xl border border-dashed border-white/12 p-4"
+        className="rounded-md border border-dashed border-[var(--a-border)] p-4"
       >
         {items === null ? (
           <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="aspect-[9/16] rounded-2xl" />)}
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="aspect-[9/16] rounded-md" />)}
           </div>
         ) : items.length === 0 ? (
           <EmptyState icon={FiVideo} title="No feedback clips yet." hint="Click “Upload clips”, or drag video files here." />
@@ -144,14 +144,14 @@ export default function FeedbackAdmin() {
                     <video src={`${api.url(clip.src)}#t=0.5`} poster={api.url(clip.poster) || undefined} preload={clip.poster ? 'none' : 'metadata'} muted playsInline controls
                       className="absolute inset-0 w-full h-full object-cover" />
                     {clip.active === false && (
-                      <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11.5px]">
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-[11.5px]">
                         <FiEyeOff /> Hidden
                       </span>
                     )}
-                    <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[11.5px]">{index + 1}</span>
+                    <span className="absolute top-2 right-2 rounded-full bg-black/40 px-2 py-0.5 text-[11.5px]">{index + 1}</span>
                   </div>
                   <div className="p-3">
-                    <p className="text-[13.5px] truncate">{clip.patient_name || <span className="text-white/30">No name</span>}</p>
+                    <p className="text-[13.5px] truncate">{clip.patient_name || <span className="text-[var(--a-muted)]">No name</span>}</p>
                     <p className="text-[12px] text-[var(--a-muted)] truncate">{clip.caption || '—'}</p>
                     <div className="mt-3 flex items-center gap-1.5">
                       <Button size="sm" variant="secondary" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Play earlier">←</Button>
@@ -200,7 +200,7 @@ function ClipModal({ clip, onClose, onSaved }) {
     <Modal open={!!clip} title="Edit feedback clip" onClose={onClose}>
       <form onSubmit={save} className="grid gap-4">
         {clip && (
-          <video src={api.url(clip.src)} controls playsInline className="w-full max-h-[50vh] rounded-xl bg-black" />
+          <video src={api.url(clip.src)} controls playsInline className="w-full max-h-[50vh] rounded bg-black" />
         )}
         <Field label="Patient name" hint="Shown on the video, e.g. “Lakshmi, Patamata”">
           <input value={form.patient_name} onChange={(e) => setForm({ ...form, patient_name: e.target.value })} className={inputClass} />
