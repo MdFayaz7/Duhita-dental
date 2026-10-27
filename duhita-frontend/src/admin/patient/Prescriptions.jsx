@@ -40,7 +40,7 @@ export default function Prescriptions() {
   if (editing) return <RxForm row={editing} onCancel={() => setEditing(null)} onSave={save} />;
   return (
     <>
-      <SectionBar title="Prescriptions">{pid && <AddButton onClick={() => setEditing({})}>+ Add</AddButton>}</SectionBar>
+      <SectionBar title="Prescriptions" share="prescriptions">{pid && <AddButton onClick={() => setEditing({})}>+ Add</AddButton>}</SectionBar>
       <DayGroups items={list.items} showPatient={!pid} empty="No prescriptions yet."
         render={(rows) => rows.map((rx) => (
           <div key={rx.id} className="border-l-4 border-[#e9573f]">

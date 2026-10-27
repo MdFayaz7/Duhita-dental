@@ -7,7 +7,7 @@ admin uses, so an appointment booked in the app appears on the dashboard at once
 import datetime as dt
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 
 from .. import whatsapp
 from ..clinic import DAY_NAMES, load_hours, minutes, session_slots
@@ -16,7 +16,10 @@ from ..events import broadcast_event
 from ..models import AppBookingIn, AppLoginIn, AppPasswordIn, AppProfileUpdate, AppRegisterIn
 from ..patients_service import IST, RecordForm, add_patient, add_record
 from ..security import create_patient_token, current_patient, hash_password, verify_password
-from ..tables import Appointment, Patient, Record
+from ..sharing import share_flags
+from ..tables import (
+    Appointment, ClinicalNote, Doctor, Invoice, Payment, Patient, Prescription, Record, Treatment, VitalSign,
+)
 from ..uploads import IMAGE_TYPES, delete_upload, save_upload
 
 router = APIRouter(prefix="/api/app", tags=["patient app"])
@@ -43,7 +46,9 @@ async def _find_patient(session, patient_id: str) -> Patient:
 
 
 def _mine(patient: Patient):
-    return or_(Appointment.patient_id == patient.patient_id, Appointment.phone == patient.phone)
+    # Own bookings only; a phone-only booking (no patient ID yet) counts, but never a family member's.
+    return or_(Appointment.patient_id == patient.patient_id,
+               and_(Appointment.patient_id.is_(None), Appointment.phone == patient.phone))
 
 
 # ---------------------------------------------------------------- account
@@ -154,11 +159,46 @@ async def remove_photo(session: SessionDep, patient_id: str = Depends(current_pa
 @router.get("/me/records")
 async def my_records(session: SessionDep, patient_id: str = Depends(current_patient)):
     """Prescriptions, X-rays and reports — those the clinic adds and those the patient uploads."""
+    patient = await _find_patient(session, patient_id)
+    shown = [Record.patient_id == patient.patient_id]
+    if not share_flags(patient)["files"]:
+        shown.append(Record.added_by != "clinic")  # their own uploads stay visible
     rows = await session.scalars(
-        select(Record).where(Record.patient_id == patient_id)
+        select(Record).where(*shown)
         .order_by(Record.date.desc().nulls_last(), Record.created_at.desc()).limit(200)
     )
     return {"items": [serialize(r) for r in rows]}
+
+
+@router.get("/me/health")
+async def my_health(session: SessionDep, patient_id: str = Depends(current_patient)):
+    """The clinic's record of this patient — only the sections the clinic shares, only their own entries."""
+    patient = await _find_patient(session, patient_id)
+    share, pid = share_flags(patient), patient.patient_id
+    doctors = dict((await session.execute(select(Doctor.id, Doctor.name))).tuples().all())
+
+    async def rows(model, *where, limit=100):
+        found = await session.scalars(select(model).where(model.patient_id == pid, *where)
+                                      .order_by(model.date.desc(), model.id.desc()).limit(limit))
+        return [{**serialize(r), "doctor": doctors.get(getattr(r, "doctor_id", None))} for r in found]
+
+    out: dict = {"share": share}
+    if share["vitals"]:
+        out["vitals"] = await rows(VitalSign)
+    if share["notes"]:
+        out["notes"] = await rows(ClinicalNote)
+    if share["prescriptions"]:
+        out["prescriptions"] = await rows(Prescription)
+    if share["treatments"]:
+        out["plans"] = await rows(Treatment, Treatment.status == "planned")
+        out["procedures"] = await rows(Treatment, Treatment.status == "completed")
+    if share["billing"]:
+        invoices = await session.scalars(select(Invoice).where(Invoice.patient_id == pid, Invoice.status == "active")
+                                         .order_by(Invoice.date.desc()).limit(100))
+        out["invoices"] = [{"id": str(i.id), "number": i.number, "date": i.date.isoformat(), "total": i.total, "paid": i.paid,
+                            "due": i.total - i.paid, "items": [x.name for x in i.items]} for i in invoices]
+        out["payments"] = await rows(Payment)
+    return out
 
 
 @router.post("/me/records", status_code=201)

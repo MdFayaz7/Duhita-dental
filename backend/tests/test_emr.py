@@ -40,3 +40,18 @@ async def test_groups_merge_and_hours(admin):
     saved = (await admin.put("/api/clinic/hours", json={"week": week})).json()
     assert saved["week"][5]["sessions"][0]["from"] == "09:00" and saved["closed_weekdays"] == [6]
     assert (await admin.put("/api/clinic/hours", json={"week": [[{"from": "10:00", "to": "09:00"}]] + [[]] * 6})).status_code == 422
+
+
+async def test_sharing_reaches_only_the_patients_own_app(admin, client):
+    pid = (await admin.post("/api/patients", json=PATIENT)).json()["patient_id"]
+    sibling = (await admin.post("/api/patients", json={**PATIENT, "name": "Sibling"})).json()["patient_id"]
+    await admin.post("/api/emr/prescriptions", json={"patient_id": pid, "items": [{"drug": "Amoxicillin"}]})
+    await admin.post("/api/emr/prescriptions", json={"patient_id": sibling, "items": [{"drug": "Ibuprofen"}]})
+
+    reg = await client.post("/api/app/register", json={"name": PATIENT["name"], "phone": PATIENT["phone"], "password": "secret12", "patient_id": pid})
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    health = (await client.get("/api/app/me/health", headers=headers)).json()
+    assert [i["drug"] for rx in health["prescriptions"] for i in rx["items"]] == ["Amoxicillin"]
+
+    assert (await admin.put(f"/api/patients/{pid}/share", json={"section": "prescriptions", "on": False})).json()["prescriptions"] is False
+    assert "prescriptions" not in (await client.get("/api/app/me/health", headers=headers)).json()

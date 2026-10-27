@@ -81,6 +81,9 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
   (new note terms are learnt automatically), merge, profile PATCH, communications. A treatment is a plan line until
   `completed`; billing it sets `invoice_items.treatment_id`, and completed procedures = completed treatments + invoice lines
   without a treatment.
+- SHARE ON/OFF (per section, `extra["share"]`, default on, `app/sharing.py`) decides what appears in the patient app
+  (`/api/app/me/health`, "From the clinic" on the Profile screen). Only that patient's own entries are ever returned —
+  family members on the same mobile number never see each other's records or bookings.
 
 ## Billing
 

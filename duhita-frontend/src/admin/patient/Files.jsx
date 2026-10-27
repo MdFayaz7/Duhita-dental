@@ -28,7 +28,7 @@ export default function Files() {
 
   return (
     <>
-      <SectionBar title="Files">{pid && <AddButton onClick={() => setAdding(true)}>+ Add</AddButton>}</SectionBar>
+      <SectionBar title="Files" share="files">{pid && <AddButton onClick={() => setAdding(true)}>+ Add</AddButton>}</SectionBar>
       <div className="flex flex-col md:flex-row">
         <aside className="md:w-[260px] shrink-0 border-r border-[#d8d8d8] bg-[#e4e4e4] p-3 text-[13px]">
           <h3 className="text-[15px] text-[#6a8a2f]">Uploaded Files</h3>

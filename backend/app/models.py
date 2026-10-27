@@ -430,3 +430,8 @@ class EmrTermIn(BaseModel):
 
 class BillTreatmentsIn(BaseModel):
     ids: list[int] = Field(min_length=1, max_length=100)
+
+
+class ShareIn(BaseModel):
+    section: Literal["vitals", "notes", "treatments", "prescriptions", "files", "billing"]
+    on: bool

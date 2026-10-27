@@ -77,7 +77,7 @@ export default function Vitals() {
   ].filter(Boolean);
   return (
     <>
-      <SectionBar title="Vital Signs">{pid && <AddButton onClick={() => setEditing({})}>+ Add</AddButton>}</SectionBar>
+      <SectionBar title="Vital Signs" share="vitals">{pid && <AddButton onClick={() => setEditing({})}>+ Add</AddButton>}</SectionBar>
       <DayGroups items={list.items} showPatient={!pid} empty="No vital signs recorded."
         render={(rows) => rows.map((v) => (
           <div key={v.id}>
@@ -136,7 +136,7 @@ export function ClinicalNotes() {
   if (editing) return <NoteForm row={editing} onCancel={() => setEditing(null)} onSave={save} />;
   return (
     <>
-      <SectionBar title="Clinical Notes">{pid && <AddButton onClick={() => setEditing({})}>+ Add</AddButton>}</SectionBar>
+      <SectionBar title="Clinical Notes" share="notes">{pid && <AddButton onClick={() => setEditing({})}>+ Add</AddButton>}</SectionBar>
       <DayGroups items={list.items} showPatient={!pid} empty="No clinical notes yet."
         render={(rows) => rows.map((n) => (
           <div key={n.id} className="border-l-4 border-[#e9573f]">

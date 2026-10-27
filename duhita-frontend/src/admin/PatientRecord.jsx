@@ -8,6 +8,7 @@ import { api } from './api';
 import { Button, EmptyState, ErrorNote, Panel, Segmented, Skeleton, StatusPill, Table, cx, formatSlot, useConfirm, useToast } from './ui';
 import { useLiveEvents } from '../lib/useLiveEvents';
 import { PaymentModal, inr, longDate, modeLabel } from './billingUi';
+import { ShareToggle } from './patient/shared';
 
 const TABS = [{ value: 'timeline', label: 'Timeline' }, { value: 'invoices', label: 'Invoices' }, { value: 'payments', label: 'Payments' }];
 const RECORD_KINDS = { prescription: 'Prescription', xray: 'X-ray / scan', report: 'Report', note: 'Note' };
@@ -109,7 +110,8 @@ export default function PatientRecord({ section }) {
       </div>
       </>}
       {section && section !== 'timeline' && (
-        <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div className="flex flex-wrap items-center gap-3 mb-3 bg-white px-3 py-2">
+          <ShareToggle section="billing" />
           <Money label="Billed" value={billing.summary.billed} />
           <Money label="Received" value={billing.summary.received} tone="text-[#137a1e]" />
           <Money label="Due" value={billing.summary.due} tone={Number(billing.summary.due) > 0 ? 'text-[#d93a46]' : 'text-[#333]'} />

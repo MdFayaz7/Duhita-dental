@@ -12,11 +12,12 @@ from ..billing import line_amounts
 from ..db import SessionDep, serialize, utcnow
 from ..events import broadcast_event
 from ..models import (
-    BillTreatmentsIn, ClinicalNoteIn, EmrTermIn, InvoiceIn, InvoiceItemIn, MergeIn, PatientUpdate, PrescriptionIn,
+    BillTreatmentsIn, ClinicalNoteIn, ShareIn, EmrTermIn, InvoiceIn, InvoiceItemIn, MergeIn, PatientUpdate, PrescriptionIn,
     TreatmentIn, VitalSignIn,
 )
 from ..patients_service import today_ist
 from ..security import current_admin
+from ..sharing import share_flags
 from ..tables import (
     Appointment, ClinicalNote, EmrTerm, Invoice, InvoiceItem, Patient, Payment, Prescription, Record, ScheduleEntry,
     Treatment, VitalSign, WhatsAppMessage,
@@ -242,6 +243,16 @@ async def update_patient(patient_id: str, payload: PatientUpdate, session: Sessi
     await session.commit()
     await broadcast_event("patient_updated", {"patient_id": patient.patient_id})
     return serialize(patient)
+
+
+@router.put("/api/patients/{patient_id}/share")
+async def set_share(patient_id: str, payload: ShareIn, session: SessionDep):
+    """Turn sharing of one section to the patient's app account on or off."""
+    patient = await _patient(session, patient_id)
+    patient.extra = {**(patient.extra or {}), "share": {**share_flags(patient), payload.section: payload.on}}
+    await session.commit()
+    await broadcast_event("patient_updated", {"patient_id": patient.patient_id})
+    return share_flags(patient)
 
 
 @router.post("/api/patients/merge")

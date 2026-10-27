@@ -175,6 +175,21 @@ export const removePhoto = (token: string) =>
 export const myRecords = (token: string) =>
   call<{ items: MedicalRecord[] }>('/api/app/me/records', {}, token);
 
+type Dated = { id: string; date: string; doctor?: string | null };
+export type ClinicHealth = {
+  share: Record<string, boolean>;
+  vitals?: (Dated & { pulse?: number; temperature?: string; bp_systolic?: number; bp_diastolic?: number; weight?: string; resp_rate?: number })[];
+  notes?: (Dated & { complaints: string[]; observations: string[]; investigations: string[]; diagnoses: string[]; notes: string[]; follow_up?: string })[];
+  prescriptions?: (Dated & { notes?: string; items: { drug: string; strength?: string; dose?: string; frequency?: string; food?: string; days?: number; instructions?: string }[] })[];
+  plans?: (Dated & { name: string; total: string; teeth: number[] })[];
+  procedures?: (Dated & { name: string; total: string; teeth: number[] })[];
+  invoices?: { id: string; number: number; date: string; total: string; paid: string; due: string; items: string[] }[];
+  payments?: (Dated & { amount: string; mode: string })[];
+};
+
+/** What the clinic has shared to this patient's own account (only theirs, only sections set to SHARE ON). */
+export const myHealth = (token: string) => call<ClinicHealth>('/api/app/me/health', {}, token);
+
 export async function addRecord(
   token: string,
   body: { kind: string; title: string; notes?: string; date?: string; fileUri?: string; fileName?: string },

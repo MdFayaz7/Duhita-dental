@@ -131,6 +131,7 @@ export const api = {
   patientGroups: () => request('/api/patients/groups'),
   addPatient: (body) => request('/api/patients', { method: 'POST', body, auth: false }),
   updatePatient: (patientId, body) => request(`/api/patients/${patientId}`, { method: 'PATCH', body }),
+  setShare: (patientId, section, on) => request(`/api/patients/${patientId}/share`, { method: 'PUT', body: { section, on } }),
   mergePatients: (keep, remove) => request('/api/patients/merge', { method: 'POST', body: { keep, remove } }),
   communications: (patientId) => request(`/api/patients/${patientId}/communications`),
   saveClinicHours: (week) => request('/api/clinic/hours', { method: 'PUT', body: { week } }),

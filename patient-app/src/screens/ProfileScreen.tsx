@@ -6,6 +6,7 @@ import AuthScreen from './AuthScreen';
 import { useAuth } from '../lib/auth';
 import * as ImagePicker from 'expo-image-picker';
 import RecordsSection from './RecordsSection';
+import ClinicRecordSection from './ClinicRecordSection';
 import {
   fileUrl,
   formatSlot,
@@ -192,6 +193,10 @@ export default function ProfileScreen() {
           <Button label="Update medical history" variant="outline" style={{ marginTop: space.md }} onPress={() => setMedical(true)} />
         </Card>
       )}
+
+      {/* What the clinic shares to this patient's own account */}
+      <SectionHead title="From the clinic" />
+      <ClinicRecordSection token={token} />
 
       {/* Records */}
       <SectionHead title="Records & documents" />

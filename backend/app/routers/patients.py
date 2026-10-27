@@ -9,6 +9,7 @@ from ..events import broadcast_event
 from ..models import PatientIn
 from ..patients_service import IST, RecordForm, add_patient, add_record, today_ist
 from ..security import current_admin
+from ..sharing import share_flags
 from ..tables import Appointment, Invoice, Patient, Record
 from ..uploads import delete_upload
 
@@ -136,7 +137,7 @@ async def patient_detail(patient_id: str, session: SessionDep, _: str = Depends(
         .order_by(Patient.created_at).limit(30)
     )).all() if patient.phone else []
     return {
-        "patient": serialize(patient),
+        "patient": {**serialize(patient), "share": share_flags(patient)},
         "appointments": [serialize(a) for a in history],
         "records": [serialize(r) for r in records],
         "family": [f._asdict() for f in family],

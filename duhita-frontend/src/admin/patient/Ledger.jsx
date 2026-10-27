@@ -24,7 +24,7 @@ export default function Ledger() {
   let bal = 0;
   return (
     <>
-      <SectionBar title="Ledger" />
+      <SectionBar title="Ledger" share="billing" />
       <div className="bg-white">
         {!entries.length ? <EmptyState title="No bills or payments yet." /> : (
           <Table head={['Date', 'Particulars', 'Debit (INR)', 'Credit (INR)', 'Balance (INR)']} minWidth={760}>

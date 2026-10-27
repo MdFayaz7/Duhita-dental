@@ -63,7 +63,7 @@ export default function Treatments({ status }) {
 
   return (
     <>
-      <SectionBar title={title}>
+      <SectionBar title={title} share="treatments">
         {picked.size > 0 && (planned
           ? <Button size="sm" onClick={() => complete([...picked])} className="!bg-[#3cae4c] !border-[#3cae4c]">Mark {picked.size} completed</Button>
           : <Button size="sm" onClick={bill} className="!bg-[#3cae4c] !border-[#3cae4c]">Generate invoice ({picked.size})</Button>)}

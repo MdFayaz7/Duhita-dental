@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../api';
 import { FiUser } from 'react-icons/fi';
-import { Button, EmptyState, Skeleton, cx } from '../ui';
+import { Button, EmptyState, Skeleton, cx, useToast } from '../ui';
 import { longDate } from '../billingUi';
 import { site } from '../../data/site';
 
@@ -80,11 +81,31 @@ export function MoreButton({ more, onClick }) {
   return more ? <div className="py-4 text-center"><Button size="sm" onClick={onClick} className="!bg-[#2aa7c9] !border-[#2aa7c9]">Get more</Button></div> : null;
 }
 
+/** Practo's SHARE ON/OFF: whether this section shows in the patient's own app account (theirs only). */
+export function ShareToggle({ section }) {
+  const { patient, reload } = usePatientCtx();
+  const toast = useToast();
+  if (!patient || !section) return null;
+  const p = patient.patient;
+  const on = p.share?.[section] ?? true;
+  const flip = () => api.setShare(p.patient_id, section, !on)
+    .then(() => { toast(on ? 'No longer shared with the patient’s app' : 'Shared to the patient’s app account'); reload(); })
+    .catch((e) => toast(e.message, 'error'));
+  return (
+    <button type="button" onClick={flip} title={p.app_user ? 'Visible in this patient’s app login only' : 'Shows once the patient signs in to the app'}
+      className={cx('ml-3 flex items-center gap-1.5 text-[12.5px] underline', on ? 'text-[#2e8b3d]' : 'text-[#333]')}>
+      <span className={cx('w-2 h-2 rounded-full', on ? 'bg-[#3cae4c]' : 'bg-[#d93a46]')} />SHARE {on ? 'ON' : 'OFF'}
+    </button>
+  );
+}
+
 /** Section title bar: "VITAL SIGNS" on the left, actions on the right. */
-export function SectionBar({ title, children }) {
+export function SectionBar({ title, share, children }) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-[#d8d8d8] bg-white px-3 py-2.5 min-h-[50px]">
-      <h2 className="mr-auto text-[13px] font-medium uppercase tracking-wide text-[#333]">{title}</h2>
+      <h2 className="text-[13px] font-medium uppercase tracking-wide text-[#333]">{title}</h2>
+      <ShareToggle section={share} />
+      <span className="mr-auto" />
       {children}
     </div>
   );
