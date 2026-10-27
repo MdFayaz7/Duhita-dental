@@ -78,6 +78,7 @@ async function envelope(bytes) {
 
 export function stopDuhitaVoice(drive) {
   cancelAnimationFrame(raf);
+  window.speechSynthesis?.cancel();
   const p = getPlayer();
   p.onended = null;
   p.pause();
@@ -115,4 +116,15 @@ export async function playDuhitaVoice(base64, drive, onStart, onEnd) {
   await p.play(); // throws if the browser still blocks audio (no tap yet)
   onStart();
   raf = requestAnimationFrame(tick);
+}
+
+/** Fallback when the server sends no audio: the device's own voice (no lip-sync). */
+export function speakWithBrowser(text, lang = 'en-IN') {
+  const synth = window.speechSynthesis;
+  if (!synth || !text) return;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  u.voice = synth.getVoices().find((v) => v.lang === lang) ?? null;
+  synth.speak(u);
 }

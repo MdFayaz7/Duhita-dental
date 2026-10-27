@@ -37,7 +37,7 @@ export const complaintChips = [
 ];
 
 // Half-hour starts within clinic hours (same as backend/app/clinic.py and the patient app).
-const slots = (from, to) => {
+export const slots = (from, to) => {
   const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
   const out = [];
   for (let m = toMin(from); m < toMin(to); m += 30) out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);

@@ -79,7 +79,7 @@ export function uploadWithProgress(path, form, onProgress) {
 
 export const api = {
   base: BASE,
-  /** Files stored by the API (GridFS or legacy /uploads) live on the API host, not the website. */
+  /** Files stored by the API (or legacy /uploads) live on the API host, not the website. */
   url: (path) => (path?.startsWith('/api/files/') || path?.startsWith('/uploads/') ? `${BASE}${path}` : path),
 
   login: (username, password) => request('/api/auth/login', { method: 'POST', body: { username, password }, auth: false }),
@@ -127,6 +127,24 @@ export const api = {
   deletePayment: (id) => request(`/api/payments/${id}`, { method: 'DELETE' }),
   patientBilling: (patientId) => request(`/api/patients/${patientId}/billing`),
   patientTimeline: (patientId) => request(`/api/patients/${patientId}/timeline`),
+
+  patientGroups: () => request('/api/patients/groups'),
+  addPatient: (body) => request('/api/patients', { method: 'POST', body, auth: false }),
+  updatePatient: (patientId, body) => request(`/api/patients/${patientId}`, { method: 'PATCH', body }),
+  mergePatients: (keep, remove) => request('/api/patients/merge', { method: 'POST', body: { keep, remove } }),
+  communications: (patientId) => request(`/api/patients/${patientId}/communications`),
+  saveClinicHours: (week) => request('/api/clinic/hours', { method: 'PUT', body: { week } }),
+  /** kind: vitals | notes | treatments | prescriptions */
+  emr: (kind, params = {}) => request(`/api/emr/${kind}?${new URLSearchParams(params)}`),
+  saveEmr: (kind, body, id) => request(`/api/emr/${kind}${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', body }),
+  deleteEmr: (kind, id) => request(`/api/emr/${kind}/${id}`, { method: 'DELETE' }),
+  completedProcedures: (params = {}) => request(`/api/emr/procedures/completed?${new URLSearchParams(params)}`),
+  completeTreatments: (ids) => request('/api/emr/treatments/complete', { method: 'POST', body: { ids } }),
+  billTreatments: (ids) => request('/api/emr/treatments/invoice', { method: 'POST', body: { ids } }),
+  emrFiles: (params = {}) => request(`/api/emr/files?${new URLSearchParams(params)}`),
+  terms: (kind) => request(`/api/emr/terms?kind=${kind}`),
+  addTerm: (body) => request('/api/emr/terms', { method: 'POST', body }),
+  deleteTerm: (id) => request(`/api/emr/terms/${id}`, { method: 'DELETE' }),
 
   doctors: () => request('/api/doctors?include_inactive=true'),
   addDoctor: (body) => request('/api/doctors', { method: 'POST', body }),

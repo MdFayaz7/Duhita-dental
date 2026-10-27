@@ -30,7 +30,7 @@ def created() -> Mapped[dt.datetime]:
 
 
 def extra() -> Mapped[dict]:
-    """Fields carried over from the old Mongo documents that have no column of their own."""
+    """Free-form fields that have no column of their own."""
     return mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False, default=dict)
 
 
@@ -210,7 +210,7 @@ class Record(Base):
 
 
 class StoredFile(Base):
-    """Uploaded photos, PDFs and videos, served at /api/files/<id>. Ids carried over from GridFS keep their URLs."""
+    """Uploaded photos, PDFs and videos, served at /api/files/<id>."""
     __tablename__ = "files"
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     filename: Mapped[str] = mapped_column(Text)
@@ -302,6 +302,8 @@ class InvoiceItem(Base):
     tax_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), server_default="0", default=Decimal(0))
     total: Mapped[Decimal] = money()
     notes: Mapped[str | None] = mapped_column(Text)
+    # Set when the line was billed from a completed procedure, so it isn't listed twice.
+    treatment_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("treatments.id", ondelete="SET NULL", name="fk_invoice_items_treatment_id", use_alter=True), index=True)
     invoice: Mapped[Invoice] = relationship(back_populates="items")
 
 
@@ -321,4 +323,105 @@ class Payment(Base):
     reference: Mapped[str | None] = mapped_column(Text)
     date: Mapped[dt.date] = mapped_column(Date)
     notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = created()
+
+
+# ---------------------------------------------------------------- settings
+
+class Setting(Base):
+    """Small admin-editable settings (e.g. clinic_hours), one JSON value per key."""
+    __tablename__ = "settings"
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    value: Mapped[dict] = mapped_column(JSONB)
+    updated_at: Mapped[dt.datetime] = created()
+
+
+# ---------------------------------------------------------------- EMR (Practo's patient record sections)
+
+def patient_ref() -> Mapped[str]:
+    return mapped_column(Text, index=True)
+
+
+def doctor_ref() -> Mapped[int | None]:
+    return mapped_column(BigInteger, ForeignKey("doctors.id", ondelete="SET NULL"))
+
+
+class VitalSign(Base):
+    __tablename__ = "vital_signs"
+    id: Mapped[int] = pk()
+    patient_id: Mapped[str] = patient_ref()
+    date: Mapped[dt.date] = mapped_column(Date)
+    doctor_id: Mapped[int | None] = doctor_ref()
+    pulse: Mapped[int | None] = mapped_column(SmallInteger)
+    temperature: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
+    temperature_site: Mapped[str | None] = mapped_column(Text)
+    bp_systolic: Mapped[int | None] = mapped_column(SmallInteger)
+    bp_diastolic: Mapped[int | None] = mapped_column(SmallInteger)
+    bp_position: Mapped[str | None] = mapped_column(Text)
+    weight: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    resp_rate: Mapped[int | None] = mapped_column(SmallInteger)
+    created_at: Mapped[dt.datetime] = created()
+
+
+class ClinicalNote(Base):
+    __tablename__ = "clinical_notes"
+    id: Mapped[int] = pk()
+    patient_id: Mapped[str] = patient_ref()
+    date: Mapped[dt.date] = mapped_column(Date)
+    doctor_id: Mapped[int | None] = doctor_ref()
+    complaints: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"), default=list)
+    observations: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"), default=list)
+    investigations: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"), default=list)
+    diagnoses: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"), default=list)
+    notes: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"), default=list)
+    follow_up: Mapped[dt.date | None] = mapped_column(Date)
+    created_at: Mapped[dt.datetime] = created()
+
+
+class Treatment(Base):
+    """A treatment-plan line; status 'completed' makes it a completed procedure (billable)."""
+    __tablename__ = "treatments"
+    __table_args__ = (
+        CheckConstraint("status IN ('planned', 'completed')", name="ck_treatments_status"),
+        CheckConstraint("discount_type IN ('pct', 'inr')", name="ck_treatments_discount_type"),
+        Index("ix_treatments_status_date", "status", "date"),
+    )
+    id: Mapped[int] = pk()
+    patient_id: Mapped[str] = patient_ref()
+    date: Mapped[dt.date] = mapped_column(Date)
+    doctor_id: Mapped[int | None] = doctor_ref()
+    status: Mapped[str] = mapped_column(Text, server_default="planned", default="planned")
+    procedure_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("procedures.id", ondelete="SET NULL"))
+    name: Mapped[str] = mapped_column(Text)
+    unit_cost: Mapped[Decimal] = money()
+    qty: Mapped[int] = mapped_column(SmallInteger, server_default="1", default=1)
+    discount_value: Mapped[Decimal] = money()
+    discount_type: Mapped[str] = mapped_column(Text, server_default="pct", default="pct")
+    total: Mapped[Decimal] = money()
+    teeth: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger), server_default=text("'{}'"), default=list)
+    notes: Mapped[str | None] = mapped_column(Text)
+    completed_on: Mapped[dt.date | None] = mapped_column(Date)
+    created_at: Mapped[dt.datetime] = created()
+
+
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+    id: Mapped[int] = pk()
+    patient_id: Mapped[str] = patient_ref()
+    date: Mapped[dt.date] = mapped_column(Date)
+    doctor_id: Mapped[int | None] = doctor_ref()
+    # [{drug, strength, dose, frequency: "1-0-1", food, days, instructions}]
+    items: Mapped[list[dict]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"), default=list)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = created()
+
+
+class EmrTerm(Base):
+    """Pick lists on the right of Practo's forms: complaints, observations, …, drugs and prescription templates."""
+    __tablename__ = "emr_terms"
+    __table_args__ = (Index("ix_emr_terms_kind_name", "kind", text("lower(name)"), unique=True),)
+    id: Mapped[int] = pk()
+    kind: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text)
+    data: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), default=dict)
     created_at: Mapped[dt.datetime] = created()

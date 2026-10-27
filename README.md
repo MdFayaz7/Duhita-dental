@@ -40,8 +40,7 @@ don't reintroduce them.
 
 ### 1. PostgreSQL
 In Coolify add a **PostgreSQL** resource on the same server (not publicly exposed) and copy its internal
-connection URL into the backend's `DATABASE_URL`. The backend creates/updates its tables on start. Moving
-the old MongoDB data across is a one-time step — see `backend/README.md`.
+connection URL into the backend's `DATABASE_URL`. The backend creates/updates its tables on start.
 
 ### 2. Backend
 Set real secrets in `backend/.env` on the VPS (copy from `backend/.env.example`). `CORS_ORIGINS` must

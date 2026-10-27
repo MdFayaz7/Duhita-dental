@@ -1,14 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FiCheckCircle, FiUserPlus, FiCalendar, FiClock, FiUser, FiPhone } from 'react-icons/fi';
 import PageHero from '../components/PageHero';
 import PatientAside from '../components/PatientAside';
 import { Field, FormSection, Chip, invalid } from '../components/Form';
 import useSeo from '../hooks/useSeo';
-import { sessions, formatSlot } from '../data/patients';
+import { sessions as defaultSessions, formatSlot, slots } from '../data/patients';
 import { categories } from '../data/services';
 import { findPatient } from '../lib/patientStore';
-import { bookAppointmentApi, lookupPatientApi } from '../lib/publicApi';
+import { bookAppointmentApi, clinicHoursApi, lookupPatientApi } from '../lib/publicApi';
 import { site } from '../data/site';
 
 const DAYS_AHEAD = 21;
@@ -16,13 +16,22 @@ const ID_PATTERN = /^DD\d{4}-\d{4}$/;
 
 const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-function upcomingDays() {
+const weekdayOf = (d) => (d.getDay() + 6) % 7; // Monday = 0, as in the API's `week`
+
+function upcomingDays(week) {
   const today = new Date();
   return Array.from({ length: DAYS_AHEAD }, (_, i) => {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
-    return { iso: isoDate(d), date: d, closed: d.getDay() === 0, today: i === 0 };
+    return { iso: isoDate(d), date: d, closed: week ? week[weekdayOf(d)].closed : d.getDay() === 0, today: i === 0 };
   });
 }
+
+/** The day's sessions from the admin-set hours, or the built-in defaults until they load. */
+const sessionsFor = (week, iso) => {
+  if (!week || !iso) return defaultSessions;
+  const [y, m, d] = iso.split('-').map(Number);
+  return week[weekdayOf(new Date(y, m - 1, d))].sessions.map((s) => ({ ...s, slots: slots(s.from, s.to) }));
+};
 
 /** A slot is bookable if it starts at least 60 minutes from now. */
 const slotPassed = (iso, slot) => {
@@ -48,7 +57,9 @@ export default function BookAppointment() {
     { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );
   const { state } = useLocation();
-  const days = useMemo(upcomingDays, []);
+  const [week, setWeek] = useState(null);
+  useEffect(() => { clinicHoursApi().then((h) => h?.week && setWeek(h.week)); }, []);
+  const days = useMemo(() => upcomingDays(week), [week]);
   const [mode, setMode] = useState('existing');
   const [form, setForm] = useState({
     patientId: state?.patientId || '', name: state?.name || '', phone: state?.phone || '',
@@ -216,7 +227,7 @@ export default function BookAppointment() {
                         })}
                       </div>
                       {errors.date && <p className="mt-2 text-[12.5px] text-[#b42318]" role="alert">{errors.date}</p>}
-                      <p className="mt-3 text-[12.5px]">Sundays are by prior appointment only — please call us.</p>
+                      <p className="mt-3 text-[12.5px]">Closed days are by prior appointment only — please call us.</p>
                     </div>
                   </FormSection>
 
@@ -225,7 +236,7 @@ export default function BookAppointment() {
                       <p className="text-[14px] bg-ivory p-4">Select a date first to see available time slots.</p>
                     ) : (
                       <div className="grid gap-6" role="group" aria-label="Time slot">
-                        {sessions.map((s) => {
+                        {sessionsFor(week, form.date).map((s) => {
                           const open = s.slots.filter((t) => !slotPassed(form.date, t));
                           return (
                             <div key={s.id}>

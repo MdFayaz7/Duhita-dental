@@ -7,6 +7,8 @@ const VOICES = {
 };
 const RATE = process.env.VOICE_RATE ?? '+0%';
 const PITCH = process.env.VOICE_PITCH ?? '+0Hz';
+// Edge's free endpoint sometimes accepts the socket and never answers; give up so the text reply still goes out.
+const TTS_TIMEOUT_MS = Number(process.env.TTS_TIMEOUT_MS ?? 8000);
 
 export const isTelugu = (text) => /[ఀ-౿]/.test(text);
 
@@ -17,11 +19,13 @@ export const isTelugu = (text) => /[ఀ-౿]/.test(text);
 export async function synthesize(text) {
   const lang = isTelugu(text) ? 'te-IN' : 'en-IN';
   const sentences = text.match(/[^.!?।]+[.!?।]*\s*/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
-  const parts = await Promise.all(
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`TTS timed out after ${TTS_TIMEOUT_MS} ms`)), TTS_TIMEOUT_MS); });
+  const parts = await Promise.race([timeout, Promise.all(
     sentences.map(async (s) => {
       const r = await new EdgeTTS(s, VOICES[lang], { rate: RATE, pitch: PITCH }).synthesize();
       return Buffer.from(await r.audio.arrayBuffer());
     }),
-  );
+  )]).finally(() => clearTimeout(timer));
   return { audio: Buffer.concat(parts).toString('base64'), mime: 'audio/mpeg', lang };
 }

@@ -41,18 +41,6 @@ alembic upgrade head
 
 The Docker image runs `alembic upgrade head` on every start, so deploys migrate themselves.
 
-### Moving the old MongoDB data across (one time)
-
-```bash
-alembic upgrade head
-MONGO_URI="mongodb+srv://..." MONGO_DB=duhita_dental python -m app.migrate_from_mongo --dry-run
-MONGO_URI="mongodb+srv://..." MONGO_DB=duhita_dental python -m app.migrate_from_mongo
-```
-
-It copies every collection and every GridFS file in one transaction (all or nothing), keeps
-file ids so existing `/api/files/...` links still work, and lists any document it had to skip.
-Run the dry run first and read the report.
-
 ## WhatsApp booking confirmations
 
 When a patient books (website or app), every number in `WHATSAPP_ADMIN_NUMBERS` gets a WhatsApp

@@ -4,6 +4,7 @@ import { FiActivity, FiCheckCircle, FiLock, FiXCircle } from 'react-icons/fi';
 import { api } from './api';
 import { PageHead } from './AdminLayout';
 import { Button, Field, Panel, inputClass, useToast } from './ui';
+import ClinicHours from './ClinicHours';
 
 export default function Settings() {
   const { user } = useOutletContext();
@@ -40,9 +41,10 @@ export default function Settings() {
 
   return (
     <>
-      <PageHead title="Settings" subtitle="Your dashboard account and system status" />
+      <PageHead title="Settings" subtitle="Clinic hours, your dashboard account and system status" />
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <ClinicHours />
         <Panel className="p-6">
           <span className="w-10 h-10 grid place-items-center rounded bg-[var(--a-accent-soft)] text-[var(--a-accent)]"><FiLock /></span>
           <h2 className="text-[17px] font-semibold mt-4">Change password</h2>

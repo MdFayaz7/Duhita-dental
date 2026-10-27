@@ -34,12 +34,12 @@ const AdminOverview = lazy(() => import('./admin/Overview'));
 const AdminAppointments = lazy(() => import('./admin/Appointments'));
 const AdminCalendar = lazy(() => import('./admin/Calendar'));
 const AdminImportPatients = lazy(() => import('./admin/ImportPatients'));
-const AdminPatientRecord = lazy(() => import('./admin/PatientRecord'));
 const AdminInvoiceEditor = lazy(() => import('./admin/InvoiceEditor'));
 const AdminInvoicePrint = lazy(() => import('./admin/InvoicePrint'));
 const AdminBilling = lazy(() => import('./admin/Billing'));
 const AdminSchedule = lazy(() => import('./admin/Schedule'));
 const AdminPatients = lazy(() => import('./admin/Patients'));
+const AdminPatientSection = lazy(() => import('./admin/patient/PatientSection'));
 const AdminSettings = lazy(() => import('./admin/Settings'));
 const AdminDoctors = lazy(() => import('./admin/Doctors'));
 const AdminResearch = lazy(() => import('./admin/Research'));
@@ -64,9 +64,12 @@ export default function App() {
             <Route path="appointments" element={<AdminCalendar />} />
             <Route path="appointments/list" element={<AdminAppointments />} />
             <Route path="schedule" element={<AdminSchedule />} />
-            <Route path="patients" element={<AdminPatients />} />
+            <Route path="patients" element={<AdminPatientSection />} />
+            <Route path="patients/table" element={<AdminPatients />} />
             <Route path="patients/import" element={<AdminImportPatients />} />
-            <Route path="patients/:patientId" element={<AdminPatientRecord />} />
+            <Route path="patients/all/:section" element={<AdminPatientSection />} />
+            <Route path="patients/:patientId" element={<AdminPatientSection />} />
+            <Route path="patients/:patientId/:section" element={<AdminPatientSection />} />
             <Route path="patients/:patientId/invoices/new" element={<AdminInvoiceEditor />} />
             <Route path="invoices/:invoiceId/edit" element={<AdminInvoiceEditor />} />
             <Route path="billing" element={<AdminBilling />} />

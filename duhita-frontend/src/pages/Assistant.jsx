@@ -5,7 +5,7 @@ import DuhitaAvatar from '../components/DuhitaAvatar';
 import useSeo from '../hooks/useSeo';
 import { AI_BASE } from '../lib/patientApi';
 import { respond, talk } from '../lib/duhitaApi';
-import { unlockDuhitaAudio } from '../lib/duhitaVoice';
+import { speakWithBrowser, unlockDuhitaAudio } from '../lib/duhitaVoice';
 
 const STORE_KEY = 'duhita.web.chat.v1';
 const LANG_KEY = 'duhita.web.lang';
@@ -99,7 +99,7 @@ export default function Assistant() {
       setMessages((prev) => [...prev, { id: uid(), role: 'assistant', content: res.reply }]);
       if (res.speech && avatarReady) avatar.current?.speak(res.speech);
       else setPhase('idle');
-      if (res.ttsError) setNotice(res.ttsError);
+      if (!res.speech) speakWithBrowser(res.reply, res.lang || lang);
     } catch (e) {
       if (id !== requestId.current) return;
       setNotice(e.message);
@@ -123,7 +123,7 @@ export default function Assistant() {
       ]);
       if (res.speech && avatarReady) avatar.current?.speak(res.speech);
       else setPhase('idle');
-      if (res.ttsError) setNotice(res.ttsError);
+      if (!res.speech) speakWithBrowser(res.reply, res.lang || lang);
     } catch (e) {
       if (id !== requestId.current) return;
       setMessages((prev) => prev.filter((m) => m.id !== pending.id));

@@ -116,7 +116,7 @@ export default function InvoiceEditor() {
         procedure_id: l.procedure_id || null, name: l.name.trim(), doctor_id: l.doctor_id ? Number(l.doctor_id) : null,
         date: l.date || date, teeth: l.teeth, unit_cost: Number(l.unit_cost || 0).toFixed(2), qty: Math.max(1, parseInt(l.qty, 10) || 1),
         discount_value: Number(l.discount_value || 0).toFixed(2), discount_type: l.discount_type,
-        tax_pct: Number(l.tax_pct || 0).toFixed(2), notes: l.notes.trim() || null,
+        tax_pct: Number(l.tax_pct || 0).toFixed(2), notes: l.notes.trim() || null, treatment_id: l.treatment_id || null,
       })),
     };
     setBusy(true);
@@ -319,7 +319,7 @@ function Line({ line: l, doctors, readOnly, onChange, onRemove }) {
   );
 }
 
-function TeethChart({ line, onChange }) {
+export function TeethChart({ line, onChange }) {
   const selected = new Set(line.teeth);
   const toggle = (t) => onChange({ teeth: selected.has(t) ? line.teeth.filter((x) => x !== t) : [...line.teeth, t].sort((a, b) => a - b) });
   const full = ALL_PERMANENT.every((t) => selected.has(t));

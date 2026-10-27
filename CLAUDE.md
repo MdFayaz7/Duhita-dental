@@ -47,14 +47,15 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
 
 - Postgres via SQLAlchemy 2.0 async + asyncpg. Schema lives in `backend/app/tables.py`; every change needs an
   Alembic revision (`alembic revision --autogenerate`), and the container runs `alembic upgrade head` on start.
-- Uploaded files are rows in the `files` table (served at `/api/files/<id>`); ids migrated from Mongo GridFS were kept.
-- `python -m app.migrate_from_mongo` is the one-off MongoDB → Postgres copy; Mongo is otherwise gone.
+- Uploaded files are rows in the `files` table (served at `/api/files/<id>`).
 - New bookings WhatsApp the admins a Confirm button (Meta Cloud API, approved templates); confirming — by that
   button or the dashboard — WhatsApps the patient once. Setup and template text: `backend/README.md`.
 - Tests need a real Postgres: `TEST_DATABASE_URL=... pytest` in `backend/`.
-- Clinic hours (10:00–13:00, 16:30–20:00, Sunday by appointment), slot length, durations and booking categories live in
-  `backend/app/clinic.py` and are served at `/api/clinic/hours`. The website's `src/data/patients.js` / `site.js`,
-  `index.html` (JSON-LD) and `patient-app/src/data/clinic.ts` repeat them as text — change them together.
+- Clinic hours are admin-editable per weekday (Settings → Clinic hours), stored in `settings` (`clinic_hours`) and served
+  at `/api/clinic/hours` (`week`, Monday first; an empty day = closed / by appointment). `backend/app/clinic.py` holds the
+  defaults (Mon–Sat 10:00–13:00 + 16:30–20:00, Sunday closed), slot length, durations and categories. The website booking
+  page reads the API; `src/data/patients.js` / `site.js`, `index.html` (JSON-LD) and `patient-app/src/data/clinic.ts`
+  still repeat the defaults as text.
 
 ## Admin calendar & patients
 
@@ -69,6 +70,17 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
 - Practo import (`/admin/patients/import`, `app/practo_import.py`, `routers/patients_import.py`): preview then commit,
   stateless (the file is sent twice). Matches by Practo number, then mobile + name; only fills blanks, never
   overwrites, so re-importing is safe. New IDs use the Practo registration month (`DDyymm-nnnn`).
+
+## Patient section (Practo EMR)
+
+- `/admin/patients` is `admin/patient/PatientSection.jsx`: Practo's groups + patient cards, and per patient a left menu
+  (Profile, Appointments, Communications, Vital Signs, Clinical Notes, Treatment Plans, Completed Procedures, Files,
+  Prescriptions, Timeline, Invoices, Payments, Ledger, Past Bills). `/admin/patients/all/<section>` lists a section across
+  patients; the old table is `/admin/patients/table`.
+- API in `routers/emr.py`: generic CRUD at `/api/emr/{vitals,notes,treatments,prescriptions}`, pick lists `/api/emr/terms`
+  (new note terms are learnt automatically), merge, profile PATCH, communications. A treatment is a plan line until
+  `completed`; billing it sets `invoice_items.treatment_id`, and completed procedures = completed treatments + invoice lines
+  without a treatment.
 
 ## Billing
 

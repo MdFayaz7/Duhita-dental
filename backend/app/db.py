@@ -30,7 +30,7 @@ PRIVATE_COLUMNS = {"extra", "password_hash"}
 def serialize(row: Any) -> dict | None:
     """ORM row -> JSON-safe dict: string id, ISO dates, UTC ISO timestamps, private columns dropped.
 
-    Fields that only existed in the old Mongo documents live in `extra` and are merged
+    Free-form fields stored in `extra` are merged
     back in, so nothing the clients relied on disappears.
     """
     if row is None:

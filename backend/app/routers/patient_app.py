@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Up
 from sqlalchemy import delete, func, or_, select, update
 
 from .. import whatsapp
-from ..clinic import hours_payload, is_closed, minutes, session_slots, within_hours
+from ..clinic import DAY_NAMES, load_hours, minutes, session_slots
 from ..db import SessionDep, serialize, utcnow
 from ..events import broadcast_event
 from ..models import AppBookingIn, AppLoginIn, AppPasswordIn, AppProfileUpdate, AppRegisterIn
@@ -191,12 +191,13 @@ async def free_slots(date: str, session: SessionDep):
         raise HTTPException(400, "Use a date like 2026-09-30.")
 
     now = _now()
-    closed = is_closed(day)
+    hours = await load_hours(session)
+    closed = hours.is_closed(day)
     taken = set(await session.scalars(select(Appointment.slot).where(Appointment.date == day, ACTIVE)))
     now_minutes = now.hour * 60 + now.minute
 
     sessions = []
-    for s in hours_payload()["sessions"]:
+    for s in hours.sessions(day):
         times = []
         for t in session_slots(s, APP_SLOT_MINUTES):
             passed = day == now.date() and minutes(t) <= now_minutes
@@ -232,11 +233,12 @@ async def book(payload: AppBookingIn, session: SessionDep, background: Backgroun
         raise HTTPException(400, "That date has already passed.")
     if day > (now + dt.timedelta(days=BOOKING_DAYS)).date():
         raise HTTPException(400, f"Appointments can be booked up to {BOOKING_DAYS} days ahead.")
-    if is_closed(day):
-        raise HTTPException(400, "Sundays are by prior appointment only — please call the clinic.")
+    hours = await load_hours(session)
+    if hours.is_closed(day):
+        raise HTTPException(400, f"{DAY_NAMES[day.weekday()]}s are by prior appointment only — please call the clinic.")
 
     hour, minute = (int(x) for x in payload.slot.split(":"))
-    if not within_hours(payload.slot):
+    if not hours.within(day, payload.slot):
         raise HTTPException(400, "That time is outside clinic hours.")
     if day == now.date() and (hour, minute) <= (now.hour, now.minute):
         raise HTTPException(400, "That time has already passed today.")

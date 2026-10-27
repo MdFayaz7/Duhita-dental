@@ -1,6 +1,12 @@
 /** Duhita AI's own small server — the same one the app talks to. */
 import { AI_BASE } from './patientApi';
 
+// The server answers in a few seconds; never leave the UI on "thinking" if a request stalls.
+const TIMEOUT_MS = 45_000;
+const failed = (e) => {
+  throw new Error(e?.name === 'TimeoutError' ? 'Duhita AI took too long to answer. Please try again.' : "Can't reach Duhita AI. Please check your connection.");
+};
+
 async function parse(res) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || `Duhita AI is unavailable right now (${res.status}).`);
@@ -13,9 +19,8 @@ export async function respond(messages, lang) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages, speak: true, lang }),
-  }).catch(() => {
-    throw new Error("Can't reach Duhita AI. Please check your connection.");
-  });
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  }).catch(failed);
   return parse(res);
 }
 
@@ -25,8 +30,6 @@ export async function talk(blob, history, lang) {
   form.append('audio', blob, 'speech.webm');
   form.append('history', JSON.stringify(history));
   form.append('lang', lang);
-  const res = await fetch(`${AI_BASE}/api/talk`, { method: 'POST', body: form }).catch(() => {
-    throw new Error("Can't reach Duhita AI. Please check your connection.");
-  });
+  const res = await fetch(`${AI_BASE}/api/talk`, { method: 'POST', body: form, signal: AbortSignal.timeout(TIMEOUT_MS) }).catch(failed);
   return parse(res);
 }

@@ -12,7 +12,10 @@ from ..events import broadcast_event
 from ..models import InvoiceIn, PaymentIn, ProcedureIn
 from ..patients_service import today_ist
 from ..security import current_admin
-from ..tables import Appointment, Doctor, Invoice, InvoiceItem, Patient, Payment, Procedure, Record
+from ..tables import (
+    Appointment, ClinicalNote, Doctor, Invoice, InvoiceItem, Patient, Payment, Prescription, Procedure, Record, Treatment,
+    VitalSign,
+)
 
 router = APIRouter(tags=["billing"], dependencies=[Depends(current_admin)])
 
@@ -301,6 +304,11 @@ async def patient_timeline(patient_id: str, session: SessionDep):
     payments = (await session.scalars(select(Payment).where(Payment.patient_id == pid).limit(500))).all()
     appointments = (await session.scalars(select(Appointment).where(Appointment.patient_id == pid).limit(500))).all()
     records = (await session.scalars(select(Record).where(Record.patient_id == pid).limit(500))).all()
+    vitals = (await session.scalars(select(VitalSign).where(VitalSign.patient_id == pid).limit(500))).all()
+    notes = (await session.scalars(select(ClinicalNote).where(ClinicalNote.patient_id == pid).limit(500))).all()
+    prescriptions = (await session.scalars(select(Prescription).where(Prescription.patient_id == pid).limit(500))).all()
+    billed = {i.treatment_id for inv in invoices if inv.status == "active" for i in inv.items}
+    treatments = (await session.scalars(select(Treatment).where(Treatment.patient_id == pid).limit(500))).all()
     numbers = {i.id: i.number for i in invoices}
 
     events = []
@@ -324,8 +332,24 @@ async def patient_timeline(patient_id: str, session: SessionDep):
         events.append({"type": "record", "date": rec.date or rec.created_at.date(), "at": rec.created_at, "id": str(rec.id),
                        "title": rec.title, "kind": rec.kind, "file": rec.file, "file_type": rec.file_type})
 
+    for t in treatments:
+        if t.id in billed:
+            continue  # shown through its invoice line
+        events.append({"type": "procedure" if t.status == "completed" else "plan", "date": t.completed_on or t.date,
+                       "at": t.created_at, "id": f"t{t.id}", "name": t.name, "teeth": t.teeth, "total": t.total,
+                       "doctor": doctors.get(t.doctor_id), "doctor_id": t.doctor_id, "notes": t.notes})
+    for v in vitals:
+        events.append({"type": "vitals", **serialize(v), "date": v.date, "at": v.created_at,
+                       "doctor": doctors.get(v.doctor_id)})
+    for n in notes:
+        events.append({"type": "note", **serialize(n), "date": n.date, "at": n.created_at, "doctor": doctors.get(n.doctor_id)})
+    for rx in prescriptions:
+        events.append({"type": "prescription", **serialize(rx), "date": rx.date, "at": rx.created_at,
+                       "doctor": doctors.get(rx.doctor_id)})
+
     # Within a day, Practo shows the bill on top, then payments, then what was done.
-    order = {"invoice": 0, "payment": 1, "procedure": 2, "appointment": 3, "record": 4}
+    order = {"invoice": 0, "payment": 1, "procedure": 2, "plan": 3, "note": 4, "vitals": 5, "prescription": 6,
+             "appointment": 7, "record": 8}
     events.sort(key=lambda e: (e["date"], -order[e["type"]], e["at"]), reverse=True)
     for e in events:
         e["date"] = e["date"].isoformat()

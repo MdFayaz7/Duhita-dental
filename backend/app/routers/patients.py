@@ -1,13 +1,13 @@
 import datetime as dt
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.orm import aliased
 
 from ..db import SessionDep, contains, serialize
 from ..events import broadcast_event
 from ..models import PatientIn
-from ..patients_service import IST, RecordForm, add_patient, add_record
+from ..patients_service import IST, RecordForm, add_patient, add_record, today_ist
 from ..security import current_admin
 from ..tables import Appointment, Invoice, Patient, Record
 from ..uploads import delete_upload
@@ -51,10 +51,30 @@ async def reset_app_login(patient_id: str, session: SessionDep):
     return {"ok": True, **row._asdict()}
 
 
+def _female():
+    return func.lower(Patient.sex) == "female"
+
+
+# Practo's smart groups.
+GROUPS = {
+    "female": _female,
+    "male": lambda: func.lower(Patient.sex) == "male",
+    "female_over_30": lambda: and_(_female(), Patient.age > 30),
+    "female_under_30": lambda: and_(_female(), Patient.age < 30),
+}
+
+
+@router.get("/groups")
+async def patient_groups(session: SessionDep, _: str = Depends(current_admin)):
+    row = (await session.execute(select(func.count(), *(func.count().filter(f()) for f in GROUPS.values())))).one()
+    return {"all": row[0], **dict(zip(GROUPS, row[1:]))}
+
+
 @router.get("")
 async def list_patients(
     session: SessionDep,
     q: str | None = None,
+    group: str | None = Query(None, pattern="^(recently_visited|female|male|female_over_30|female_under_30)$"),
     date_from: dt.date | None = Query(None, description="YYYY-MM-DD (clinic time), registered on or after"),
     date_to: dt.date | None = Query(None, description="YYYY-MM-DD (clinic time), registered on or before"),
     sort: str = Query("newest", pattern="^(newest|oldest|name)$"),
@@ -71,12 +91,19 @@ async def list_patients(
     if date_to:
         filters.append(Patient.created_at < dt.datetime.combine(date_to + dt.timedelta(days=1), dt.time.min, IST))
 
+    if group in GROUPS:
+        filters.append(GROUPS[group]())
+
     order = {"newest": Patient.created_at.desc(), "oldest": Patient.created_at.asc(), "name": Patient.name.asc()}[sort]
     # One round trip: the page, the total (window count) and each patient's family size.
-    rows = (await session.execute(
-        select(Patient, func.count().over().label("total"), _family_size().label("family_size"))
-        .where(*filters).order_by(order).offset(skip).limit(limit)
-    )).all()
+    stmt = select(Patient, func.count().over().label("total"), _family_size().label("family_size"))
+    if group == "recently_visited":
+        # Latest past visit first (Practo's “Recently visited”); patients never seen are left out.
+        last = (select(Appointment.patient_id, func.max(Appointment.date).label("last"))
+                .where(Appointment.date <= today_ist(), Appointment.status.notin_(("cancelled", "no_show", "pending")))
+                .group_by(Appointment.patient_id).subquery())
+        stmt, order = stmt.join(last, last.c.patient_id == Patient.patient_id), last.c.last.desc()
+    rows = (await session.execute(stmt.where(*filters).order_by(order, Patient.id.desc()).offset(skip).limit(limit))).all()
     total = rows[0].total if rows else (
         await session.scalar(select(func.count()).select_from(Patient).where(*filters)) if skip else 0
     )

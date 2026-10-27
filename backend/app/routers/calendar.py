@@ -3,16 +3,17 @@ import datetime as dt
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 
 from .. import whatsapp
 from ..booking import check_clash, resolve_doctor
-from ..clinic import hours_payload
+from ..clinic import HOURS_KEY, load_hours
 from ..db import SessionDep, serialize, utcnow
 from ..events import broadcast_event
-from ..models import AdminBookingIn
+from ..models import AdminBookingIn, ClinicHoursIn
 from ..patients_service import add_patient, today_ist
 from ..security import current_admin
-from ..tables import Appointment, Patient
+from ..tables import Appointment, Patient, Setting
 
 router = APIRouter(tags=["calendar"])
 
@@ -20,9 +21,19 @@ MAX_RANGE_DAYS = 62  # a month view plus the spill-over weeks either side
 
 
 @router.get("/api/clinic/hours")
-async def clinic_hours():
+async def clinic_hours(session: SessionDep):
     """Opening hours, slot length, durations and booking categories (public: the website reads them too)."""
-    return hours_payload()
+    return (await load_hours(session)).payload()
+
+
+@router.put("/api/clinic/hours", dependencies=[Depends(current_admin)])
+async def save_clinic_hours(payload: ClinicHoursIn, session: SessionDep):
+    week = [[{"from": s.start, "to": s.end} for s in sorted(day, key=lambda s: s.start)] for day in payload.week]
+    await session.execute(insert(Setting).values(key=HOURS_KEY, value={"week": week})
+                          .on_conflict_do_update(index_elements=[Setting.key], set_={"value": {"week": week}, "updated_at": utcnow()}))
+    await session.commit()
+    await broadcast_event("clinic_hours_updated")
+    return (await load_hours(session)).payload()
 
 
 @router.get("/api/appointments/calendar", dependencies=[Depends(current_admin)])

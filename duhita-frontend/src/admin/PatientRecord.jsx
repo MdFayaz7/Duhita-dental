@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  FiArrowLeft, FiCalendar, FiCheckCircle, FiCircle, FiCreditCard, FiEdit2, FiFileText, FiImage, FiPhone, FiPlus,
+  FiActivity, FiArrowLeft, FiCalendar, FiClipboard, FiCheckCircle, FiCircle, FiCreditCard, FiEdit2, FiFileText, FiImage, FiPhone, FiPlus,
   FiPrinter, FiTrash2, FiXCircle,
 } from 'react-icons/fi';
 import { api } from './api';
@@ -12,12 +12,14 @@ import { PaymentModal, inr, longDate, modeLabel } from './billingUi';
 const TABS = [{ value: 'timeline', label: 'Timeline' }, { value: 'invoices', label: 'Invoices' }, { value: 'payments', label: 'Payments' }];
 const RECORD_KINDS = { prescription: 'Prescription', xray: 'X-ray / scan', report: 'Report', note: 'Note' };
 
-export default function PatientRecord() {
+/** Timeline / invoices / payments of one patient. Inside the patient section `section` picks one and the shell draws the header. */
+export default function PatientRecord({ section }) {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
-  const [tab, setTab] = useState('timeline');
+  const [tab, setTab] = useState(section || 'timeline');
+  useEffect(() => { if (section) setTab(section); }, [section]);
   const [billing, setBilling] = useState(null);
   const [timeline, setTimeline] = useState(null);
   const [colors, setColors] = useState({});
@@ -81,6 +83,7 @@ export default function PatientRecord() {
 
   return (
     <>
+      {!section && <>
       {/* Patient header */}
       <Panel className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
         <button onClick={() => navigate(-1)} aria-label="Back" className="w-8 h-8 grid place-items-center rounded text-[#777] hover:bg-black/5"><FiArrowLeft /></button>
@@ -104,8 +107,17 @@ export default function PatientRecord() {
         <Segmented options={TABS} value={tab} onChange={setTab} />
         <Link to="/admin/appointments" className="text-[13px] text-[#1a9ad6] hover:underline">Book an appointment in the calendar →</Link>
       </div>
+      </>}
+      {section && section !== 'timeline' && (
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <Money label="Billed" value={billing.summary.billed} />
+          <Money label="Received" value={billing.summary.received} tone="text-[#137a1e]" />
+          <Money label="Due" value={billing.summary.due} tone={Number(billing.summary.due) > 0 ? 'text-[#d93a46]' : 'text-[#333]'} />
+          <Button className="ml-auto" onClick={() => navigate(`/admin/patients/${p.patient_id}/invoices/new`)}><FiPlus /> New invoice</Button>
+        </div>
+      )}
 
-      <div className="mt-4">
+      <div className={section ? '' : 'mt-4'}>
         {tab === 'timeline' && (
           <Timeline events={timeline} colors={colors} invoices={invoicesById}
             onPrint={print} onEdit={(id) => navigate(`/admin/invoices/${id}/edit`)} onPay={setPayFor} />
@@ -261,6 +273,27 @@ function EventCard({ e, color, invoice, onPrint, onEdit, onPay }) {
         <Doctor name={e.doctor} color={color} />
         <p className="uppercase">{e.name}{e.teeth?.length ? <span className="normal-case text-[#777]"> · Teeth: {e.teeth.join(', ')}</span> : ''}</p>
         {e.notes && <p className="text-[#777]">{e.notes}</p>}
+      </>);
+    case 'plan':
+      return card(<FiCircle className="text-[#777]" />, 'Treatment Planned', <>
+        <Doctor name={e.doctor} color={color} />
+        <p className="uppercase">{e.name}{e.teeth?.length ? <span className="normal-case text-[#777]"> · Teeth: {e.teeth.join(', ')}</span> : ''} · ₹{inr(e.total)}</p>
+      </>);
+    case 'vitals':
+      return card(<FiActivity className="text-[#777]" />, 'Vital Signs', <>
+        <p>{[e.pulse && `Pulse ${e.pulse}/min`, e.temperature && `Temp ${Number(e.temperature)}°F`, e.bp_systolic && `BP ${e.bp_systolic}/${e.bp_diastolic ?? '–'}`,
+          e.weight && `Weight ${Number(e.weight)} kg`, e.resp_rate && `Resp. ${e.resp_rate}/min`].filter(Boolean).join(' · ')}</p>
+      </>);
+    case 'note':
+      return card(<FiClipboard className="text-[#777]" />, 'Clinical Notes', <>
+        <Doctor name={e.doctor} color={color} />
+        {[['complaints', 'Complaints'], ['observations', 'Observations'], ['investigations', 'Investigations'], ['diagnoses', 'Diagnoses'], ['notes', 'Notes']]
+          .filter(([k]) => e[k]?.length).map(([k, l]) => <p key={k}><span className="text-[#888]">{l}:</span> {e[k].join(', ')}</p>)}
+      </>);
+    case 'prescription':
+      return card(<FiFileText className="text-[#777]" />, 'Prescription', <>
+        <Doctor name={e.doctor} color={color} />
+        {e.items.map((i, n) => <p key={n}><span className="uppercase">{i.drug}</span> <span className="text-[#777]">{[i.frequency, i.days && `${i.days} days`].filter(Boolean).join(' · ')}</span></p>)}
       </>);
     case 'appointment':
       return card(<FiCalendar className="text-[#777]" />, <>Appointment <StatusPill status={e.status} /></>, <>

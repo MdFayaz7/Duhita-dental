@@ -19,6 +19,9 @@ async function post(path, body) {
   return data;
 }
 
+/** Weekly clinic hours set by the admin (Monday-first `week`). */
+export const clinicHoursApi = () => fetch(`${BASE}/api/clinic/hours`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
 export const registerPatientApi = (form) =>
   post('/api/patients', {
     name: form.name.trim(),

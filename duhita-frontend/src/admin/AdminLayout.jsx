@@ -60,7 +60,8 @@ export default function AdminLayout() {
     document.head.appendChild(link);
   }, []);
   // The calendar needs the width: the desktop menu shrinks to an icon rail there, as in Practo.
-  const compact = pathname === '/admin/appointments' || /\/invoices\/(new|\d+\/edit)$/.test(pathname);
+  const compact = pathname === '/admin/appointments' || /\/invoices\/(new|\d+\/edit)$/.test(pathname)
+    || (/^\/admin\/patients(\/|$)/.test(pathname) && !/^\/admin\/patients\/(import|table)$/.test(pathname));
 
   const signOut = () => {
     setToken(null);
