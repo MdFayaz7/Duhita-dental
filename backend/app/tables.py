@@ -442,6 +442,9 @@ class PractoPatient(Base):
     email: Mapped[str | None] = mapped_column(Text)
     address: Mapped[str | None] = mapped_column(Text)
     data: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), default=dict)  # every other column
+    # Refreshed after every import, so the list can show patients with history first, latest visit on top.
+    last_visit: Mapped[dt.date | None] = mapped_column(Date)
+    records: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
 
 
 def practo_number() -> Mapped[str | None]:

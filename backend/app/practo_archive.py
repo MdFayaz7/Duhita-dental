@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 
 import openpyxl
 import xlrd
-from sqlalchemy import delete, insert
+from sqlalchemy import delete, insert, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .tables import PractoInvoiceLine, PractoPatient, PractoPayment, PractoTreatment
@@ -151,3 +151,17 @@ async def replace(session: AsyncSession, kind: str, rows: list[dict]) -> int:
     for i in range(0, len(rows), 2000):  # asyncpg caps bind parameters per statement
         await session.execute(insert(table), rows[i:i + 2000])
     return len(rows)
+
+
+async def refresh_stats(session: AsyncSession) -> None:
+    """Per-patient record count and latest date across treatments, invoices and payments (one pass each)."""
+    await session.execute(text("""
+        WITH h AS (
+            SELECT patient_number, date FROM practo_treatments
+            UNION ALL SELECT patient_number, date FROM practo_invoice_lines
+            UNION ALL SELECT patient_number, date FROM practo_payments
+        ), s AS (SELECT patient_number, count(*) AS n, max(date) AS last FROM h WHERE patient_number IS NOT NULL GROUP BY 1)
+        UPDATE practo_patients p SET records = coalesce(s.n, 0), last_visit = s.last
+        FROM practo_patients p2 LEFT JOIN s ON s.patient_number = p2.number
+        WHERE p.number = p2.number
+    """))

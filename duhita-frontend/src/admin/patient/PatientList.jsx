@@ -5,6 +5,7 @@ import { api } from '../api';
 import { Button, ErrorNote, Field, Modal, Skeleton, cx, inputClass, useConfirm, useToast } from '../ui';
 import { useLiveEvents } from '../../lib/useLiveEvents';
 import { escapeHtml, printHtml } from './shared';
+import { longDate } from '../billingUi';
 import { PractoImport } from './PractoRecord';
 
 const LISTS = [['all', 'All Patients'], ['recently_visited', 'Recently Visited'], ['recent', 'Recently Added']];
@@ -16,7 +17,8 @@ export default function PatientList() {
   const [params] = useSearchParams();
   const [group, setGroup] = useState(params.get('list') === 'practo' ? 'practo' : 'recently_visited');
   const practo = group === 'practo';
-  const [practoCount, setPractoCount] = useState(null);
+  const [practoStats, setPractoStats] = useState(null);
+  const practoCount = practoStats?.patients;
   const [q, setQ] = useState('');
   const [counts, setCounts] = useState(null);
   const [items, setItems] = useState(null);
@@ -45,7 +47,7 @@ export default function PatientList() {
   }, [load, q]);
   const loadCounts = () => {
     api.patientGroups().then(setCounts).catch(() => {});
-    api.practoSummary().then((s) => setPractoCount(s.patients)).catch(() => {});
+    api.practoSummary().then(setPractoStats).catch(() => {});
   };
   useEffect(() => { loadCounts(); }, []);
   useLiveEvents((e) => ['patient_registered', 'patient_deleted', 'patient_updated'].includes(e.type) && (load(0), loadCounts()));
@@ -77,7 +79,9 @@ export default function PatientList() {
           </div>
           <h3 className="px-1 pt-5 text-[22px] font-light text-[#6a8a2f]">Practo</h3>
           <div className="mt-1 grid gap-0.5">{groupBtn('practo', 'Practo Patients', practoCount)}</div>
-          <p className="px-1 pt-1 text-[11.5px] text-[#888]">History exported from Practo, kept separate under Practo’s own patient numbers.</p>
+          <p className="px-1 pt-1 text-[11.5px] text-[#888]">
+            History exported from Practo under Practo’s own patient numbers{practoStats ? ` — ${practoStats.with_history} have treatments, bills or payments and are listed first` : ''}.
+          </p>
           <h3 className="px-1 pt-5 text-[22px] font-light text-[#6a8a2f]">Groups</h3>
           <p className="px-1 pt-2 text-[11.5px] text-[#6a8a2f]">Smart Groups</p>
           <div className="mt-1 grid gap-0.5">{SMART.map(([id, label]) => groupBtn(id, label, counts?.[id]))}</div>
@@ -103,7 +107,7 @@ export default function PatientList() {
                       <span className="block truncate text-[13px] font-semibold uppercase">{p.name}</span>
                       <span className="block">{(p.sex ?? p.gender) || '\u00a0'}</span>
                       <span className="block">{(p.phone ?? p.mobile) ? `+91${p.phone ?? p.mobile}` : '\u00a0'}</span>
-                      <span className="block">{practo ? `Practo # ${p.number}` : <># {p.patient_id}{p.family_size > 1 && <span className="ml-1 text-[#1a9ad6]">· family {p.family_size}</span>}</>}</span>
+                      <span className="block">{practo ? <>Practo # {p.number}<span className={cx('block', p.records ? 'text-[#1a9ad6]' : 'text-[#aaa]')}>{p.records ? `${p.records} records · ${longDate(p.last_visit)}` : 'No history in export'}</span></> : <># {p.patient_id}{p.family_size > 1 && <span className="ml-1 text-[#1a9ad6]">· family {p.family_size}</span>}</>}</span>
                     </span>
                   </button>
                 ))}

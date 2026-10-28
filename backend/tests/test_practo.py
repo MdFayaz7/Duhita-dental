@@ -30,6 +30,10 @@ async def test_practo_archive_import_and_history(admin):
     res = await admin.post("/api/practo/import", files={k: (n, d) for k, (n, d) in files.items()})
     assert res.json()["imported"] == {"patients": 2, "treatments": 1, "invoices": 1, "payments": 2}
 
+    everyone = (await admin.get("/api/practo/patients")).json()["items"]
+    assert [p["number"] for p in everyone] == ["101", "102"]  # with history first, though 102 is the newer number
+    assert everyone[0]["records"] == 3 and everyone[0]["last_visit"] == "2024-01-06" and everyone[1]["records"] == 0
+
     listed = (await admin.get("/api/practo/patients?q=9876543210")).json()
     assert listed["total"] == 1 and listed["items"][0]["number"] == "101" and listed["items"][0]["mobile"] == "9876543210"
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import and_, exists, func, or_, select
 
 from ..db import SessionDep, contains, serialize
-from ..practo_archive import KINDS, ArchiveError, parse, replace
+from ..practo_archive import KINDS, ArchiveError, parse, refresh_stats, replace
 from ..security import current_admin
 from ..tables import PractoInvoiceLine, PractoPatient, PractoPayment, PractoTreatment
 
@@ -33,13 +33,14 @@ async def import_archive(session: SessionDep, patients: UploadFile | None = File
         except Exception:
             raise HTTPException(400, f"{f.filename} could not be read. Upload the .xlsx / .xls file exactly as Practo exported it.")
     counts = {kind: await replace(session, kind, rows) for kind, rows in parsed.items()}
+    await refresh_stats(session)
     await session.commit()
     return {"imported": counts}
 
 
 @router.get("/summary")
 async def summary(session: SessionDep):
-    counts = {}
+    counts = {"with_history": await session.scalar(select(func.count()).where(PractoPatient.records > 0))}
     for kind, table in (("patients", PractoPatient), ("treatments", PractoTreatment), ("invoices", PractoInvoiceLine), ("payments", PractoPayment)):
         counts[kind] = await session.scalar(select(func.count()).select_from(table))
     return counts
@@ -50,14 +51,16 @@ async def list_patients(session: SessionDep, q: str | None = None, limit: int = 
     stmt = select(PractoPatient, func.count().over().label("total"))
     if q and q.strip():
         stmt = stmt.where(or_(contains(PractoPatient.name, q), contains(PractoPatient.mobile, q), PractoPatient.number == q.strip()))
-    rows = (await session.execute(stmt.order_by(func.length(PractoPatient.number).desc(), PractoPatient.number.desc())
-                                  .offset(skip).limit(limit))).all()
+    # Patients with history first, latest visit on top; then the rest, newest Practo number first.
+    order = (PractoPatient.last_visit.desc().nulls_last(), func.length(PractoPatient.number).desc(), PractoPatient.number.desc())
+    rows = (await session.execute(stmt.order_by(*order).offset(skip).limit(limit))).all()
     return {"total": rows[0].total if rows else 0, "items": [_patient(r.PractoPatient) for r in rows]}
 
 
 def _patient(p: PractoPatient) -> dict:
-    out = {c: getattr(p, c) for c in ("number", "name", "mobile", "gender", "age", "dob", "email", "address")}
-    return {**out, "dob": p.dob.isoformat() if p.dob else None, "details": p.data}
+    out = {c: getattr(p, c) for c in ("number", "name", "mobile", "gender", "age", "email", "address", "records")}
+    iso = lambda d: d.isoformat() if d else None  # noqa: E731
+    return {**out, "dob": iso(p.dob), "last_visit": iso(p.last_visit), "details": p.data}
 
 
 def _line_total(line: PractoInvoiceLine) -> Decimal:
