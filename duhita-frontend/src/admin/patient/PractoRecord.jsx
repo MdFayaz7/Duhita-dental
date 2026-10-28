@@ -91,13 +91,20 @@ const PrintBtn = ({ onClick, label = 'Print / PDF' }) => (
   <Button size="sm" variant="secondary" onClick={onClick}><FiPrinter /> {label}</Button>
 );
 
-/** Date heading + bordered card, as in Practo. */
-const DayCard = ({ date, children }) => (
-  <section className="px-2 pb-2">
-    <p className="pt-3 pb-1 text-[11.5px] font-medium text-[#444]">{day(date)}</p>
-    <article className="border border-[#dcdcdc] bg-white">{children}</article>
-  </section>
-);
+/** Items grouped date-wise: one date heading, then a bordered card per item, as in Practo. */
+function ByDate({ items, render }) {
+  const days = [];
+  for (const it of items) {
+    if (days.at(-1)?.date !== it.date) days.push({ date: it.date, items: [] });
+    days.at(-1).items.push(it);
+  }
+  return days.map((g) => (
+    <section key={g.date || 'none'} className="px-2 pb-2">
+      <p className="pt-3 pb-1 text-[11.5px] font-medium text-[#444]">{day(g.date)}</p>
+      <div className="grid gap-2">{g.items.map((it, i) => <article key={it.key ?? i} className="border border-[#dcdcdc] bg-white">{render(it)}</article>)}</div>
+    </section>
+  ));
+}
 
 function procTable(rows) {
   return `<table><tr><th>#</th><th>Procedure</th><th>Teeth</th><th style="text-align:right">Cost</th><th style="text-align:right">Discount</th><th style="text-align:right">Total</th></tr>${rows.map((t, i) => `<tr><td>${i + 1}</td><td>${esc((t.name || t.treatment || '').toUpperCase())}${t.notes ? `<br><span class="muted">${esc(t.notes)}</span>` : ''}</td><td>${esc(t.teeth || '')}</td><td style="text-align:right">${inr(t.cost ?? t.unit_cost ?? 0)}</td><td style="text-align:right">${disc(t)}</td><td style="text-align:right">${inr(t.amount ?? t.total ?? 0)}</td></tr>`).join('')}</table>`;
@@ -109,7 +116,7 @@ function Procedures({ d, p, who }) {
     const m = new Map();
     for (const t of d.treatments) {
       const k = `${t.date}|${t.doctor || ''}`;
-      if (!m.has(k)) m.set(k, { date: t.date, doctor: t.doctor, rows: [] });
+      if (!m.has(k)) m.set(k, { key: k, date: t.date, doctor: t.doctor, rows: [] });
       m.get(k).rows.push(t);
     }
     return [...m.values()];
@@ -119,8 +126,8 @@ function Procedures({ d, p, who }) {
   return (
     <>
       <SectionBar title="Completed Procedures">{days.length > 0 && <PrintBtn label="Print all" onClick={() => print(days, 'Completed Procedures')} />}</SectionBar>
-      {!days.length ? <EmptyState title="No treatments in the Practo export." /> : days.map((g, i) => (
-        <DayCard key={i} date={g.date}>
+      {!days.length ? <EmptyState title="No treatments in the Practo export." /> : <ByDate items={days} render={(g) => (
+        <>
           <div className="overflow-x-auto border-l-4 border-[#e9573f]">
             <table className="w-full min-w-[760px] text-[13px]">
               <thead><tr className="border-b border-[#e3e3e3] text-[10.5px] font-semibold uppercase">
@@ -152,8 +159,8 @@ function Procedures({ d, p, who }) {
             <span className="flex items-center gap-3 font-semibold">Total: {inr(g.rows.reduce((s, t) => s + Number(t.amount || 0), 0))}
               <button onClick={() => print([g], 'Treatment Summary')} title="Print" className="p-1 text-[#555]"><FiPrinter /></button></span>
           </div>
-        </DayCard>
-      ))}
+        </>
+      )} />}
     </>
   );
 }
@@ -178,10 +185,10 @@ function Invoices({ d, who, invoiceBills }) {
   return (
     <>
       <SectionBar title="Invoices" />
-      {!invoiceBills.length ? <EmptyState title="No invoices in the Practo export." /> : invoiceBills.map((b) => {
+      {!invoiceBills.length ? <EmptyState title="No invoices in the Practo export." /> : <ByDate items={[...invoiceBills].sort((a, b) => (a.date < b.date ? 1 : -1))} render={(b) => {
         const paid = paidFor(b);
         return (
-          <DayCard key={b.key} date={b.date}>
+          <>
             <div className={cx('overflow-x-auto', b.cancelled && 'opacity-60')}>
               <table className="w-full min-w-[900px] text-[13px]">
                 <thead><tr className="border-b border-[#e3e3e3]">
@@ -217,9 +224,9 @@ function Invoices({ d, who, invoiceBills }) {
                 </tbody>
               </table>
             </div>
-          </DayCard>
+          </>
         );
-      })}
+      }} />}
     </>
   );
 }
@@ -232,20 +239,16 @@ function Payments({ d, who }) {
   return (
     <>
       <SectionBar title="Payments" />
-      <div className="bg-white">
-        {!d.payments.length ? <EmptyState title="No payments in the Practo export." /> : (
-          <Table head={['Date', 'Amount', 'Mode', 'Invoice', 'For', 'Notes', '']} minWidth={820}>
-            {d.payments.map((x) => (
-              <tr key={x.id} className={cx(x.cancelled && 'opacity-50 line-through')}>
-                <td className={cx(td, 'whitespace-nowrap')}>{day(x.date)}</td><td className={cx(td, 'tabular-nums text-[#137a1e]')}>₹{inr(x.amount ?? 0)}</td>
-                <td className={td}>{modeLabel(x.mode || '')}</td><td className={td}>{x.invoice_number ? `#${x.invoice_number}` : '—'}</td>
-                <td className={cx(td, 'uppercase')}>{x.treatment || ''}</td><td className={cx(td, 'text-[#666]')}>{x.notes || ''}</td>
-                <td className={cx(td, 'text-right')}><button onClick={() => receipt(x)} title="Print receipt" className="p-1 text-[#555]"><FiPrinter /></button></td>
-              </tr>
-            ))}
-          </Table>
-        )}
-      </div>
+      {!d.payments.length ? <EmptyState title="No payments in the Practo export." /> : <ByDate items={d.payments.map((x) => ({ ...x, key: x.id }))} render={(x) => (
+        <div className={cx('flex flex-wrap items-center gap-x-6 gap-y-1 border-l-4 border-[#3cae4c] px-3 py-2.5 text-[13px]', x.cancelled && 'opacity-50 line-through')}>
+          <span className="w-[110px] text-[15px] tabular-nums text-[#137a1e]">₹{inr(x.amount ?? 0)}</span>
+          <span>{modeLabel(x.mode || '')}</span>
+          <span className="text-[#555]">{x.invoice_number ? `Invoice #${x.invoice_number}` : 'No invoice'}</span>
+          {x.treatment && <span className="uppercase text-[#1a9ad6]">{x.treatment}</span>}
+          {x.notes && <span className="text-[#777]">{x.notes}</span>}
+          <button onClick={() => receipt(x)} title="Print receipt" className="ml-auto rounded border border-[#ccc] p-1.5 text-[#444] hover:bg-[#f5f5f5]"><FiPrinter /></button>
+        </div>
+      )} />}
     </>
   );
 }
