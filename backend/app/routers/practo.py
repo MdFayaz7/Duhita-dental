@@ -2,9 +2,10 @@
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import and_, exists, func, or_, select, text
+from sqlalchemy import and_, delete, exists, func, or_, select, text
 
 from ..db import SessionDep, contains, serialize
+from ..models import PractoInvoiceLineEdit, PractoPaymentEdit, PractoTreatmentEdit
 from ..practo_archive import KINDS, ArchiveError, parse, refresh_stats, replace
 from ..security import current_admin
 from ..tables import PractoInvoiceLine, PractoPatient, PractoPayment, PractoTreatment
@@ -111,3 +112,47 @@ async def patient_history(number: str, session: SessionDep):
         "invoices": invoices,
         "payments": [serialize(p) for p in payments],
     }
+
+
+# ---------------------------------------------------------------- corrections to imported rows
+
+EDITABLE = {"treatments": PractoTreatment, "invoices": PractoInvoiceLine, "payments": PractoPayment}
+
+
+async def _save_edit(session, model, row_id: int, changes: dict) -> dict:
+    row = await session.get(model, row_id)
+    if not row:
+        raise HTTPException(404, "That record no longer exists.")
+    for key, value in changes.items():
+        setattr(row, key, value.strip() if isinstance(value, str) else value)
+    await session.flush()
+    await refresh_stats(session)
+    await session.commit()
+    return serialize(row)
+
+
+@router.patch("/treatments/{row_id}")
+async def edit_treatment(row_id: int, payload: PractoTreatmentEdit, session: SessionDep):
+    return await _save_edit(session, PractoTreatment, row_id, payload.model_dump(exclude_unset=True))
+
+
+@router.patch("/invoices/{row_id}")
+async def edit_invoice_line(row_id: int, payload: PractoInvoiceLineEdit, session: SessionDep):
+    return await _save_edit(session, PractoInvoiceLine, row_id, payload.model_dump(exclude_unset=True))
+
+
+@router.patch("/payments/{row_id}")
+async def edit_payment(row_id: int, payload: PractoPaymentEdit, session: SessionDep):
+    return await _save_edit(session, PractoPayment, row_id, payload.model_dump(exclude_unset=True))
+
+
+@router.delete("/{kind}/{row_id}")
+async def delete_row(kind: str, row_id: int, session: SessionDep):
+    model = EDITABLE.get(kind)
+    if model is None:
+        raise HTTPException(404, "Unknown record type.")
+    if (await session.execute(delete(model).where(model.id == row_id))).rowcount == 0:
+        raise HTTPException(404, "That record no longer exists.")
+    await refresh_stats(session)
+    await session.commit()
+    return {"ok": True}

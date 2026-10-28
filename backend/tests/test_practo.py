@@ -86,3 +86,21 @@ async def test_raw_practo_csv_dmdc_ids_and_quoted_values(admin):
     assert h["patient"]["name"] == "Lata" and float(h["summary"]["paid"]) == 1000 and h["payments"][0]["date"] == "2023-05-02"
     numbers = {p["number"] for p in (await admin.get("/api/practo/patients")).json()["items"]}
     assert numbers == {"42", "NA-2"}
+
+
+async def test_edit_cancel_delete_practo_rows(admin):
+    patients = "Patient Number,Patient Name\n'DMDC 9','Asha'\n"
+    payments = "Date,Patient Number,Patient Name,Amount Paid,Payment Mode,Invoice Number\n'2024-01-01','DMDC9','Asha','500','cash','77'\n"
+    invoices = "Date,Patient Number,Patient Name,Invoice Number,Treatment Name,Unit Cost,Quantity,Discount,DiscountType\n'2024-01-01','DMDC9','Asha','77','RCT','500','1','0','PERCENT'\n"
+    await admin.post("/api/practo/import", files={"patients": ("p.csv", patients.encode()), "payments": ("y.csv", payments.encode()), "invoices": ("i.csv", invoices.encode())})
+    h = (await admin.get("/api/practo/patients/9")).json()
+    pay, line = h["payments"][0], h["invoices"][0]
+
+    assert (await admin.patch(f"/api/practo/payments/{pay['id']}", json={"amount": "450", "mode": "upi"})).json()["mode"] == "upi"
+    await admin.patch(f"/api/practo/invoices/{line['id']}", json={"cancelled": True})
+    h = (await admin.get("/api/practo/patients/9")).json()
+    assert float(h["summary"]["billed"]) == 0 and float(h["summary"]["paid"]) == 450
+
+    assert (await admin.delete(f"/api/practo/payments/{pay['id']}")).json() == {"ok": True}
+    assert (await admin.get("/api/practo/patients/9")).json()["payments"] == []
+    assert (await admin.delete("/api/practo/patients/1")).status_code in (404, 405)

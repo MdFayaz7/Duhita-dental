@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
 import {
-  FiCheckCircle, FiClock, FiCreditCard, FiDollarSign, FiFileText, FiList, FiPrinter, FiUser, FiUsers,
+  FiCheckCircle, FiChevronDown, FiClock, FiCreditCard, FiDollarSign, FiFileText, FiList, FiPrinter, FiUser, FiUsers,
 } from 'react-icons/fi';
 import { api } from '../api';
-import { Button, EmptyState, ErrorNote, Field, Modal, Skeleton, Table, cx, useToast } from '../ui';
+import { Button, EmptyState, ErrorNote, Field, Modal, Skeleton, cx, inputClass, useConfirm, useToast } from '../ui';
 import { inr, longDate, modeLabel } from '../billingUi';
 import { SectionBar, escapeHtml as esc, printHtml } from './shared';
 
@@ -13,7 +13,6 @@ const NAV = [
   ['EMR', [['treatments', 'Completed Procedures', FiCheckCircle], ['timeline', 'Timeline', FiClock]]],
   ['Billing', [['invoices', 'Invoices', FiDollarSign], ['payments', 'Payments', FiCreditCard], ['ledger', 'Ledger', FiList]]],
 ];
-const td = 'px-4 py-2.5';
 const disc = (r) => (Number(r.discount) ? `${inr(r.discount)}${r.discount_type === 'NUMBER' ? '' : '%'}` : '0.00');
 const day = (d) => (d ? longDate(d) : '—');
 
@@ -35,14 +34,17 @@ export default function PractoRecord() {
   const { number, section = 'treatments' } = useParams();
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
-  useEffect(() => { setD(null); api.practoPatient(number).then(setD).catch((e) => setError(e.message)); }, [number]);
+  const [editing, setEditing] = useState(null); // { kind, row }
+  const load = useCallback(() => api.practoPatient(number).then(setD).catch((e) => setError(e.message)), [number]);
+  useEffect(() => { setD(null); load(); }, [load]);
+  const act = useRowActions(load);
   const invoiceBills = useMemo(() => (d ? bills(d.invoices) : []), [d]);
 
   if (error) return <div className="p-4"><ErrorNote>{error}</ErrorNote></div>;
   if (!d) return <Skeleton className="m-4 h-60" />;
   const p = d.patient;
   const who = `<p><b>${esc(p.name.toUpperCase())}</b> · ${esc([p.gender, p.age != null && `${p.age} yrs`].filter(Boolean).join(', '))}${p.mobile ? ` · +91 ${esc(p.mobile)}` : ''}<br><span class="muted">Practo patient no. ${esc(p.number)}</span></p>`;
-  const ctx = { d, p, who, invoiceBills };
+  const ctx = { d, p, who, invoiceBills, act: { ...act, edit: (kind, row) => setEditing({ kind, row }) } };
 
   return (
     <div className="border-b border-[#d8d8d8] bg-[#f4f4f4]">
@@ -83,6 +85,7 @@ export default function PractoRecord() {
           {section === 'ledger' && <Ledger {...ctx} />}
         </main>
       </div>
+      <EditRow editing={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
     </div>
   );
 }
@@ -110,7 +113,7 @@ function procTable(rows) {
   return `<table><tr><th>#</th><th>Procedure</th><th>Teeth</th><th style="text-align:right">Cost</th><th style="text-align:right">Discount</th><th style="text-align:right">Total</th></tr>${rows.map((t, i) => `<tr><td>${i + 1}</td><td>${esc((t.name || t.treatment || '').toUpperCase())}${t.notes ? `<br><span class="muted">${esc(t.notes)}</span>` : ''}</td><td>${esc(t.teeth || '')}</td><td style="text-align:right">${inr(t.cost ?? t.unit_cost ?? 0)}</td><td style="text-align:right">${disc(t)}</td><td style="text-align:right">${inr(t.amount ?? t.total ?? 0)}</td></tr>`).join('')}</table>`;
 }
 
-function Procedures({ d, p, who }) {
+function Procedures({ d, p, who, act }) {
   const billed = useMemo(() => new Set(d.invoices.filter((l) => !l.cancelled).map((l) => (l.treatment || '').trim().toUpperCase())), [d]);
   const days = useMemo(() => {
     const m = new Map();
@@ -132,7 +135,7 @@ function Procedures({ d, p, who }) {
             <table className="w-full min-w-[760px] text-[13px]">
               <thead><tr className="border-b border-[#e3e3e3] text-[10.5px] font-semibold uppercase">
                 <th className="px-2 py-1.5 text-left">Procedure</th><th className="px-2 text-right">Cost</th><th className="px-2 text-right">Discount</th>
-                <th className="px-2 text-right">Total</th><th className="px-2 text-left">Notes</th>
+                <th className="px-2 text-right">Total</th><th className="px-2 text-left">Notes</th><th className="w-[40px]" />
               </tr></thead>
               <tbody>
                 {g.rows.map((t) => (
@@ -148,6 +151,9 @@ function Procedures({ d, p, who }) {
                     <td className="px-2 py-2">
                       {t.teeth && <span className="flex flex-wrap items-center gap-1">Teeth: {t.teeth.split(', ').map((x) => <span key={x} className="border border-[#bbb] px-1 text-[11px]">{x}</span>)}</span>}
                       {t.notes && <span className="block text-[#666]">{t.notes}</span>}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      <RowMenu items={[['Edit', () => act.edit('treatments', t)], ['Delete', () => act.remove('treatments', t, t.name)]]} />
                     </td>
                   </tr>
                 ))}
@@ -179,14 +185,13 @@ function printInvoice(b, d, who) {
     </table><p class="muted" style="margin-top:30px">Imported from Practo records.</p>`);
 }
 
-function Invoices({ d, who, invoiceBills }) {
-  const paidFor = (b) => (b.number ? d.payments.filter((x) => !x.cancelled && x.invoice_number === b.number).reduce((s, x) => s + Number(x.amount || 0), 0) : 0);
+function Invoices({ d, who, invoiceBills, act }) {
   const th = 'px-2 py-2 text-[10.5px] font-semibold uppercase text-[#333]';
   return (
     <>
       <SectionBar title="Invoices" />
       {!invoiceBills.length ? <EmptyState title="No invoices in the Practo export." /> : <ByDate items={[...invoiceBills].sort((a, b) => (a.date < b.date ? 1 : -1))} render={(b) => {
-        const paid = paidFor(b);
+        const paid = paidOn(d, b.number);
         return (
           <>
             <div className={cx('overflow-x-auto', b.cancelled && 'opacity-60')}>
@@ -195,7 +200,15 @@ function Invoices({ d, who, invoiceBills }) {
                   <th className={cx(th, 'w-[22%] text-left')}>Invoice Number</th><th className={cx(th, 'text-left')}>Treatments &amp; Products</th>
                   <th className={cx(th, 'text-right')}>Cost</th><th className={cx(th, 'text-right')}>Discount</th><th className={cx(th, 'text-right')}>Tax</th>
                   <th className={cx(th, 'text-right')}>Total</th>
-                  <th className="w-[44px] text-right pr-2"><button onClick={() => printInvoice(b, d, who)} title="Print / PDF" className="rounded border border-[#ccc] p-1.5 text-[#444] hover:bg-[#f5f5f5]"><FiPrinter /></button></th>
+                  <th className="w-[90px] pr-2">
+                    <span className="flex justify-end">
+                      <button onClick={() => printInvoice(b, d, who)} title="Print / PDF" className="rounded-l border border-[#ccc] p-1.5 text-[#444] hover:bg-[#f5f5f5]"><FiPrinter /></button>
+                      <RowMenu joined items={[
+                        [b.cancelled ? 'Restore invoice' : 'Cancel invoice', () => act.setCancelled('invoices', b.lines, !b.cancelled, `invoice ${b.number || ''}`)],
+                        ['Delete invoice', () => act.removeMany('invoices', b.lines, `invoice ${b.number || ''}`)],
+                      ]} />
+                    </span>
+                  </th>
                 </tr></thead>
                 <tbody>
                   {b.lines.map((l, k) => (
@@ -218,7 +231,9 @@ function Invoices({ d, who, invoiceBills }) {
                       <td className="border-b border-[#e8e8e8] px-2 py-2 text-right tabular-nums">{Number(l.discount) ? disc(l) : '0.00'}</td>
                       <td className="border-b border-[#e8e8e8] px-2 py-2 text-right tabular-nums">{Number(l.tax_percent) ? `${Number(l.tax_percent)}%` : '0.00'}</td>
                       <td className="border-b border-[#e8e8e8] px-2 py-2 text-right tabular-nums">{inr(l.total)}</td>
-                      <td />
+                      <td className="border-b border-[#e8e8e8] px-2 py-1.5 text-right">
+                        <RowMenu items={[['Edit', () => act.edit('invoices', l)], ['Delete line', () => act.remove('invoices', l, l.treatment)]]} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -231,68 +246,141 @@ function Invoices({ d, who, invoiceBills }) {
   );
 }
 
-function Payments({ d, who }) {
-  const receipt = (x) => printHtml(`Receipt · ${d.patient.name}`, `${who}<h3>Payment Receipt</h3>
-    <table><tr><th>Date</th><th>Mode</th><th>Invoice</th><th>For</th><th style="text-align:right">Amount INR</th></tr>
-    <tr><td>${day(x.date)}</td><td>${esc(modeLabel(x.mode || ''))}</td><td>${esc(x.invoice_number || '—')}</td><td>${esc(x.treatment || '')}</td><td style="text-align:right"><b>${inr(x.amount ?? 0)}</b></td></tr></table>
-    <p style="margin-top:40px;text-align:right">Received with thanks</p>`);
+const towards = (t) => (t || '').split(/\s*,\s*/).filter(Boolean);
+const paidOn = (d, number) => d.payments.filter((x) => !x.cancelled && number && x.invoice_number === number).reduce((s, x) => s + Number(x.amount || 0), 0);
+
+function Payments({ d, who, act }) {
+  const receipt = (x) => printHtml(`Receipt · ${d.patient.name}`, `${who}<h3>Payment Receipt${x.cancelled ? ' (CANCELLED)' : ''}</h3>
+    <p>Date: ${day(x.date)}${x.receipt_number ? ` · Receipt No. ${esc(x.receipt_number)}` : ''}</p>
+    <table><tr><th>Amount Paid INR</th><th>Invoice</th><th>Towards</th><th>Mode of Payment</th></tr>
+    <tr><td><b>${inr(x.amount ?? 0)}</b></td><td>${esc(x.invoice_number || '—')}</td><td>${towards(x.treatment).map((t) => esc(t.toUpperCase())).join('<br>')}</td><td>${esc(modeLabel(x.mode || ''))}</td></tr></table>
+    ${x.notes ? `<p>${esc(x.notes)}</p>` : ''}<p style="margin-top:40px;text-align:right">Received with thanks</p>`);
+  const th = 'px-2 py-2 text-[10.5px] font-semibold uppercase text-[#333] text-left';
   return (
     <>
       <SectionBar title="Payments" />
-      {!d.payments.length ? <EmptyState title="No payments in the Practo export." /> : <ByDate items={d.payments.map((x) => ({ ...x, key: x.id }))} render={(x) => (
-        <div className={cx('flex flex-wrap items-center gap-x-6 gap-y-1 border-l-4 border-[#3cae4c] px-3 py-2.5 text-[13px]', x.cancelled && 'opacity-50 line-through')}>
-          <span className="w-[110px] text-[15px] tabular-nums text-[#137a1e]">₹{inr(x.amount ?? 0)}</span>
-          <span>{modeLabel(x.mode || '')}</span>
-          <span className="text-[#555]">{x.invoice_number ? `Invoice #${x.invoice_number}` : 'No invoice'}</span>
-          {x.treatment && <span className="uppercase text-[#1a9ad6]">{x.treatment}</span>}
-          {x.notes && <span className="text-[#777]">{x.notes}</span>}
-          <button onClick={() => receipt(x)} title="Print receipt" className="ml-auto rounded border border-[#ccc] p-1.5 text-[#444] hover:bg-[#f5f5f5]"><FiPrinter /></button>
-        </div>
-      )} />}
+      {!d.payments.length ? <EmptyState title="No payments in the Practo export." /> : (
+        <ByDate items={(() => {
+          // One card per date holding that day's receipts, as in Practo.
+          const days = [];
+          for (const x of d.payments) {
+            if (days.at(-1)?.date !== x.date) days.push({ key: x.date, date: x.date, rows: [] });
+            days.at(-1).rows.push(x);
+          }
+          return days;
+        })()} render={(g) => (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-[13px]">
+              <thead><tr className="border-b border-[#e3e3e3]">
+                <th className={th}>Receipt Number</th><th className={cx(th, 'text-right')}>Amount Paid</th><th className={th}>Invoices</th>
+                <th className={th}>Towards</th><th className={th}>Mode of Payment</th><th className="w-[100px]" />
+              </tr></thead>
+              <tbody>
+                {g.rows.map((x) => (
+                  <tr key={x.id} className={cx('align-top border-b border-[#e8e8e8] last:border-0', x.cancelled && 'bg-[#efefef] text-[#aaa] line-through')}>
+                    <td className="px-2 py-2.5">{x.receipt_number || ''}</td>
+                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">{inr(x.amount ?? 0)}</td>
+                    <td className={cx('px-2 py-2.5', !x.cancelled && 'text-[#1a9ad6]')}>{x.invoice_number || ''}</td>
+                    <td className="px-2 py-2.5 uppercase leading-[1.45]">{towards(x.treatment).map((t, k) => <span key={k} className="block">{t}</span>)}</td>
+                    <td className="px-2 py-2.5 capitalize">{modeLabel(x.mode || '')}{x.notes && <span className="block normal-case text-[#777]">{x.notes}</span>}</td>
+                    <td className="px-2 py-2 text-right no-underline">
+                      <span className="flex items-center justify-end gap-1" style={{ textDecoration: 'none' }}>
+                        {x.cancelled
+                          ? <span className="text-[11px] font-semibold text-[#999]">Cancelled</span>
+                          : <button onClick={() => receipt(x)} title="Print receipt" className="rounded-l border border-[#ccc] p-1.5 text-[#444] hover:bg-[#f5f5f5]"><FiPrinter /></button>}
+                        <RowMenu joined={!x.cancelled} items={[
+                          ['Edit', () => act.edit('payments', x)],
+                          [x.cancelled ? 'Restore payment' : 'Cancel payment', () => act.setCancelled('payments', [x], !x.cancelled, 'payment')],
+                          ['Delete', () => act.remove('payments', x, `₹${inr(x.amount ?? 0)} payment`)],
+                        ]} />
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )} />
+      )}
     </>
   );
 }
 
-function ledgerRows(d, invoiceBills) {
+/** Practo's "All Transactions": invoices credit what is owed, payments debit it; cancelled rows stay, struck through. */
+function transactions(d, invoiceBills) {
   const rows = [
-    ...invoiceBills.filter((b) => !b.cancelled).map((b) => ({ date: b.date, text: `${b.number ? `Invoice #${b.number}` : 'Invoice'} · ${b.lines.map((l) => l.treatment).join(', ')}`, debit: b.total, credit: 0 })),
-    ...d.payments.filter((x) => !x.cancelled).map((x) => ({ date: x.date, text: `Payment · ${modeLabel(x.mode || '')}${x.invoice_number ? ` · invoice #${x.invoice_number}` : ''}`, debit: 0, credit: Number(x.amount || 0) })),
-  ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.credit - b.credit));
+    ...invoiceBills.map((b) => ({ key: `i${b.key}`, date: b.date, number: b.number || '', details: b.lines.map((l) => l.treatment).join(', '), type: 'Invoice', credit: b.total, debit: 0, cancelled: b.cancelled })),
+    ...d.payments.map((x) => ({ key: `p${x.id}`, date: x.date, number: x.receipt_number || '', details: x.invoice_number || towards(x.treatment).join(', '), type: 'Payment', credit: 0, debit: Number(x.amount || 0), cancelled: x.cancelled })),
+  ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.debit - b.debit));
   let bal = 0;
-  return rows.map((r) => ({ ...r, balance: (bal += r.debit - r.credit) }));
+  for (const r of rows) if (!r.cancelled) r.balance = (bal += r.credit - r.debit);
+  return rows;
 }
 
 function Ledger({ d, p, who, invoiceBills }) {
-  const rows = useMemo(() => ledgerRows(d, invoiceBills), [d, invoiceBills]);
-  const print = () => printHtml(`Ledger · ${p.name}`, `${who}<h3>Ledger</h3><table><tr><th>Date</th><th>Particulars</th><th style="text-align:right">Debit</th><th style="text-align:right">Credit</th><th style="text-align:right">Balance</th></tr>
-    ${rows.map((r) => `<tr><td>${day(r.date)}</td><td>${esc(r.text)}</td><td style="text-align:right">${r.debit ? inr(r.debit) : ''}</td><td style="text-align:right">${r.credit ? inr(r.credit) : ''}</td><td style="text-align:right">${inr(r.balance)}</td></tr>`).join('')}</table>`);
+  const rows = useMemo(() => transactions(d, invoiceBills), [d, invoiceBills]);
+  const [picked, setPicked] = useState(new Set());
+  const live = rows.filter((r) => !r.cancelled);
+  const credit = live.reduce((s, r) => s + r.credit, 0);
+  const debit = live.reduce((s, r) => s + r.debit, 0);
+  const print = (only) => {
+    const list = only ? rows.filter((r) => picked.has(r.key)) : rows;
+    printHtml(`Billing summary · ${p.name}`, `${who}<h3>All Transactions</h3><table><tr><th>Date</th><th>Invoice/Receipt No.</th><th>Details</th><th>Type</th><th style="text-align:right">Credit (INR)</th><th style="text-align:right">Debit (INR)</th><th style="text-align:right">Balance (INR)</th></tr>
+      ${list.map((r) => `<tr${r.cancelled ? ' style="text-decoration:line-through;color:#999"' : ''}><td>${day(r.date)}</td><td>${esc(r.number)}</td><td>${esc(r.details.toUpperCase())}</td><td>${r.type}</td><td style="text-align:right">${inr(r.credit)}</td><td style="text-align:right">${inr(r.debit)}</td><td style="text-align:right">${r.cancelled ? 'Cancelled' : inr(r.balance)}</td></tr>`).join('')}
+      <tr><td colspan="4"></td><td style="text-align:right"><b>${inr(credit)}</b></td><td style="text-align:right"><b>${inr(debit)}</b></td><td style="text-align:right"><b>${inr(credit - debit)}</b></td></tr></table>`);
+  };
+  const toggle = (k) => setPicked((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  const th = 'px-3 py-2.5 text-[11px] font-semibold uppercase text-[#444]';
   return (
     <>
-      <SectionBar title="Ledger">{rows.length > 0 && <PrintBtn onClick={print} />}</SectionBar>
-      <div className="bg-white">
+      <SectionBar title="All Transactions">
+        <Button size="sm" variant="secondary" disabled={!picked.size} onClick={() => print(true)}>Print billing summary</Button>
+        <Button size="sm" variant="secondary" disabled={!rows.length} onClick={() => print(false)}>Print</Button>
+      </SectionBar>
+      <div className="bg-white p-3">
         {!rows.length ? <EmptyState title="No bills or payments in the Practo export." /> : (
-          <Table head={['Date', 'Particulars', 'Debit (INR)', 'Credit (INR)', 'Balance (INR)']} minWidth={760}>
-            {rows.map((r, i) => (
-              <tr key={i}>
-                <td className={cx(td, 'whitespace-nowrap')}>{day(r.date)}</td><td className={cx(td, 'uppercase text-[13px]')}>{r.text}</td>
-                <td className={cx(td, 'tabular-nums')}>{r.debit ? inr(r.debit) : ''}</td><td className={cx(td, 'tabular-nums text-[#137a1e]')}>{r.credit ? inr(r.credit) : ''}</td>
-                <td className={cx(td, 'tabular-nums font-medium', r.balance > 0 && 'text-[#d93a46]')}>{inr(r.balance)}</td>
-              </tr>
-            ))}
-          </Table>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-[13px]">
+              <thead><tr className="bg-[#f2f2f2]">
+                <th className="w-[36px] px-3"><input type="checkbox" checked={picked.size === rows.length} onChange={(e) => setPicked(e.target.checked ? new Set(rows.map((r) => r.key)) : new Set())} aria-label="Select all" /></th>
+                <th className={cx(th, 'text-left')}>Date ↑</th><th className={cx(th, 'text-left')}>Invoice / Receipt Number</th><th className={cx(th, 'text-left')}>Details</th>
+                <th className={cx(th, 'text-left')}>Type</th><th className={cx(th, 'text-right')}>Credit (INR)</th><th className={cx(th, 'text-right')}>Debit (INR)</th><th className={cx(th, 'text-right')}>Balance (INR)</th>
+              </tr></thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.key} className={cx('border-b border-[#e8e8e8] align-top', r.cancelled && 'bg-[#efefef] text-[#aaa] line-through')}>
+                    <td className="px-3 py-3">{!r.cancelled && <input type="checkbox" checked={picked.has(r.key)} onChange={() => toggle(r.key)} aria-label="Select" />}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">{day(r.date)}</td>
+                    <td className={cx('px-3 py-3', r.type === 'Invoice' && !r.cancelled && 'text-[#1a9ad6]')}>{r.number}</td>
+                    <td className="px-3 py-3 uppercase max-w-[360px]">{r.details}</td>
+                    <td className="px-3 py-3">{r.type}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{inr(r.credit)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{inr(r.debit)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{r.cancelled ? <span className="font-semibold" style={{ textDecoration: 'none' }}>Cancelled</span> : inr(r.balance)}</td>
+                  </tr>
+                ))}
+                <tr className="text-[15px] font-semibold">
+                  <td colSpan={5} /><td className="px-3 py-3 text-right tabular-nums">{inr(credit)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{inr(debit)}</td><td className="px-3 py-3 text-right tabular-nums">{inr(credit - debit)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </>
   );
 }
 
-function Timeline({ d, invoiceBills }) {
+/** Practo's case sheet: big date, events newest first; tick the ones to print. */
+function Timeline({ d, p, who, invoiceBills }) {
   const days = useMemo(() => {
+    const order = { invoice: 0, payment: 1, procedure: 2 };
     const ev = [
-      ...d.treatments.map((t) => ({ date: t.date, icon: FiCheckCircle, title: 'Procedure Performed', body: `${t.name}${t.teeth ? ` · Teeth ${t.teeth}` : ''}`, by: t.doctor })),
-      ...invoiceBills.map((b) => ({ date: b.date, icon: FiFileText, title: `Invoice${b.number ? ` #${b.number}` : ''}${b.cancelled ? ' (cancelled)' : ''}`, body: `${b.lines.map((l) => l.treatment).join(', ')} · ₹${inr(b.total)}`, by: b.doctor })),
-      ...d.payments.map((x) => ({ date: x.date, icon: FiCreditCard, title: 'Payment', body: `₹${inr(x.amount ?? 0)} via ${modeLabel(x.mode || '')}${x.cancelled ? ' (cancelled)' : ''}` })),
-    ].sort((a, b) => (a.date < b.date ? 1 : -1));
+      ...invoiceBills.map((b) => ({ key: `i${b.key}`, kind: 'invoice', date: b.date, b, paid: paidOn(d, b.number) })),
+      ...d.payments.map((x) => ({ key: `p${x.id}`, kind: 'payment', date: x.date, x })),
+      ...d.treatments.map((t) => ({ key: `t${t.id}`, kind: 'procedure', date: t.date, t })),
+    ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : order[a.kind] - order[b.kind]));
     const out = [];
     for (const e of ev) {
       if (out.at(-1)?.date !== e.date) out.push({ date: e.date, events: [] });
@@ -300,26 +388,87 @@ function Timeline({ d, invoiceBills }) {
     }
     return out;
   }, [d, invoiceBills]);
+  const all = days.flatMap((g) => g.events.map((e) => e.key));
+  const [picked, setPicked] = useState(() => new Set());
+  const toggle = (k) => setPicked((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
+
+  const html = (e) => {
+    if (e.kind === 'invoice') {
+      return `<b>Invoice${e.b.cancelled ? ' (cancelled)' : ''}</b><br>${esc(e.b.lines.map((l) => (l.treatment || '').toUpperCase()).join(', '))}<br>${e.b.number ? `<b>${esc(e.b.number)}</b><br>` : ''}Invoice Amount : INR ${inr(e.b.total)}<br>Paid Amount : ${e.paid ? `INR ${inr(e.paid)}` : ''}<br>Due Amount : INR ${inr(Math.max(0, e.b.total - e.paid))}`;
+    }
+    if (e.kind === 'payment') return `<b>Payment${e.x.cancelled ? ' (cancelled)' : ''}</b><br>Amount Paid : ${inr(e.x.amount ?? 0)}<br>via ${esc(modeLabel(e.x.mode || ''))}`;
+    return `<b>Procedure Performed</b>${e.t.doctor ? `<br>${esc(e.t.doctor)}` : ''}<br>${esc((e.t.name || '').toUpperCase())}${e.t.teeth ? ` · Teeth ${esc(e.t.teeth)}` : ''}${e.t.notes ? `<br><span class="muted">${esc(e.t.notes)}</span>` : ''}`;
+  };
+  const printCase = () => {
+    const chosen = picked.size ? picked : new Set(all);
+    printHtml(`Case sheet · ${p.name}`, `${who}<h3>Case Sheet</h3>${days.map((g) => {
+      const ev = g.events.filter((e) => chosen.has(e.key));
+      return ev.length ? `<p style="margin:14px 0 4px;color:#2f8fa3"><b>${day(g.date)}</b></p>${ev.map((e) => `<div style="border:1px solid #ccc;padding:8px 10px;margin:6px 0">${html(e)}</div>`).join('')}` : '';
+    }).join('')}`);
+  };
+
+  const card = (e) => {
+    const box = (icon, title, body) => (
+      <article className="relative rounded-[3px] border border-[#dcdcdc] bg-white px-4 py-3">
+        <span className="absolute -left-[21px] top-4 w-[9px] h-[9px] rounded-full bg-[#2f8fa3] ring-2 ring-white" aria-hidden="true" />
+        <input type="checkbox" checked={picked.has(e.key)} onChange={() => toggle(e.key)} aria-label="Select for print" className="absolute right-3 top-3" />
+        <p className="flex items-center gap-2 text-[16px] text-[#444]">{icon}{title}</p>
+        <div className="mt-1 grid gap-0.5 text-[13px] text-[#555]">{body}</div>
+      </article>
+    );
+    if (e.kind === 'invoice') {
+      return box(<FiFileText className="text-[#777]" />, <>Invoice{e.b.cancelled && <span className="text-[12px] text-[#999]">(cancelled)</span>}</>, <>
+        <p className="uppercase">{e.b.lines.map((l) => l.treatment).join(' , ')}</p>
+        {e.b.number && <p className="mt-1 font-semibold text-[#333]">{e.b.number}</p>}
+        <p className="font-semibold text-[#333]">Invoice Amount : INR {inr(e.b.total)}</p>
+        <p className="font-semibold text-[#333]">Paid Amount : {e.paid ? `INR ${inr(e.paid)}` : ''}</p>
+        <p className="font-semibold text-[#333]">Due Amount : INR {inr(Math.max(0, e.b.total - e.paid))}</p>
+      </>);
+    }
+    if (e.kind === 'payment') {
+      return box(<FiCreditCard className="text-[#777]" />, <>Payment{e.x.cancelled && <span className="text-[12px] text-[#999]">(cancelled)</span>}</>, <>
+        <p className="font-semibold text-[#333]">Amount Paid : {inr(e.x.amount ?? 0)}</p>
+        <p className="font-semibold text-[#333]">via {modeLabel(e.x.mode || '')}</p>
+      </>);
+    }
+    return box(<FiCheckCircle className="text-[#777]" />, 'Procedure Performed', <>
+      {e.t.doctor && <p className="flex items-center gap-2 text-[13.5px]"><span className="w-[3px] h-3.5 bg-[#e0662b]" />{e.t.doctor}</p>}
+      <p className="uppercase">{e.t.name}{e.t.teeth && <span className="normal-case text-[#777]"> · Teeth {e.t.teeth}</span>}</p>
+      {e.t.notes && <p className="text-[#777]">{e.t.notes}</p>}
+    </>);
+  };
+
   return (
     <>
-      <SectionBar title="Timeline" />
+      <SectionBar title="Timeline">
+        <Button size="sm" disabled={!all.length} onClick={printCase} className="!bg-[#1a73e8] !border-[#1a73e8]">Print Case Sheet</Button>
+      </SectionBar>
       {!days.length ? <EmptyState title="Nothing in the Practo export for this patient." /> : (
-        <div className="relative py-2 pl-8 pr-2">
-          <span className="absolute left-[13px] top-2 bottom-2 w-[3px] rounded bg-[#bcd9de]" aria-hidden="true" />
-          {days.map((g) => (
-            <section key={g.date} className="mb-4">
-              <p className="mb-1.5 text-[13px] font-medium text-[#2f8fa3]">{day(g.date)}</p>
-              <div className="grid gap-2">
-                {g.events.map((e, i) => (
-                  <article key={i} className="rounded-[3px] border border-[#dcdcdc] bg-white px-4 py-2.5 text-[13.5px]">
-                    <p className="flex items-center gap-2 text-[15px] text-[#444]"><e.icon className="text-[#777]" />{e.title}</p>
-                    <p className="uppercase text-[#555]">{e.body}</p>
-                    {e.by && <p className="text-[12.5px] text-[#777]">{e.by}</p>}
-                  </article>
-                ))}
-              </div>
-            </section>
-          ))}
+        <div className="bg-white px-3 py-3">
+          <div className="mb-2 flex justify-between text-[12.5px] text-[#1a9ad6]">
+            <button onClick={() => setPicked(new Set())}>De-select All</button>
+            <button onClick={() => setPicked(new Set(all))}>Select All</button>
+          </div>
+          <div className="relative pl-8">
+            <span className="absolute left-[13px] top-2 bottom-2 w-[3px] rounded bg-[#bcd9de]" aria-hidden="true" />
+            {days.map((g) => {
+              const dt = g.date ? new Date(`${g.date}T00:00:00`) : null;
+              return (
+                <section key={g.date || 'none'} className="mb-6">
+                  <h3 className="mb-2 -ml-1 flex items-end gap-2">
+                    <span className="text-[26px] leading-none font-light text-[#2f8fa3] tabular-nums">{dt ? String(dt.getDate()).padStart(2, '0') : '—'}</span>
+                    {dt && (
+                      <span className="leading-tight">
+                        <span className="block text-[12px] text-[#666]">{dt.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</span>
+                        <span className="block text-[12px] font-medium text-[#444]">{dt.toLocaleDateString('en-IN', { weekday: 'long' })}</span>
+                      </span>
+                    )}
+                  </h3>
+                  <div className="grid gap-2.5">{g.events.map((e) => <div key={e.key}>{card(e)}</div>)}</div>
+                </section>
+              );
+            })}
+          </div>
         </div>
       )}
     </>
@@ -336,6 +485,133 @@ function Profile({ p }) {
         {rows.filter(([, v]) => v != null && v !== '').map(([k, v]) => <div key={k} className="contents"><dt className="text-[#777]">{k}</dt><dd>{String(v)}</dd></div>)}
       </dl>
     </>
+  );
+}
+
+/** Practo's ▾ menu on a row. */
+function RowMenu({ items, joined }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (e) => !ref.current?.contains(e.target) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  return (
+    <span ref={ref} className="relative inline-block">
+      <button onClick={() => setOpen((o) => !o)} aria-label="More actions"
+        className={cx('border border-[#ccc] p-1.5 text-[#444] hover:bg-[#f5f5f5]', joined ? 'rounded-r border-l-0' : 'rounded')}><FiChevronDown /></button>
+      {open && (
+        <span className="absolute right-0 z-20 mt-1 block min-w-[150px] border border-[#ccc] bg-white py-1 text-left shadow-lg">
+          {items.map(([label, fn]) => (
+            <button key={label} onClick={() => { setOpen(false); fn(); }}
+              className={cx('block w-full px-3 py-1.5 text-left text-[13px] font-normal normal-case hover:bg-[#f1f6fa]', /delete/i.test(label) && 'text-[#d93a46]')}>{label}</button>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function useRowActions(reload) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const run = async (fn, done) => {
+    try {
+      await fn();
+      toast(done);
+      reload();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+  return {
+    remove: async (kind, row, what) => {
+      if (await confirm({ title: 'Delete', message: `Delete ${what || 'this record'} from the Practo history? This can't be undone.`, confirmLabel: 'Delete', tone: 'danger' })) {
+        run(() => api.practoDelete(kind, row.id), 'Deleted');
+      }
+    },
+    removeMany: async (kind, rows, what) => {
+      if (await confirm({ title: 'Delete', message: `Delete ${what} (${rows.length} line${rows.length > 1 ? 's' : ''})? This can't be undone.`, confirmLabel: 'Delete', tone: 'danger' })) {
+        run(() => Promise.all(rows.map((r) => api.practoDelete(kind, r.id))), 'Deleted');
+      }
+    },
+    setCancelled: async (kind, rows, cancelled, what) => {
+      if (!cancelled || await confirm({ title: `Cancel ${what}`, message: `Mark this ${what} as cancelled? It stays visible, struck through, and stops counting in totals.`, confirmLabel: 'Cancel it', tone: 'danger' })) {
+        run(() => Promise.all(rows.map((r) => api.practoEdit(kind, r.id, { cancelled }))), cancelled ? 'Cancelled' : 'Restored');
+      }
+    },
+  };
+}
+
+// [field, label, type] per record kind; type: text | number | date | discount
+const FORMS = {
+  treatments: [['date', 'Date', 'date'], ['name', 'Treatment', 'text'], ['doctor', 'Doctor', 'text'], ['teeth', 'Teeth', 'text'], ['qty', 'Quantity', 'number'],
+    ['cost', 'Cost', 'number'], ['discount', 'Discount', 'number'], ['discount_type', 'Discount type', 'discount'], ['notes', 'Notes', 'text']],
+  invoices: [['date', 'Date', 'date'], ['invoice_number', 'Invoice number', 'text'], ['treatment', 'Treatment', 'text'], ['doctor', 'Doctor', 'text'],
+    ['unit_cost', 'Unit cost', 'number'], ['qty', 'Quantity', 'number'], ['discount', 'Discount', 'number'], ['discount_type', 'Discount type', 'discount'], ['notes', 'Notes', 'text']],
+  payments: [['date', 'Date', 'date'], ['amount', 'Amount paid', 'number'], ['mode', 'Mode of payment', 'mode'], ['invoice_number', 'Invoice number', 'text'],
+    ['receipt_number', 'Receipt number', 'text'], ['treatment', 'Towards', 'text'], ['notes', 'Notes', 'text']],
+};
+const TITLES = { treatments: 'Edit procedure', invoices: 'Edit invoice line', payments: 'Edit payment' };
+
+function EditRow({ editing, onClose, onSaved }) {
+  const toast = useToast();
+  const [f, setF] = useState({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (editing) setF({ discount_type: 'PERCENT', ...editing.row }); }, [editing]);
+  if (!editing) return null;
+  const fields = FORMS[editing.kind];
+  const save = async (e) => {
+    e.preventDefault();
+    const body = {};
+    for (const [k, , type] of fields) {
+      const v = f[k] === '' || f[k] == null ? null : f[k];
+      body[k] = type === 'number' && v != null ? Number(v).toFixed(2) : v;
+    }
+    if (editing.kind === 'treatments') {
+      // Practo's Amount = cost × qty − discount
+      const gross = Number(body.cost || 0) * Number(body.qty || 1);
+      const off = body.discount_type === 'NUMBER' ? Number(body.discount || 0) : (gross * Number(body.discount || 0)) / 100;
+      body.amount = Math.max(0, gross - off).toFixed(2);
+    }
+    setBusy(true);
+    try {
+      await api.practoEdit(editing.kind, editing.row.id, body);
+      toast('Saved');
+      onSaved();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal open title={TITLES[editing.kind]} subtitle="Correcting the imported Practo record" onClose={onClose}>
+      <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
+        {fields.map(([k, label, type]) => (
+          <Field key={k} label={label} className={type === 'text' && /notes|treatment|name/.test(k) ? 'sm:col-span-2' : ''}>
+            {type === 'discount' ? (
+              <select value={f[k] || 'PERCENT'} onChange={(e) => setF({ ...f, [k]: e.target.value })} className={inputClass}>
+                <option value="PERCENT">%</option><option value="NUMBER">INR</option>
+              </select>
+            ) : type === 'mode' ? (
+              <select value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} className={inputClass}>
+                {['cash', 'card', 'upi', 'cheque', 'bank', 'unknown'].map((m) => <option key={m} value={m}>{modeLabel(m)}</option>)}
+              </select>
+            ) : (
+              <input type={type === 'number' ? 'number' : type} step="any" min={type === 'number' ? 0 : undefined} value={f[k] ?? ''}
+                onChange={(e) => setF({ ...f, [k]: e.target.value })} className={inputClass} />
+            )}
+          </Field>
+        ))}
+        <div className="sm:col-span-2 flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

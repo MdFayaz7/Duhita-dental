@@ -132,6 +132,8 @@ export const api = {
   practoSummary: () => request('/api/practo/summary'),
   practoPatients: (params = {}) => request(`/api/practo/patients?${new URLSearchParams(params)}`),
   practoPatient: (number) => request(`/api/practo/patients/${encodeURIComponent(number)}`),
+  practoEdit: (kind, id, body) => request(`/api/practo/${kind}/${id}`, { method: 'PATCH', body }),
+  practoDelete: (kind, id) => request(`/api/practo/${kind}/${id}`, { method: 'DELETE' }),
   practoClear: () => request('/api/practo', { method: 'DELETE' }),
   practoImport: (form) => request('/api/practo/import', { method: 'POST', form }),
   patientGroups: () => request('/api/patients/groups'),

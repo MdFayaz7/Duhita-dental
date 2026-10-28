@@ -435,3 +435,45 @@ class BillTreatmentsIn(BaseModel):
 class ShareIn(BaseModel):
     section: Literal["vitals", "notes", "treatments", "prescriptions", "files", "billing"]
     on: bool
+
+
+# ---------- Practo archive edits ----------
+
+PractoMoney = Annotated[Decimal, Field(ge=0, le=Decimal("99999999.99"), max_digits=12, decimal_places=2)]
+
+
+class PractoTreatmentEdit(BaseModel):
+    date: dt.date | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    teeth: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=1000)
+    qty: PractoMoney | None = None
+    cost: PractoMoney | None = None
+    discount: PractoMoney | None = None
+    discount_type: Literal["PERCENT", "NUMBER"] | None = None
+    amount: PractoMoney | None = None
+    doctor: str | None = Field(default=None, max_length=120)
+
+
+class PractoInvoiceLineEdit(BaseModel):
+    date: dt.date | None = None
+    invoice_number: str | None = Field(default=None, max_length=40)
+    treatment: str | None = Field(default=None, min_length=1, max_length=200)
+    unit_cost: PractoMoney | None = None
+    qty: PractoMoney | None = None
+    discount: PractoMoney | None = None
+    discount_type: Literal["PERCENT", "NUMBER"] | None = None
+    doctor: str | None = Field(default=None, max_length=120)
+    cancelled: bool | None = None
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class PractoPaymentEdit(BaseModel):
+    date: dt.date | None = None
+    receipt_number: str | None = Field(default=None, max_length=40)
+    amount: PractoMoney | None = None
+    invoice_number: str | None = Field(default=None, max_length=40)
+    treatment: str | None = Field(default=None, max_length=1000)
+    mode: str | None = Field(default=None, max_length=30)
+    cancelled: bool | None = None
+    notes: str | None = Field(default=None, max_length=1000)
