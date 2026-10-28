@@ -1,0 +1,102 @@
+"""Practo archive: upload the four Practo exports, list Practo patients, and one patient's Practo history."""
+from decimal import Decimal
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from sqlalchemy import and_, exists, func, or_, select
+
+from ..db import SessionDep, contains, serialize
+from ..practo_archive import KINDS, ArchiveError, parse, replace
+from ..security import current_admin
+from ..tables import PractoInvoiceLine, PractoPatient, PractoPayment, PractoTreatment
+
+router = APIRouter(prefix="/api/practo", tags=["practo"], dependencies=[Depends(current_admin)])
+
+MAX_BYTES = 30 * 1024 * 1024
+
+
+@router.post("/import")
+async def import_archive(session: SessionDep, patients: UploadFile | None = File(None), treatments: UploadFile | None = File(None),
+                         invoices: UploadFile | None = File(None), payments: UploadFile | None = File(None)):
+    """Replace the archive tables for whichever files are sent. All are parsed before anything is written."""
+    files = {k: f for k, f in zip(KINDS, (patients, treatments, invoices, payments)) if f is not None}
+    if not files:
+        raise HTTPException(400, "Choose at least one Practo export.")
+    parsed = {}
+    for kind, f in files.items():
+        data = await f.read(MAX_BYTES + 1)
+        if len(data) > MAX_BYTES:
+            raise HTTPException(413, f"{f.filename} is larger than 30 MB.")
+        try:
+            parsed[kind] = parse(kind, f.filename or kind, data)
+        except ArchiveError as e:
+            raise HTTPException(400, str(e))
+        except Exception:
+            raise HTTPException(400, f"{f.filename} could not be read. Upload the .xlsx / .xls file exactly as Practo exported it.")
+    counts = {kind: await replace(session, kind, rows) for kind, rows in parsed.items()}
+    await session.commit()
+    return {"imported": counts}
+
+
+@router.get("/summary")
+async def summary(session: SessionDep):
+    counts = {}
+    for kind, table in (("patients", PractoPatient), ("treatments", PractoTreatment), ("invoices", PractoInvoiceLine), ("payments", PractoPayment)):
+        counts[kind] = await session.scalar(select(func.count()).select_from(table))
+    return counts
+
+
+@router.get("/patients")
+async def list_patients(session: SessionDep, q: str | None = None, limit: int = Query(40, le=200), skip: int = Query(0, ge=0)):
+    stmt = select(PractoPatient, func.count().over().label("total"))
+    if q and q.strip():
+        stmt = stmt.where(or_(contains(PractoPatient.name, q), contains(PractoPatient.mobile, q), PractoPatient.number == q.strip()))
+    rows = (await session.execute(stmt.order_by(func.length(PractoPatient.number).desc(), PractoPatient.number.desc())
+                                  .offset(skip).limit(limit))).all()
+    return {"total": rows[0].total if rows else 0, "items": [_patient(r.PractoPatient) for r in rows]}
+
+
+def _patient(p: PractoPatient) -> dict:
+    out = {c: getattr(p, c) for c in ("number", "name", "mobile", "gender", "age", "dob", "email", "address")}
+    return {**out, "dob": p.dob.isoformat() if p.dob else None, "details": p.data}
+
+
+def _line_total(line: PractoInvoiceLine) -> Decimal:
+    gross = (line.unit_cost or 0) * (line.qty or 1)
+    off = gross * (line.discount or 0) / 100 if (line.discount_type or "PERCENT").upper() == "PERCENT" else (line.discount or 0)
+    return round(gross - off, 2)
+
+
+@router.get("/patients/{number}")
+async def patient_history(number: str, session: SessionDep):
+    """Everything Practo recorded for one patient number — read only."""
+    patient = await session.get(PractoPatient, number)
+    if not patient:
+        raise HTTPException(404, "No Practo patient with that number.")
+
+    # Rows whose patient number is blank or unknown to the patients export are matched by exact name — but only
+    # when exactly one Practo patient has that name, so nothing is ever attached to the wrong person.
+    name = patient.name.strip().lower()
+    unique_name = await session.scalar(
+        select(func.count()).select_from(PractoPatient).where(func.lower(func.trim(PractoPatient.name)) == name)) == 1
+
+    async def rows(table, order):
+        match = table.patient_number == number
+        if unique_name:
+            orphan = or_(table.patient_number.is_(None),
+                         ~exists().where(PractoPatient.number == table.patient_number))
+            match = or_(match, and_(func.lower(func.trim(table.patient_name)) == name, orphan))
+        return (await session.scalars(select(table).where(match).order_by(*order))).all()
+
+    treatments = await rows(PractoTreatment, (PractoTreatment.date.desc(), PractoTreatment.id))
+    lines = await rows(PractoInvoiceLine, (PractoInvoiceLine.date.desc(), PractoInvoiceLine.id))
+    payments = await rows(PractoPayment, (PractoPayment.date.desc(), PractoPayment.id))
+    invoices = [{**serialize(l), "total": _line_total(l)} for l in lines]
+    billed = sum((i["total"] for i in invoices if not i["cancelled"]), Decimal(0))
+    paid = sum((p.amount or 0 for p in payments if not p.cancelled), Decimal(0))
+    return {
+        "patient": _patient(patient),
+        "summary": {"billed": billed, "paid": paid, "due": billed - paid},
+        "treatments": [serialize(t) for t in treatments],
+        "invoices": invoices,
+        "payments": [serialize(p) for p in payments],
+    }

@@ -1,10 +1,10 @@
 """Patient helpers shared by the website/admin routes and the patient app."""
 import datetime as dt
-import secrets
 from zoneinfo import ZoneInfo
 
 from fastapi import File, Form, HTTPException, UploadFile
 from pydantic import ValidationError
+from sqlalchemy import Integer, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,17 +21,22 @@ def today_ist() -> dt.date:
 
 
 async def add_patient(session: AsyncSession, patient: Patient) -> Patient:
-    """Insert a patient with a fresh `DDyymm-nnnn` ID; the unique index settles any collision."""
-    stamp = dt.datetime.now(IST).strftime("%y%m")
-    for _ in range(25):
-        patient.patient_id = f"DD{stamp}-{1000 + secrets.randbelow(9000)}"
-        try:
-            async with session.begin_nested():
-                session.add(patient)
-            return patient
-        except IntegrityError:
-            continue
-    raise HTTPException(500, "Could not allocate a patient ID. Please try again.")
+    """Insert a patient with the next ID `DDC<yymmdd><N>`: the registration date, then a running number N that
+    restarts at 1 every month (DDC2610281 = first patient of October 2026, registered on the 28th)."""
+    now = dt.datetime.now(IST)
+    month = f"DDC{now:%y%m}"
+    # One allocator at a time, so two desks registering together can't get the same N.
+    await session.execute(select(func.pg_advisory_xact_lock(7_340_002)))
+    taken = await session.scalar(
+        select(func.max(func.substr(Patient.patient_id, 10).cast(Integer)))
+        .where(Patient.patient_id.op("~")(f"^{month}[0-9]{{2}}[0-9]+$")))
+    patient.patient_id = f"DDC{now:%y%m%d}{(taken or 0) + 1}"
+    try:
+        async with session.begin_nested():
+            session.add(patient)
+    except IntegrityError:
+        raise HTTPException(409, "That patient ID was just taken. Please try again.")
+    return patient
 
 
 class RecordForm:

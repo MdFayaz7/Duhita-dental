@@ -137,8 +137,8 @@ function AuthPanel() {
 
           {mode === 'signup' && (
             <>
-              <Field label="Patient ID (optional)" hint="On your clinic receipt, like DD2609-1234. Only needed if your number has changed.">
-                <input className="field uppercase tracking-wider" value={form.patientId} onChange={(e) => set({ patientId: e.target.value.toUpperCase() })} placeholder="DD2609-1234" />
+              <Field label="Patient ID (optional)" hint="On your clinic receipt, like DDC2610281. Only needed if your number has changed.">
+                <input className="field uppercase tracking-wider" value={form.patientId} onChange={(e) => set({ patientId: e.target.value.toUpperCase() })} placeholder="DDC2610281" />
               </Field>
               <div className="grid sm:grid-cols-2 gap-5">
                 <Field label="Age (optional)">

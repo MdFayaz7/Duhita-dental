@@ -40,6 +40,7 @@ const AdminBilling = lazy(() => import('./admin/Billing'));
 const AdminSchedule = lazy(() => import('./admin/Schedule'));
 const AdminPatients = lazy(() => import('./admin/Patients'));
 const AdminPatientSection = lazy(() => import('./admin/patient/PatientSection'));
+const AdminPractoRecord = lazy(() => import('./admin/patient/PractoRecord'));
 const AdminSettings = lazy(() => import('./admin/Settings'));
 const AdminDoctors = lazy(() => import('./admin/Doctors'));
 const AdminResearch = lazy(() => import('./admin/Research'));
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="patients/table" element={<AdminPatients />} />
             <Route path="patients/import" element={<AdminImportPatients />} />
             <Route path="patients/all/:section" element={<AdminPatientSection />} />
+            <Route path="patients/practo/:number" element={<AdminPractoRecord />} />
             <Route path="patients/:patientId" element={<AdminPatientSection />} />
             <Route path="patients/:patientId/:section" element={<AdminPatientSection />} />
             <Route path="patients/:patientId/invoices/new" element={<AdminInvoiceEditor />} />

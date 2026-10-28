@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FiUser } from 'react-icons/fi';
 import { api } from '../api';
 import { Button, ErrorNote, Field, Modal, Skeleton, cx, inputClass, useConfirm, useToast } from '../ui';
 import { useLiveEvents } from '../../lib/useLiveEvents';
 import { escapeHtml, printHtml } from './shared';
+import { PractoImport } from './PractoRecord';
 
 const LISTS = [['all', 'All Patients'], ['recently_visited', 'Recently Visited'], ['recent', 'Recently Added']];
 const SMART = [['female', 'All Female Customers'], ['male', 'All Male Customers'], ['female_over_30', 'Female Customers Over 30'], ['female_under_30', 'Female Customers Under 30']];
@@ -12,7 +13,10 @@ const PAGE = 40;
 
 export default function PatientList() {
   const navigate = useNavigate();
-  const [group, setGroup] = useState('recently_visited');
+  const [params] = useSearchParams();
+  const [group, setGroup] = useState(params.get('list') === 'practo' ? 'practo' : 'recently_visited');
+  const practo = group === 'practo';
+  const [practoCount, setPractoCount] = useState(null);
   const [q, setQ] = useState('');
   const [counts, setCounts] = useState(null);
   const [items, setItems] = useState(null);
@@ -22,9 +26,10 @@ export default function PatientList() {
 
   const load = useCallback(async (skip = 0) => {
     try {
-      const params = { limit: PAGE, skip, ...(q.trim() ? { q: q.trim() } : {}), sort: 'newest' };
-      if (!q.trim() && !['all', 'recent'].includes(group)) params.group = group;
-      const res = await api.patients(params);
+      const params = { limit: PAGE, skip, ...(q.trim() ? { q: q.trim() } : {}) };
+      if (!practo) params.sort = 'newest';
+      if (!practo && !q.trim() && !['all', 'recent'].includes(group)) params.group = group;
+      const res = await (practo ? api.practoPatients(params) : api.patients(params));
       setItems((prev) => (skip ? [...(prev || []), ...res.items] : res.items));
       setTotal(res.total);
       setError('');
@@ -32,20 +37,24 @@ export default function PatientList() {
       setError(e.message);
       setItems([]);
     }
-  }, [group, q]);
+  }, [group, q, practo]);
 
   useEffect(() => {
     const t = setTimeout(() => load(0), q ? 300 : 0);
     return () => clearTimeout(t);
   }, [load, q]);
-  const loadCounts = () => api.patientGroups().then(setCounts).catch(() => {});
+  const loadCounts = () => {
+    api.patientGroups().then(setCounts).catch(() => {});
+    api.practoSummary().then((s) => setPractoCount(s.patients)).catch(() => {});
+  };
   useEffect(() => { loadCounts(); }, []);
   useLiveEvents((e) => ['patient_registered', 'patient_deleted', 'patient_updated'].includes(e.type) && (load(0), loadCounts()));
 
   const pick = (g) => { setGroup(g); setQ(''); setItems(null); };
+  const open = (p) => navigate(practo ? `/admin/patients/practo/${p.number}` : `/admin/patients/${p.patient_id}`);
   const groupBtn = (id, label, count) => (
     <button key={id} onClick={() => pick(id)}
-      className={cx('flex w-full items-center justify-between rounded-[2px] px-2.5 py-[6px] text-left text-[13px]', group === id && !q ? 'bg-[#1aa0e0] text-white' : 'text-[#333] hover:bg-black/5')}>
+      className={cx('flex w-full items-center justify-between rounded-[2px] px-2.5 py-[6px] text-left text-[13px]', group === id && (!q || id === 'practo') ? 'bg-[#1aa0e0] text-white' : 'text-[#333] hover:bg-black/5')}>
       {label}{count != null && <span className="rounded-full bg-[#777] px-2 text-[11px] font-medium text-white">{count}</span>}
     </button>
   );
@@ -55,6 +64,7 @@ export default function PatientList() {
       <div className="flex flex-wrap items-center gap-3 border-b border-[#d8d8d8] bg-white px-3 py-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search Patient Name / Id / Phone" className={cx(inputClass, '!h-[32px] w-[260px]')} />
         <span className="ml-auto" />
+        {practo && <Button size="sm" variant="secondary" onClick={() => setModal('practo')}>Import Practo data</Button>}
         <Button size="sm" variant="secondary" onClick={() => setModal('label')}>Print Label</Button>
         <Button size="sm" variant="secondary" onClick={() => setModal('merge')}>Merge Patients</Button>
         <Button size="sm" className="!bg-[#1a73e8] !border-[#1a73e8]" onClick={() => setModal('add')}>Add New Patient</Button>
@@ -65,6 +75,9 @@ export default function PatientList() {
           <div className="mt-1 grid gap-0.5">
             {LISTS.map(([id, label]) => groupBtn(id, label, id === 'all' ? counts?.all : null))}
           </div>
+          <h3 className="px-1 pt-5 text-[22px] font-light text-[#6a8a2f]">Practo</h3>
+          <div className="mt-1 grid gap-0.5">{groupBtn('practo', 'Practo Patients', practoCount)}</div>
+          <p className="px-1 pt-1 text-[11.5px] text-[#888]">History exported from Practo, kept separate under Practo’s own patient numbers.</p>
           <h3 className="px-1 pt-5 text-[22px] font-light text-[#6a8a2f]">Groups</h3>
           <p className="px-1 pt-2 text-[11.5px] text-[#6a8a2f]">Smart Groups</p>
           <div className="mt-1 grid gap-0.5">{SMART.map(([id, label]) => groupBtn(id, label, counts?.[id]))}</div>
@@ -75,19 +88,22 @@ export default function PatientList() {
           {!items ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[80px]" />)}</div>
           ) : !items.length ? (
-            <p className="p-6 text-center text-[14px] text-[#777]">No patients here{q ? ` for “${q}”` : ''}.</p>
+            <p className="p-6 text-center text-[14px] text-[#777]">
+              No patients here{q ? ` for “${q}”` : ''}.
+              {practo && !q && <><br /><button onClick={() => setModal('practo')} className="mt-2 text-[#1a9ad6] underline">Import the Practo exports</button></>}
+            </p>
           ) : (
             <>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {items.map((p) => (
-                  <button key={p.patient_id} onClick={() => navigate(`/admin/patients/${p.patient_id}`)}
+                  <button key={p.patient_id || `p${p.number}`} onClick={() => open(p)}
                     className="flex min-w-0 border border-[#d5d5d5] bg-white text-left hover:border-[#1a9ad6] hover:shadow-sm">
                     <span className="grid w-[78px] shrink-0 place-items-center bg-gradient-to-b from-[#c9c9c9] to-[#9a9a9a] text-white"><FiUser className="w-10 h-10" /></span>
                     <span className="min-w-0 px-2 py-1.5 text-[12.5px] leading-[1.45] text-[#333]">
                       <span className="block truncate text-[13px] font-semibold uppercase">{p.name}</span>
-                      <span className="block">{p.sex || ' '}</span>
-                      <span className="block">{p.phone ? `+91${p.phone}` : ' '}</span>
-                      <span className="block"># {p.patient_id}{p.family_size > 1 && <span className="ml-1 text-[#1a9ad6]">· family {p.family_size}</span>}</span>
+                      <span className="block">{(p.sex ?? p.gender) || '\u00a0'}</span>
+                      <span className="block">{(p.phone ?? p.mobile) ? `+91${p.phone ?? p.mobile}` : '\u00a0'}</span>
+                      <span className="block">{practo ? `Practo # ${p.number}` : <># {p.patient_id}{p.family_size > 1 && <span className="ml-1 text-[#1a9ad6]">· family {p.family_size}</span>}</>}</span>
                     </span>
                   </button>
                 ))}
@@ -102,6 +118,7 @@ export default function PatientList() {
       <AddPatient open={modal === 'add'} onClose={() => setModal(null)} onSaved={(id) => navigate(`/admin/patients/${id}`)} />
       <MergePatients open={modal === 'merge'} onClose={() => setModal(null)} onDone={() => { setModal(null); load(0); loadCounts(); }} />
       <PrintLabel open={modal === 'label'} onClose={() => setModal(null)} />
+      <PractoImport open={modal === 'practo'} onClose={() => setModal(null)} onDone={() => { setModal(null); pick('practo'); loadCounts(); }} />
     </>
   );
 }

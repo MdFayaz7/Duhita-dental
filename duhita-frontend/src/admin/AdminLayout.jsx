@@ -43,9 +43,13 @@ export default function AdminLayout() {
   const [user, setUser] = useState('');
   const [open, setOpen] = useState(false);
 
+  // Draw nothing until the session is confirmed, so a signed-out visit goes straight to the login page.
   useEffect(() => {
     if (!getToken()) return navigate('/admin/login', { replace: true });
-    api.me().then((u) => setUser(u.username)).catch(() => {});
+    api.me().then((u) => setUser(u.username)).catch(() => {
+      setToken(null);
+      navigate('/admin/login', { replace: true });
+    });
   }, [navigate]);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -100,6 +104,8 @@ export default function AdminLayout() {
     const q = new FormData(e.currentTarget).get('q')?.toString().trim();
     navigate(q ? `/admin/patients?q=${encodeURIComponent(q)}` : '/admin/patients');
   };
+
+  if (!user) return null;
 
   return (
     <AdminProviders>

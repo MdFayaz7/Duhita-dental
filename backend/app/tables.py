@@ -425,3 +425,74 @@ class EmrTerm(Base):
     name: Mapped[str] = mapped_column(Text)
     data: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), default=dict)
     created_at: Mapped[dt.datetime] = created()
+
+
+# ---------------------------------------------------------------- Practo archive
+# The clinic's history exported from Practo, kept apart from the live tables and keyed by Practo's own patient number.
+# Re-importing a file replaces that table's contents (see app/practo_archive.py).
+
+class PractoPatient(Base):
+    __tablename__ = "practo_patients"
+    number: Mapped[str] = mapped_column(Text, primary_key=True)  # Practo "Patient Number"
+    name: Mapped[str] = mapped_column(Text)
+    mobile: Mapped[str | None] = mapped_column(Text, index=True)
+    gender: Mapped[str | None] = mapped_column(Text)
+    age: Mapped[int | None] = mapped_column(SmallInteger)
+    dob: Mapped[dt.date | None] = mapped_column(Date)
+    email: Mapped[str | None] = mapped_column(Text)
+    address: Mapped[str | None] = mapped_column(Text)
+    data: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), default=dict)  # every other column
+
+
+def practo_number() -> Mapped[str | None]:
+    return mapped_column(Text, index=True)
+
+
+class PractoTreatment(Base):
+    __tablename__ = "practo_treatments"
+    id: Mapped[int] = pk()
+    patient_number: Mapped[str | None] = practo_number()
+    patient_name: Mapped[str | None] = mapped_column(Text)
+    date: Mapped[dt.date | None] = mapped_column(Date)
+    name: Mapped[str] = mapped_column(Text)
+    teeth: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    qty: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    discount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    discount_type: Mapped[str | None] = mapped_column(Text)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    doctor: Mapped[str | None] = mapped_column(Text)
+
+
+class PractoInvoiceLine(Base):
+    __tablename__ = "practo_invoice_lines"
+    id: Mapped[int] = pk()
+    patient_number: Mapped[str | None] = practo_number()
+    patient_name: Mapped[str | None] = mapped_column(Text)
+    date: Mapped[dt.date | None] = mapped_column(Date)
+    doctor: Mapped[str | None] = mapped_column(Text)
+    invoice_number: Mapped[str | None] = mapped_column(Text)
+    treatment: Mapped[str | None] = mapped_column(Text)
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    qty: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    discount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    discount_type: Mapped[str | None] = mapped_column(Text)
+    tax_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    cancelled: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), default=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class PractoPayment(Base):
+    __tablename__ = "practo_payments"
+    id: Mapped[int] = pk()
+    patient_number: Mapped[str | None] = practo_number()
+    patient_name: Mapped[str | None] = mapped_column(Text)
+    date: Mapped[dt.date | None] = mapped_column(Date)
+    receipt_number: Mapped[str | None] = mapped_column(Text)
+    treatment: Mapped[str | None] = mapped_column(Text)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    invoice_number: Mapped[str | None] = mapped_column(Text)
+    mode: Mapped[str | None] = mapped_column(Text)
+    cancelled: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), default=False)
+    notes: Mapped[str | None] = mapped_column(Text)

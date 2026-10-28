@@ -27,7 +27,7 @@ async def test_patient_lifecycle(admin, wa):
     res = await admin.post("/api/patients", json=PATIENT)
     assert res.status_code == 201
     pid = res.json()["patient_id"]
-    assert pid.startswith("DD") and len(pid) == 11
+    assert pid.startswith("DDC") and len(pid) >= 10
 
     assert (await admin.get(f"/api/patients/lookup/{pid.lower()}")).json() == {
         "patient_id": pid, "name": "Sita Devi", "phone": "9123456780"}

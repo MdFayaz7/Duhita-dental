@@ -12,7 +12,7 @@ import { bookAppointmentApi, clinicHoursApi, lookupPatientApi } from '../lib/pub
 import { site } from '../data/site';
 
 const DAYS_AHEAD = 21;
-const ID_PATTERN = /^DD\d{4}-\d{4}$/;
+const ID_PATTERN = /^(DD\d{4}-\d{4}|DDC\d{7,})$/; // new DDCyymmddN, older DDyymm-nnnn
 
 const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -42,7 +42,7 @@ const slotPassed = (iso, slot) => {
 
 function validate(f) {
   const e = {};
-  if (!ID_PATTERN.test(f.patientId)) e.patientId = 'Enter your Patient ID, e.g. DD2609-1234.';
+  if (!ID_PATTERN.test(f.patientId)) e.patientId = 'Enter your Patient ID, e.g. DDC2610281.';
   if (f.name.trim().length < 2) e.name = 'Please enter the patient’s name.';
   if (!/^[6-9]\d{9}$/.test(f.phone)) e.phone = 'Enter a valid 10-digit mobile number.';
   if (!f.date) e.date = 'Please choose a date.';
@@ -194,7 +194,7 @@ export default function BookAppointment() {
                     <Field label="Patient ID" required error={errors.patientId}
                       hint={found ? `Welcome back, ${found.name}. Your details have been filled in.` : 'You receive this after registering. New patient? Switch to “New to Duhita”.'}>
                       <input className={`field uppercase tracking-wider ${invalid(errors.patientId)}`} value={form.patientId} onChange={onIdChange}
-                        placeholder="DD2609-1234" aria-invalid={!!errors.patientId} />
+                        placeholder="DDC2610281" aria-invalid={!!errors.patientId} />
                     </Field>
                     <div className="grid sm:grid-cols-2 gap-5">
                       <Field label="Patient name" required error={errors.name}>

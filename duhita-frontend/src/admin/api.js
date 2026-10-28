@@ -129,6 +129,10 @@ export const api = {
   patientBilling: (patientId) => request(`/api/patients/${patientId}/billing`),
   patientTimeline: (patientId) => request(`/api/patients/${patientId}/timeline`),
 
+  practoSummary: () => request('/api/practo/summary'),
+  practoPatients: (params = {}) => request(`/api/practo/patients?${new URLSearchParams(params)}`),
+  practoPatient: (number) => request(`/api/practo/patients/${encodeURIComponent(number)}`),
+  practoImport: (form) => request('/api/practo/import', { method: 'POST', form }),
   patientGroups: () => request('/api/patients/groups'),
   addPatient: (body) => request('/api/patients', { method: 'POST', body, auth: false }),
   updatePatient: (patientId, body) => request(`/api/patients/${patientId}`, { method: 'PATCH', body }),

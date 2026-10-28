@@ -260,7 +260,7 @@ function EntryModal({ entry, date, onClose, onSaved }) {
         </div>
         <Field label="Patient name"><input required value={form.patient_name} onChange={set('patient_name')} className={inputClass} /></Field>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Patient ID"><input value={form.patient_id || ''} onChange={set('patient_id')} placeholder="DD2609-1234" className={inputClass} /></Field>
+          <Field label="Patient ID"><input value={form.patient_id || ''} onChange={set('patient_id')} placeholder="DDC2610281" className={inputClass} /></Field>
           <Field label="Doctor"><input value={form.doctor || ''} onChange={set('doctor')} className={inputClass} /></Field>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">

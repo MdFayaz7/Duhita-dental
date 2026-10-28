@@ -85,6 +85,17 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
   (`/api/app/me/health`, "From the clinic" on the Profile screen). Only that patient's own entries are ever returned —
   family members on the same mobile number never see each other's records or bookings.
 
+## Practo archive
+
+- Practo's four exports (patients, treatments, invoices, payments) live in separate `practo_*` tables keyed by Practo's own
+  patient number, apart from the live patients. Upload them at Patients → Practo Patients → "Import Practo data"
+  (`POST /api/practo/import`, `app/practo_archive.py`); each file replaces its table, so re-uploading is safe.
+  `/admin/patients/practo/<number>` shows that patient's Practo history (read only). Rows with a blank/unknown patient
+  number are matched by exact name only when exactly one Practo patient has that name.
+- The exports are real patient data: keep them in `practo-data/` (gitignored), never commit, paste or send them.
+- New patient IDs are `DDC<yymmdd><N>`, N restarting at 1 each month (`add_patient` in `patients_service.py`); older
+  `DDyymm-nnnn` IDs stay valid.
+
 ## Billing
 
 - Tables `procedures` (fee list), `invoices` + `invoice_items`, `payments` — money is NUMERIC(12,2)/Decimal throughout.

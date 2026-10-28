@@ -171,12 +171,12 @@ export default function AuthScreen({ onDone }: { onDone?: () => void }) {
             <>
               <Field
                 label="Patient ID (optional)"
-                hint="On your clinic receipt, like DD2609-1234. Only needed if your number has changed."
+                hint="On your clinic receipt, like DDC2610281. Only needed if your number has changed."
               >
                 <Input
                   value={form.patientId}
                   onChangeText={(v) => set({ patientId: v.toUpperCase() })}
-                  placeholder="DD2609-1234"
+                  placeholder="DDC2610281"
                   autoCapitalize="characters"
                 />
               </Field>

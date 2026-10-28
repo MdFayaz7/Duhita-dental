@@ -31,3 +31,6 @@ patient-app/ios/
 
 # ---- local tooling ----
 .claude/
+
+# Practo exports: real patient data, never commit
+practo-data/
