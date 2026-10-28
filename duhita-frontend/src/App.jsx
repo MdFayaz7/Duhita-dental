@@ -70,6 +70,7 @@ export default function App() {
             <Route path="patients/import" element={<AdminImportPatients />} />
             <Route path="patients/all/:section" element={<AdminPatientSection />} />
             <Route path="patients/practo/:number" element={<AdminPractoRecord />} />
+            <Route path="patients/practo/:number/:section" element={<AdminPractoRecord />} />
             <Route path="patients/:patientId" element={<AdminPatientSection />} />
             <Route path="patients/:patientId/:section" element={<AdminPatientSection />} />
             <Route path="patients/:patientId/invoices/new" element={<AdminInvoiceEditor />} />
