@@ -67,3 +67,9 @@ async def test_raw_practo_csv_with_messy_rows(admin):
     assert meena["patient"]["mobile"] == "9876500000" and meena["patient"]["age"] == 40 and meena["patient"]["name"] == "Meena"
     assert sorted(t["name"] for t in meena["treatments"]) == ["Filling", "Scaling"]  # bad number → matched by unique name
     assert [t["name"] for t in (await admin.get("/api/practo/patients/8")).json()["treatments"]] == ["Extraction"]
+
+
+async def test_clear_archive(admin):
+    await admin.post("/api/practo/import", files={"patients": ("p.csv", b"Patient Number,Patient Name\n1,A\n")})
+    assert (await admin.delete("/api/practo")).json() == {"ok": True}
+    assert (await admin.get("/api/practo/summary")).json()["patients"] == 0

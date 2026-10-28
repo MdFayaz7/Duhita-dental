@@ -2,7 +2,7 @@
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy import and_, exists, func, or_, select, text
 
 from ..db import SessionDep, contains, serialize
 from ..practo_archive import KINDS, ArchiveError, parse, refresh_stats, replace
@@ -36,6 +36,14 @@ async def import_archive(session: SessionDep, patients: UploadFile | None = File
     await refresh_stats(session)
     await session.commit()
     return {"imported": counts}
+
+
+@router.delete("")
+async def clear_archive(session: SessionDep):
+    """Empty the whole Practo archive (patients, treatments, invoices, payments). Live clinic data is untouched."""
+    await session.execute(text("TRUNCATE practo_patients, practo_treatments, practo_invoice_lines, practo_payments"))
+    await session.commit()
+    return {"ok": True}
 
 
 @router.get("/summary")

@@ -14,6 +14,8 @@ const PAGE = 40;
 
 export default function PatientList() {
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [params] = useSearchParams();
   const [group, setGroup] = useState(params.get('list') === 'practo' ? 'practo' : 'recently_visited');
   const practo = group === 'practo';
@@ -52,6 +54,22 @@ export default function PatientList() {
   useEffect(() => { loadCounts(); }, []);
   useLiveEvents((e) => ['patient_registered', 'patient_deleted', 'patient_updated'].includes(e.type) && (load(0), loadCounts()));
 
+  const clearPracto = async () => {
+    const ok = await confirm({
+      title: 'Delete all Practo data',
+      message: `This removes all ${practoCount} Practo patients and their imported treatments, invoices and payments. Your clinic's own patients, appointments and bills are not touched. This can't be undone.`,
+      confirmLabel: 'Delete Practo data', tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await api.practoClear();
+      toast('Practo data deleted');
+      setItems([]);
+      loadCounts();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
   const pick = (g) => { setGroup(g); setQ(''); setItems(null); };
   const open = (p) => navigate(practo ? `/admin/patients/practo/${p.number}` : `/admin/patients/${p.patient_id}`);
   const groupBtn = (id, label, count) => (
@@ -67,6 +85,7 @@ export default function PatientList() {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search Patient Name / Id / Phone" className={cx(inputClass, '!h-[32px] w-[260px]')} />
         <span className="ml-auto" />
         {practo && <Button size="sm" variant="secondary" onClick={() => setModal('practo')}>Import Practo data</Button>}
+        {practo && practoCount > 0 && <Button size="sm" variant="danger" onClick={clearPracto}>Delete Practo data</Button>}
         <Button size="sm" variant="secondary" onClick={() => setModal('label')}>Print Label</Button>
         <Button size="sm" variant="secondary" onClick={() => setModal('merge')}>Merge Patients</Button>
         <Button size="sm" className="!bg-[#1a73e8] !border-[#1a73e8]" onClick={() => setModal('add')}>Add New Patient</Button>
