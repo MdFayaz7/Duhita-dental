@@ -273,6 +273,22 @@ async def delete_payment(payment_id: int, session: SessionDep):
     return {"ok": True}
 
 
+@router.get("/api/payments")
+async def list_payments(session: SessionDep, date_from: dt.date | None = None, date_to: dt.date | None = None,
+                        limit: int = Query(30, le=200), skip: int = Query(0, ge=0)):
+    """Payments across all patients, newest first, with the patient's name and the bill number."""
+    stmt = (select(Payment, Patient.name.label("patient_name"), Invoice.number.label("invoice_number"))
+            .join(Patient, Patient.patient_id == Payment.patient_id, isouter=True)
+            .join(Invoice, Invoice.id == Payment.invoice_id, isouter=True))
+    if date_from:
+        stmt = stmt.where(Payment.date >= date_from)
+    if date_to:
+        stmt = stmt.where(Payment.date <= date_to)
+    rows = (await session.execute(stmt.order_by(Payment.date.desc(), Payment.id.desc()).offset(skip).limit(limit + 1))).all()
+    return {"items": [{**serialize(r.Payment), "patient_name": r.patient_name, "invoice_number": r.invoice_number}
+                      for r in rows[:limit]], "more": len(rows) > limit}
+
+
 # ---------------------------------------------------------------- patient billing & timeline
 
 @router.get("/api/patients/{patient_id}/billing")

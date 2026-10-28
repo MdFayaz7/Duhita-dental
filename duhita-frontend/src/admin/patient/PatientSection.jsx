@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate, useParams } from 'react-router-dom';
+import { Link, NavLink, useParams } from 'react-router-dom';
 import {
   FiActivity, FiCalendar, FiCheckCircle, FiChevronsLeft, FiChevronsRight, FiClipboard, FiClock, FiCreditCard, FiDollarSign,
   FiFileText, FiImage, FiList, FiMessageSquare, FiUser, FiUsers,
@@ -21,6 +21,9 @@ const Files = lazy(() => import('./Files'));
 const Prescriptions = lazy(() => import('./Prescriptions'));
 const Ledger = lazy(() => import('./Ledger'));
 const PastBills = lazy(() => import('./Ledger').then((m) => ({ default: m.PastBills })));
+const AllAppointments = lazy(() => import('./AllLists'));
+const AllInvoices = lazy(() => import('./AllLists').then((m) => ({ default: m.AllInvoices })));
+const AllPayments = lazy(() => import('./AllLists').then((m) => ({ default: m.AllPayments })));
 
 // [heading, [slug, label, icon, works for all patients]]
 const NAV = [
@@ -34,6 +37,12 @@ const NAV = [
 ];
 
 function render(section, pid) {
+  if (!pid) {
+    // Sections that are lists across every patient when no patient is open.
+    if (section === 'appointments') return <AllAppointments />;
+    if (section === 'invoices') return <AllInvoices />;
+    if (section === 'payments') return <AllPayments />;
+  }
   switch (section) {
     case 'profile': return <Profile />;
     case 'appointments': return <Appointments />;
@@ -54,7 +63,6 @@ function render(section, pid) {
 /** Practo's Patients area: groups + cards, and every section of one patient's record behind a left menu. */
 export default function PatientSection() {
   const { patientId, section: sectionParam } = useParams();
-  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [doctors, setDoctors] = useState({});
   const [patient, setPatient] = useState(null);
@@ -72,16 +80,8 @@ export default function PatientSection() {
   useEffect(() => { setPatient(null); reload(); }, [reload]);
   useLiveEvents((e) => patientId && ['patient_updated', 'appointment_updated', 'record_updated'].includes(e.type) && reload());
 
-  // Billing lists across all patients already live on the Billing page; appointments on the calendar.
-  useEffect(() => {
-    if (!patientId && section === 'invoices') navigate('/admin/billing', { replace: true });
-    if (!patientId && section === 'payments') navigate('/admin/billing', { replace: true });
-    if (!patientId && section === 'appointments') navigate('/admin/appointments/list', { replace: true });
-    if (!patientId && section === 'profile') navigate('/admin/patients', { replace: true });
-  }, [patientId, section, navigate]);
-
   const p = patient?.patient;
-  const href = (slug) => (patientId ? `/admin/patients/${patientId}/${slug}` : `/admin/patients/all/${slug}`);
+  const href = (slug) => (patientId ? `/admin/patients/${patientId}/${slug}` : slug === 'profile' ? '/admin/patients' : `/admin/patients/all/${slug}`);
 
   return (
     <PatientCtx.Provider value={{ doctors, patient, reload }}>
@@ -112,7 +112,7 @@ export default function PatientSection() {
                   return enabled ? (
                     <NavLink key={slug} to={href(slug)} title={label}
                       className={() => cx('flex items-center gap-3 px-3 py-[7px] text-[13.5px]',
-                        section === slug ? 'bg-[#1a7fb5] text-white font-medium' : 'text-[#333] hover:bg-[#f1f6fa]')}>
+                        (section || 'profile') === slug ? 'bg-[#1a7fb5] text-white font-medium' : 'text-[#333] hover:bg-[#f1f6fa]')}>
                       <Icon className="w-4 h-4 shrink-0" /><span className={cx('truncate', collapsed ? 'hidden' : 'hidden md:inline')}>{label}</span>
                     </NavLink>
                   ) : (
@@ -126,7 +126,7 @@ export default function PatientSection() {
           </nav>
           <main className="min-w-0 flex-1 bg-[#e9e9e9]">
             <ErrorNote>{error}</ErrorNote>
-            {!section ? <PatientList /> : patientId && !patient ? <Skeleton className="m-4 h-60" /> : (
+            {!section || (!patientId && section === 'profile') ? <PatientList /> : patientId && !patient ? <Skeleton className="m-4 h-60" /> : (
               <Suspense fallback={<Skeleton className="m-4 h-60" />}>{render(section, patientId)}</Suspense>
             )}
           </main>

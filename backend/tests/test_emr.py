@@ -55,3 +55,11 @@ async def test_sharing_reaches_only_the_patients_own_app(admin, client):
 
     assert (await admin.put(f"/api/patients/{pid}/share", json={"section": "prescriptions", "on": False})).json()["prescriptions"] is False
     assert "prescriptions" not in (await client.get("/api/app/me/health", headers=headers)).json()
+
+
+async def test_payments_across_patients(admin):
+    pid, doc, _ = await setup(admin)
+    inv = (await admin.post("/api/invoices", json={"patient_id": pid, "date": "2026-10-25", "items": [{"name": "X", "unit_cost": "500", "date": "2026-10-25"}]})).json()
+    await admin.post(f"/api/invoices/{inv['id']}/payments", json={"amount": "200", "date": "2026-10-26"})
+    res = (await admin.get("/api/payments?date_from=2026-10-01")).json()
+    assert res["items"][0]["patient_name"] and res["items"][0]["invoice_number"] == inv["number"] and not res["more"]

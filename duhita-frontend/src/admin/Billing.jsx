@@ -24,7 +24,7 @@ export default function Billing() {
   );
 }
 
-function Invoices() {
+export function Invoices() {
   const navigate = useNavigate();
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(todayIso());

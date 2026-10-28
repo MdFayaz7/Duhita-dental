@@ -124,6 +124,7 @@ export const api = {
   cancelInvoice: (id) => request(`/api/invoices/${id}/cancel`, { method: 'POST' }),
   deleteInvoice: (id) => request(`/api/invoices/${id}`, { method: 'DELETE' }),
   addPayment: (invoiceId, body) => request(`/api/invoices/${invoiceId}/payments`, { method: 'POST', body }),
+  payments: (params = {}) => request(`/api/payments?${new URLSearchParams(params)}`),
   deletePayment: (id) => request(`/api/payments/${id}`, { method: 'DELETE' }),
   patientBilling: (patientId) => request(`/api/patients/${patientId}/billing`),
   patientTimeline: (patientId) => request(`/api/patients/${patientId}/timeline`),
