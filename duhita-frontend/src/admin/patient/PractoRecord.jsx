@@ -26,7 +26,7 @@ export default function PractoRecord() {
         <span className="w-[30px] h-[30px] grid place-items-center bg-[#d5d5d5] text-white"><FiUser /></span>
         <span className="uppercase text-[#1a5fa0]">{p.name}</span>
         <span className="text-[#1a5fa0]">{[p.gender, p.age != null && `${p.age} Years`].filter(Boolean).join(', ')}</span>
-        <span className="text-[#1a5fa0]">(Practo # {p.number})</span>
+        <span className="text-[#1a5fa0]">{p.number.startsWith('NA-') ? '(no Practo number)' : `(Practo # ${p.number})`}</span>
         {p.mobile && <span className="text-[#777]">+91 {p.mobile}</span>}
         <span className="ml-auto flex gap-5">
           <Money label="Billed" v={d.summary.billed} /><Money label="Paid" v={d.summary.paid} tone="text-[#137a1e]" />

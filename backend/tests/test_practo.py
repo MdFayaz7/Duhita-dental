@@ -73,3 +73,16 @@ async def test_clear_archive(admin):
     await admin.post("/api/practo/import", files={"patients": ("p.csv", b"Patient Number,Patient Name\n1,A\n")})
     assert (await admin.delete("/api/practo")).json() == {"ok": True}
     assert (await admin.get("/api/practo/summary")).json()["patients"] == 0
+
+
+async def test_raw_practo_csv_dmdc_ids_and_quoted_values(admin):
+    patients = "Patient Number,Patient Name,Mobile Number\n'DMDC 0042','Lata','9876511111'\n,'No Number Person',\n"
+    payments = ("Date,Patient Number,Patient Name,Amount Paid,Payment Mode,Cancelled\n"
+                "'2023-05-01','DMDC42','Lata','700','cash',\n"
+                "'2023-05-02','DMDC 42 01/05/2023','Lata','300','card',\n")
+    res = await admin.post("/api/practo/import", files={"patients": ("Patients.csv", patients.encode()), "payments": ("Payments.csv", payments.encode())})
+    assert res.json()["imported"] == {"patients": 2, "payments": 2}
+    h = (await admin.get("/api/practo/patients/42")).json()
+    assert h["patient"]["name"] == "Lata" and float(h["summary"]["paid"]) == 1000 and h["payments"][0]["date"] == "2023-05-02"
+    numbers = {p["number"] for p in (await admin.get("/api/practo/patients")).json()["items"]}
+    assert numbers == {"42", "NA-2"}

@@ -31,8 +31,9 @@ def _rows(filename: str, data: bytes) -> tuple[list[str], list[tuple]]:
                 break
             except UnicodeDecodeError:
                 continue
-        dialect = csv.Sniffer().sniff(text_[:4096], delimiters=",;\t") if text_.strip() else csv.excel
-        rows = [tuple(r) for r in csv.reader(io.StringIO(text_), dialect)]
+        first = text_.split("\n", 1)[0]
+        delimiter = max(",;\t", key=first.count)  # whichever separator the header line uses most
+        rows = [tuple(r) for r in csv.reader(io.StringIO(text_), delimiter=delimiter)]
     elif filename.lower().endswith(".xls"):
         sheet = xlrd.open_workbook(file_contents=data).sheet_by_index(0)
         rows = [tuple(sheet.row_values(i)) for i in range(sheet.nrows)]
@@ -52,17 +53,24 @@ def _text(v) -> str | None:
     if isinstance(v, float) and v.is_integer():
         v = int(v)
     s = str(v).strip()
+    if len(s) >= 2 and s[0] == s[-1] == "'":  # Practo's CSV wraps values as 'text' so Excel keeps them as text
+        s = s[1:-1].strip()
     return s or None
 
 
 def _number(v) -> str | None:
-    """Practo patient number → digits as text (1234.0 / "1234" / " 1234 " all become "1234").
+    """Practo patient number → just the number: "'DMDC 1234'", "DMDC1234", 1234.0 and " 1234 " all become "1234".
 
-    Practo sometimes writes a date or a date-time where the number should be; those count as "no number"."""
-    s = _text(v)
-    if s is None or isinstance(v, (dt.date, dt.datetime)) or re.search(r"\d{1,4}[/-]\d{1,2}[/-]\d{1,4}", s):
+    Practo sometimes appends a date ("DMDC 1234 12/03/2020") — the number is kept — or writes only a date
+    ("DMDC12/03/2020"), which counts as no number."""
+    if isinstance(v, (dt.date, dt.datetime)):
         return None
-    return str(int(float(s))) if re.fullmatch(r"\d+(\.0+)?", s) else s.upper()
+    s = (_text(v) or "").strip("'\" ").upper()
+    s = re.sub(r"^DMDC\s*", "", s)
+    m = re.match(r"(\d+)(?:\.0+)?(?:\s+\d{1,4}[/-]\d{1,2}[/-]\d{1,4}.*)?$", s)
+    if m:
+        return str(int(m.group(1)))
+    return None if not s or re.search(r"\d{1,4}[/-]\d{1,2}[/-]\d{1,4}", s) else s
 
 
 def _dec(v) -> Decimal | None:
@@ -114,9 +122,8 @@ def parse(kind: str, filename: str, data: bytes) -> list[dict]:
     for r in rows:
         g = lambda name: get(r, name)  # noqa: E731
         if kind == "patients":
-            number = _number(g("Patient Number"))
-            if not number:
-                continue
+            # Patients Practo exported without a number are kept under a placeholder key ("NA-…"), shown as "no number".
+            number = _number(g("Patient Number")) or f"NA-{len(out) + 1}"
             out.append({
                 "number": number, "name": _text(g("Patient Name")) or "(no name)", "mobile": _phone(g("Mobile Number")),
                 "gender": _text(g("Gender")), "age": _age(g("Age")), "dob": _date(g("Date of Birth")),

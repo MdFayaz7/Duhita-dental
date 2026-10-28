@@ -126,7 +126,7 @@ export default function PatientList() {
                       <span className="block truncate text-[13px] font-semibold uppercase">{p.name}</span>
                       <span className="block">{(p.sex ?? p.gender) || '\u00a0'}</span>
                       <span className="block">{(p.phone ?? p.mobile) ? `+91${p.phone ?? p.mobile}` : '\u00a0'}</span>
-                      <span className="block">{practo ? <>Practo # {p.number}<span className={cx('block', p.records ? 'text-[#1a9ad6]' : 'text-[#aaa]')}>{p.records ? `${p.records} records · ${longDate(p.last_visit)}` : 'No history in export'}</span></> : <># {p.patient_id}{p.family_size > 1 && <span className="ml-1 text-[#1a9ad6]">· family {p.family_size}</span>}</>}</span>
+                      <span className="block">{practo ? <>{p.number.startsWith('NA-') ? 'No Practo number' : `Practo # ${p.number}`}<span className={cx('block', p.records ? 'text-[#1a9ad6]' : 'text-[#aaa]')}>{p.records ? `${p.records} records · ${longDate(p.last_visit)}` : 'No history in export'}</span></> : <># {p.patient_id}{p.family_size > 1 && <span className="ml-1 text-[#1a9ad6]">· family {p.family_size}</span>}</>}</span>
                     </span>
                   </button>
                 ))}
