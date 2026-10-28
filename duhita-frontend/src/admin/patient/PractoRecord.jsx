@@ -247,25 +247,40 @@ function Invoices({ d, who, invoiceBills, act }) {
 }
 
 const towards = (t) => (t || '').split(/\s*,\s*/).filter(Boolean);
+
+/** Practo exports one payment row per treatment; rows of the same date, invoice, receipt, mode and status are one receipt. */
+function receipts(payments) {
+  const out = new Map();
+  for (const x of payments) {
+    const key = [x.date, x.invoice_number || '', x.receipt_number || '', x.mode || '', x.cancelled ? 1 : 0].join('|');
+    if (!out.has(key)) out.set(key, { key, id: x.id, date: x.date, invoice_number: x.invoice_number, receipt_number: x.receipt_number, mode: x.mode, cancelled: x.cancelled, amount: 0, lines: [], notes: [] });
+    const r = out.get(key);
+    r.amount += Number(x.amount || 0);
+    r.lines.push(x);
+    if (x.notes) r.notes.push(x.notes);
+  }
+  return [...out.values()];
+}
 const paidOn = (d, number) => d.payments.filter((x) => !x.cancelled && number && x.invoice_number === number).reduce((s, x) => s + Number(x.amount || 0), 0);
 
 function Payments({ d, who, act }) {
-  const receipt = (x) => printHtml(`Receipt · ${d.patient.name}`, `${who}<h3>Payment Receipt${x.cancelled ? ' (CANCELLED)' : ''}</h3>
-    <p>Date: ${day(x.date)}${x.receipt_number ? ` · Receipt No. ${esc(x.receipt_number)}` : ''}</p>
-    <table><tr><th>Amount Paid INR</th><th>Invoice</th><th>Towards</th><th>Mode of Payment</th></tr>
-    <tr><td><b>${inr(x.amount ?? 0)}</b></td><td>${esc(x.invoice_number || '—')}</td><td>${towards(x.treatment).map((t) => esc(t.toUpperCase())).join('<br>')}</td><td>${esc(modeLabel(x.mode || ''))}</td></tr></table>
-    ${x.notes ? `<p>${esc(x.notes)}</p>` : ''}<p style="margin-top:40px;text-align:right">Received with thanks</p>`);
+  const list = useMemo(() => receipts(d.payments), [d]);
+  const receipt = (r) => printHtml(`Receipt · ${d.patient.name}`, `${who}<h3>Payment Receipt${r.cancelled ? ' (CANCELLED)' : ''}</h3>
+    <p>Date: ${day(r.date)}${r.receipt_number ? ` · Receipt No. ${esc(r.receipt_number)}` : ''}${r.invoice_number ? ` · Invoice ${esc(r.invoice_number)}` : ''} · ${esc(modeLabel(r.mode || ''))}</p>
+    <table><tr><th>#</th><th>Towards</th><th style="text-align:right">Amount INR</th></tr>
+    ${r.lines.map((x, i) => `<tr><td>${i + 1}</td><td>${esc((x.treatment || '—').toUpperCase())}</td><td style="text-align:right">${inr(x.amount ?? 0)}</td></tr>`).join('')}
+    <tr><td></td><td style="text-align:right"><b>Total Paid</b></td><td style="text-align:right"><b>${inr(r.amount)}</b></td></tr></table>
+    ${r.notes.length ? `<p>${esc(r.notes.join(' · '))}</p>` : ''}<p style="margin-top:40px;text-align:right">Received with thanks</p>`);
   const th = 'px-2 py-2 text-[10.5px] font-semibold uppercase text-[#333] text-left';
   return (
     <>
       <SectionBar title="Payments" />
-      {!d.payments.length ? <EmptyState title="No payments in the Practo export." /> : (
+      {!list.length ? <EmptyState title="No payments in the Practo export." /> : (
         <ByDate items={(() => {
-          // One card per date holding that day's receipts, as in Practo.
           const days = [];
-          for (const x of d.payments) {
-            if (days.at(-1)?.date !== x.date) days.push({ key: x.date, date: x.date, rows: [] });
-            days.at(-1).rows.push(x);
+          for (const r of list) {
+            if (days.at(-1)?.date !== r.date) days.push({ key: r.date, date: r.date, rows: [] });
+            days.at(-1).rows.push(r);
           }
           return days;
         })()} render={(g) => (
@@ -276,22 +291,27 @@ function Payments({ d, who, act }) {
                 <th className={th}>Towards</th><th className={th}>Mode of Payment</th><th className="w-[100px]" />
               </tr></thead>
               <tbody>
-                {g.rows.map((x) => (
-                  <tr key={x.id} className={cx('align-top border-b border-[#e8e8e8] last:border-0', x.cancelled && 'bg-[#efefef] text-[#aaa] line-through')}>
-                    <td className="px-2 py-2.5">{x.receipt_number || ''}</td>
-                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">{inr(x.amount ?? 0)}</td>
-                    <td className={cx('px-2 py-2.5', !x.cancelled && 'text-[#1a9ad6]')}>{x.invoice_number || ''}</td>
-                    <td className="px-2 py-2.5 uppercase leading-[1.45]">{towards(x.treatment).map((t, k) => <span key={k} className="block">{t}</span>)}</td>
-                    <td className="px-2 py-2.5 capitalize">{modeLabel(x.mode || '')}{x.notes && <span className="block normal-case text-[#777]">{x.notes}</span>}</td>
-                    <td className="px-2 py-2 text-right no-underline">
+                {g.rows.map((r) => (
+                  <tr key={r.key} className={cx('align-top border-b border-[#e8e8e8] last:border-0', r.cancelled && 'bg-[#efefef] text-[#aaa] line-through')}>
+                    <td className="px-2 py-2.5">{r.receipt_number || ''}</td>
+                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">{inr(r.amount)}</td>
+                    <td className={cx('px-2 py-2.5', !r.cancelled && 'text-[#1a9ad6]')}>{r.invoice_number || ''}</td>
+                    <td className="px-2 py-2.5 uppercase leading-[1.5]">
+                      {r.lines.map((x) => (
+                        <button key={x.id} onClick={() => act.edit('payments', x)} title="Edit this line"
+                          className="block text-left uppercase hover:text-[#1a9ad6]">{x.treatment || '—'}{r.lines.length > 1 && <span className="ml-2 normal-case text-[#999]">{inr(x.amount ?? 0)}</span>}</button>
+                      ))}
+                    </td>
+                    <td className="px-2 py-2.5">{modeLabel(r.mode || '')}{r.notes.length > 0 && <span className="block text-[#777]">{r.notes.join(' · ')}</span>}</td>
+                    <td className="px-2 py-2 text-right">
                       <span className="flex items-center justify-end gap-1" style={{ textDecoration: 'none' }}>
-                        {x.cancelled
+                        {r.cancelled
                           ? <span className="text-[11px] font-semibold text-[#999]">Cancelled</span>
-                          : <button onClick={() => receipt(x)} title="Print receipt" className="rounded-l border border-[#ccc] p-1.5 text-[#444] hover:bg-[#f5f5f5]"><FiPrinter /></button>}
-                        <RowMenu joined={!x.cancelled} items={[
-                          ['Edit', () => act.edit('payments', x)],
-                          [x.cancelled ? 'Restore payment' : 'Cancel payment', () => act.setCancelled('payments', [x], !x.cancelled, 'payment')],
-                          ['Delete', () => act.remove('payments', x, `₹${inr(x.amount ?? 0)} payment`)],
+                          : <button onClick={() => receipt(r)} title="Print receipt" className="rounded-l border border-[#ccc] p-1.5 text-[#444] hover:bg-[#f5f5f5]"><FiPrinter /></button>}
+                        <RowMenu joined={!r.cancelled} items={[
+                          ...(r.lines.length === 1 ? [['Edit', () => act.edit('payments', r.lines[0])]] : []),
+                          [r.cancelled ? 'Restore payment' : 'Cancel payment', () => act.setCancelled('payments', r.lines, !r.cancelled, 'payment')],
+                          ['Delete', () => act.removeMany('payments', r.lines, `this ₹${inr(r.amount)} payment`)],
                         ]} />
                       </span>
                     </td>
@@ -310,7 +330,7 @@ function Payments({ d, who, act }) {
 function transactions(d, invoiceBills) {
   const rows = [
     ...invoiceBills.map((b) => ({ key: `i${b.key}`, date: b.date, number: b.number || '', details: b.lines.map((l) => l.treatment).join(', '), type: 'Invoice', credit: b.total, debit: 0, cancelled: b.cancelled })),
-    ...d.payments.map((x) => ({ key: `p${x.id}`, date: x.date, number: x.receipt_number || '', details: x.invoice_number || towards(x.treatment).join(', '), type: 'Payment', credit: 0, debit: Number(x.amount || 0), cancelled: x.cancelled })),
+    ...receipts(d.payments).map((r) => ({ key: `p${r.key}`, date: r.date, number: r.receipt_number || '', details: r.invoice_number || r.lines.map((x) => x.treatment).filter(Boolean).join(', '), type: 'Payment', credit: 0, debit: r.amount, cancelled: r.cancelled })),
   ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.debit - b.debit));
   let bal = 0;
   for (const r of rows) if (!r.cancelled) r.balance = (bal += r.credit - r.debit);
@@ -378,7 +398,7 @@ function Timeline({ d, p, who, invoiceBills }) {
     const order = { invoice: 0, payment: 1, procedure: 2 };
     const ev = [
       ...invoiceBills.map((b) => ({ key: `i${b.key}`, kind: 'invoice', date: b.date, b, paid: paidOn(d, b.number) })),
-      ...d.payments.map((x) => ({ key: `p${x.id}`, kind: 'payment', date: x.date, x })),
+      ...receipts(d.payments).map((r) => ({ key: `p${r.key}`, kind: 'payment', date: r.date, x: r })),
       ...d.treatments.map((t) => ({ key: `t${t.id}`, kind: 'procedure', date: t.date, t })),
     ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : order[a.kind] - order[b.kind]));
     const out = [];
