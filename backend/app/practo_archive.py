@@ -2,6 +2,7 @@
 
 Each file replaces its table in one transaction, so re-uploading a newer export is safe. Practo writes patient
 numbers as integers in one file and text in another; they are normalised to plain digit strings so they join."""
+import csv
 import datetime as dt
 import io
 import re
@@ -23,7 +24,16 @@ class ArchiveError(ValueError):
 
 def _rows(filename: str, data: bytes) -> tuple[list[str], list[tuple]]:
     """Header + data rows of the first sheet; the header is the first row that names "Patient Number"."""
-    if filename.lower().endswith(".xls"):
+    if filename.lower().endswith((".csv", ".txt")):
+        for encoding in ("utf-8-sig", "cp1252"):  # Practo's CSVs are UTF-8; Excel re-saves are often Windows-1252
+            try:
+                text_ = data.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        dialect = csv.Sniffer().sniff(text_[:4096], delimiters=",;\t") if text_.strip() else csv.excel
+        rows = [tuple(r) for r in csv.reader(io.StringIO(text_), dialect)]
+    elif filename.lower().endswith(".xls"):
         sheet = xlrd.open_workbook(file_contents=data).sheet_by_index(0)
         rows = [tuple(sheet.row_values(i)) for i in range(sheet.nrows)]
     else:
@@ -46,9 +56,13 @@ def _text(v) -> str | None:
 
 
 def _number(v) -> str | None:
-    """Practo patient number → digits as text (1234.0 / "1234" / " 1234 " all become "1234")."""
+    """Practo patient number → digits as text (1234.0 / "1234" / " 1234 " all become "1234").
+
+    Practo sometimes writes a date or a date-time where the number should be; those count as "no number"."""
     s = _text(v)
-    return s if s is None or not re.fullmatch(r"\d+(\.0+)?", s) else str(int(float(s)))
+    if s is None or isinstance(v, (dt.date, dt.datetime)) or re.search(r"\d{1,4}[/-]\d{1,2}[/-]\d{1,4}", s):
+        return None
+    return str(int(float(s))) if re.fullmatch(r"\d+(\.0+)?", s) else s.upper()
 
 
 def _dec(v) -> Decimal | None:
@@ -146,11 +160,27 @@ async def replace(session: AsyncSession, kind: str, rows: list[dict]) -> int:
     """Swap the table's contents for these rows (caller commits). Duplicate patient numbers keep the last row."""
     table = TABLES[kind]
     if kind == "patients":
-        rows = list({r["number"]: r for r in rows}.values())
+        rows = _merge_patients(rows)
     await session.execute(delete(table))
     for i in range(0, len(rows), 2000):  # asyncpg caps bind parameters per statement
         await session.execute(insert(table), rows[i:i + 2000])
     return len(rows)
+
+
+def _merge_patients(rows: list[dict]) -> list[dict]:
+    """One row per patient number: repeated rows fill each other's blanks (later rows win on conflicts)."""
+    merged: dict[str, dict] = {}
+    for r in rows:
+        prev = merged.get(r["number"])
+        if prev is None:
+            merged[r["number"]] = r
+            continue
+        for k, v in r.items():
+            if k == "data":
+                prev["data"] = {**prev["data"], **{dk: dv for dk, dv in v.items() if dv}}
+            elif v not in (None, "", "(no name)"):
+                prev[k] = v
+    return list(merged.values())
 
 
 async def refresh_stats(session: AsyncSession) -> None:

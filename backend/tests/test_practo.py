@@ -52,3 +52,18 @@ async def test_new_patient_ids_run_per_month(admin):
     a = (await admin.post("/api/patients", json=PATIENT)).json()["patient_id"]
     b = (await admin.post("/api/patients", json={**PATIENT, "name": "Second"})).json()["patient_id"]
     assert a.startswith("DDC") and len(a) == 10 and a.endswith("1") and b[:9] == a[:9] and b.endswith("2")
+
+
+async def test_raw_practo_csv_with_messy_rows(admin):
+    patients = "Patient Number,Patient Name,Mobile Number,Gender,Age\n7,Meena,,Female,\n7,,9876500000,,40\n8,Kiran,9000000001,Male,22\n"
+    treatments = ("Date,Patient Number,Patient Name,Treatment Name,Quantity,Treatment Cost,Amount,Discount,DiscountType,Doctor\n"
+                  "2025-02-01,7,Meena,Scaling,1,500,500,0,PERCENT,Dr. N\n"
+                  "2025-02-02,12/03/2024,Meena,Filling,1,800,800,0,PERCENT,Dr. N\n"   # date where the number should be
+                  "2025-02-03,,Kiran,Extraction,1,900,900,0,PERCENT,Dr. N\n")       # no number at all
+    res = await admin.post("/api/practo/import", files={"patients": ("p.csv", patients.encode()), "treatments": ("t.csv", treatments.encode("cp1252"))})
+    assert res.json()["imported"] == {"patients": 2, "treatments": 3}
+
+    meena = (await admin.get("/api/practo/patients/7")).json()
+    assert meena["patient"]["mobile"] == "9876500000" and meena["patient"]["age"] == 40 and meena["patient"]["name"] == "Meena"
+    assert sorted(t["name"] for t in meena["treatments"]) == ["Filling", "Scaling"]  # bad number → matched by unique name
+    assert [t["name"] for t in (await admin.get("/api/practo/patients/8")).json()["treatments"]] == ["Extraction"]

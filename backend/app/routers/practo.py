@@ -31,7 +31,7 @@ async def import_archive(session: SessionDep, patients: UploadFile | None = File
         except ArchiveError as e:
             raise HTTPException(400, str(e))
         except Exception:
-            raise HTTPException(400, f"{f.filename} could not be read. Upload the .xlsx / .xls file exactly as Practo exported it.")
+            raise HTTPException(400, f"{f.filename} could not be read. Upload the CSV or Excel file exactly as Practo exported it.")
     counts = {kind: await replace(session, kind, rows) for kind, rows in parsed.items()}
     await refresh_stats(session)
     await session.commit()

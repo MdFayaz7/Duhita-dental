@@ -112,10 +112,10 @@ export function PractoImport({ open, onClose, onDone }) {
     }
   };
   return (
-    <Modal open={open} title="Import Practo data" subtitle="Upload the files exactly as Practo exported them. Each file replaces its earlier import." onClose={onClose}>
+    <Modal open={open} title="Import Practo data" subtitle="Upload Practo’s exports as they are (CSV or Excel). Each file replaces its earlier import." onClose={onClose}>
       <div className="grid gap-4">
         {KINDS.map(([k, label]) => (
-          <Field key={k} label={label}><input type="file" accept=".xlsx,.xls" onChange={(e) => setFiles({ ...files, [k]: e.target.files[0] })} /></Field>
+          <Field key={k} label={label}><input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setFiles({ ...files, [k]: e.target.files[0] })} /></Field>
         ))}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
