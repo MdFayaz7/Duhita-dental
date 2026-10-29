@@ -250,6 +250,7 @@ class Procedure(Base):
     __table_args__ = (Index("ix_procedures_name", text("lower(name)"), unique=True),)
     id: Mapped[int] = pk()
     name: Mapped[str] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(Text)
     cost: Mapped[Decimal] = money()
     active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), default=True)
     created_at: Mapped[dt.datetime] = created()

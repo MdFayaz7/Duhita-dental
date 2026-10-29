@@ -121,6 +121,18 @@ export const smallInput = 'h-[32px] rounded-[2px] border border-[#c8c8c8] bg-whi
 
 export const AddButton = (props) => <Button size="sm" className={cx('!bg-[#1a73e8] !border-[#1a73e8]', props.className)} {...props} />;
 
+let letterhead = null; // Settings → Modify EMR / billing printout; site.js until loaded
+export const setLetterhead = (value) => { letterhead = value && Object.keys(value).length ? value : null; };
+export const loadLetterhead = () => api.printout().then(setLetterhead).catch(() => {});
+export function headerOf() {
+  const l = letterhead;
+  return {
+    name: l?.clinic_name || site.fullName, address: l ? l.address : site.addressLines.join(', '), phone: l ? l.phone : site.phoneDisplay,
+    email: l ? l.email : site.email, website: l?.website || 'duhitadental.com', registration: l?.registration || '', footer: l?.footer || '',
+    logo: l ? l.show_logo : true,
+  };
+}
+
 /** Opens a print window with the clinic letterhead around `body` (HTML string). */
 export function printHtml(title, body, { label = false } = {}) {
   const w = window.open('', '_blank', 'noopener=no,width=820,height=900');
@@ -132,8 +144,12 @@ export function printHtml(title, body, { label = false } = {}) {
     th,td{text-align:left;padding:6px;border-bottom:1px solid #ddd;font-size:12.5px}th{border-bottom:1px solid #888}
     .head{border-bottom:2px solid #222;padding-bottom:8px;margin-bottom:12px}.muted{color:#666}
     @page{size:${label ? '90mm 40mm' : 'A4'};margin:${label ? '2mm' : '12mm'}}</style></head><body>
-    ${label ? '' : `<div class="head"><h1>${esc(site.fullName.toUpperCase())}</h1><div class="muted">${site.addressLines.map(esc).join(', ')} · ${esc(site.phoneDisplay)}</div></div>`}
-    ${body}<script>setTimeout(()=>print(),300)</script></body></html>`);
+    ${label ? '' : (() => {
+      const h = headerOf();
+      return `<div class="head" style="display:flex;gap:12px;align-items:center">${h.logo ? `<img src="${location.origin}/images/brand/duhita-logo-sm.png" style="height:44px" alt="">` : ''}<div><h1>${esc(h.name.toUpperCase())}</h1>
+        <div class="muted">${[h.address, h.phone && `Phone: ${h.phone}`, h.email, h.website, h.registration].filter(Boolean).map(esc).join(' · ')}</div></div></div>`;
+    })()}
+    ${body}${!label && headerOf().footer ? `<p class="muted" style="margin-top:28px;border-top:1px solid #ddd;padding-top:6px">${esc(headerOf().footer)}</p>` : ''}<script>setTimeout(()=>print(),300)</script></body></html>`);
   w.document.close();
 }
 

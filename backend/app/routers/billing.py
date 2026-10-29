@@ -69,7 +69,7 @@ async def _changed(invoice: Invoice) -> None:
 
 @router.get("/api/procedures")
 async def list_procedures(session: SessionDep, include_inactive: bool = False):
-    stmt = select(Procedure).order_by(func.lower(Procedure.name)).limit(2000)
+    stmt = select(Procedure).order_by(Procedure.category.nulls_last(), func.lower(Procedure.name)).limit(2000)
     if not include_inactive:
         stmt = stmt.where(Procedure.active.is_(True))
     return {"items": [serialize(p) for p in await session.scalars(stmt)]}

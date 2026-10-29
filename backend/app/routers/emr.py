@@ -12,14 +12,14 @@ from ..billing import line_amounts
 from ..db import SessionDep, serialize, utcnow
 from ..events import broadcast_event
 from ..models import (
-    BillTreatmentsIn, ClinicalNoteIn, ShareIn, EmrTermIn, InvoiceIn, InvoiceItemIn, MergeIn, PatientUpdate, PrescriptionIn,
+    BillTreatmentsIn, ClinicalNoteIn, PrintoutIn, ShareIn, EmrTermIn, InvoiceIn, InvoiceItemIn, MergeIn, PatientUpdate, PrescriptionIn,
     TreatmentIn, VitalSignIn,
 )
 from ..patients_service import today_ist
 from ..security import current_admin
 from ..sharing import share_flags
 from ..tables import (
-    Appointment, ClinicalNote, EmrTerm, Invoice, InvoiceItem, Patient, Payment, Prescription, Record, ScheduleEntry,
+    Appointment, ClinicalNote, EmrTerm, Invoice, InvoiceItem, Patient, Payment, Prescription, Record, ScheduleEntry, Setting,
     Treatment, VitalSign, WhatsAppMessage,
 )
 from .billing import _save as save_invoice
@@ -207,6 +207,19 @@ async def add_term(payload: EmrTermIn, session: SessionDep):
     return serialize(row)
 
 
+@router.put("/api/emr/terms/{term_id}")
+async def update_term(term_id: int, payload: EmrTermIn, session: SessionDep):
+    term = await session.get(EmrTerm, term_id)
+    if not term or term.kind != payload.kind:
+        raise HTTPException(404, "Not found.")
+    term.name, term.data = payload.name.strip(), payload.data
+    try:
+        await session.commit()
+    except IntegrityError:
+        raise HTTPException(409, f"{payload.name} is already on the list.")
+    return serialize(term)
+
+
 @router.delete("/api/emr/terms/{term_id}")
 async def delete_term(term_id: int, session: SessionDep):
     await session.execute(delete(EmrTerm).where(EmrTerm.id == term_id))
@@ -243,6 +256,20 @@ async def update_patient(patient_id: str, payload: PatientUpdate, session: Sessi
     await session.commit()
     await broadcast_event("patient_updated", {"patient_id": patient.patient_id})
     return serialize(patient)
+
+
+@router.get("/api/settings/printout")
+async def get_printout(session: SessionDep):
+    return await session.scalar(select(Setting.value).where(Setting.key == "printout")) or {}
+
+
+@router.put("/api/settings/printout")
+async def save_printout(payload: PrintoutIn, session: SessionDep):
+    value = payload.model_dump()
+    await session.execute(insert(Setting).values(key="printout", value=value)
+                          .on_conflict_do_update(index_elements=[Setting.key], set_={"value": value, "updated_at": utcnow()}))
+    await session.commit()
+    return value
 
 
 @router.put("/api/patients/{patient_id}/share")

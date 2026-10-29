@@ -7,8 +7,9 @@ import {
 import { api } from '../api';
 import { ErrorNote, Skeleton, cx } from '../ui';
 import { useLiveEvents } from '../../lib/useLiveEvents';
-import { PatientCtx, ageSex } from './shared';
+import { PatientCtx, ageSex, loadLetterhead } from './shared';
 import PatientList from './PatientList';
+import PatientSettings from './PatientSettings';
 
 const PatientRecord = lazy(() => import('../PatientRecord'));
 const Profile = lazy(() => import('./Profile'));
@@ -63,12 +64,12 @@ function render(section, pid) {
 /** Practo's Patients area: groups + cards, and every section of one patient's record behind a left menu. */
 export default function PatientSection() {
   const { patientId, section: sectionParam } = useParams();
-  const [collapsed, setCollapsed] = useState(false);
   const [doctors, setDoctors] = useState({});
   const [patient, setPatient] = useState(null);
   const [error, setError] = useState('');
   const section = sectionParam || (patientId ? 'profile' : null);
 
+  useEffect(() => { loadLetterhead(); }, []);
   useEffect(() => {
     api.doctors().then((d) => setDoctors(Object.fromEntries(d.items.map((x) => [String(x.id), x])))).catch(() => {});
   }, []);
@@ -98,32 +99,10 @@ export default function PatientSection() {
               {p.phone && <a href={`tel:+91${p.phone}`} className="hidden sm:inline text-[#777]">+91 {p.phone}</a>}
             </>
           )}
+          <span className="ml-auto"><PatientSettings /></span>
         </div>
         <div className="flex min-h-[calc(100vh-104px)]">
-          <nav className={cx('shrink-0 border-r border-[#d8d8d8] bg-white transition-[width]', collapsed ? 'w-[46px]' : 'w-[46px] md:w-[220px]')}>
-            <button onClick={() => setCollapsed((c) => !c)} aria-label="Collapse menu" className="hidden md:flex w-full justify-end px-3 pt-2 text-[#777]">
-              {collapsed ? <FiChevronsRight /> : <FiChevronsLeft />}
-            </button>
-            {NAV.map(([heading, items]) => (
-              <div key={heading} className="mb-2">
-                <p className={cx('px-3 pt-2 pb-1 text-[12px] font-semibold text-[#1a73a8]', collapsed && 'md:hidden', 'hidden md:block')}>{heading}</p>
-                {items.map(([slug, label, Icon, forAll]) => {
-                  const enabled = patientId || forAll;
-                  return enabled ? (
-                    <NavLink key={slug} to={href(slug)} title={label}
-                      className={() => cx('flex items-center gap-3 px-3 py-[7px] text-[13.5px]',
-                        (section || 'profile') === slug ? 'bg-[#1a7fb5] text-white font-medium' : 'text-[#333] hover:bg-[#f1f6fa]')}>
-                      <Icon className="w-4 h-4 shrink-0" /><span className={cx('truncate', collapsed ? 'hidden' : 'hidden md:inline')}>{label}</span>
-                    </NavLink>
-                  ) : (
-                    <span key={slug} title={`${label}: open a patient first`} className="flex items-center gap-3 px-3 py-[7px] text-[13.5px] text-[#aaa] cursor-not-allowed">
-                      <Icon className="w-4 h-4 shrink-0" /><span className={cx('truncate', collapsed ? 'hidden' : 'hidden md:inline')}>{label}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
+          <PatientMenu section={section || 'profile'} hrefFor={href} isEnabled={([, , , forAll]) => patientId || forAll} disabledHint="open a patient first" />
           <main className="min-w-0 flex-1 bg-[#e9e9e9]">
             <ErrorNote>{error}</ErrorNote>
             {!section || (!patientId && section === 'profile') ? <PatientList /> : patientId && !patient ? <Skeleton className="m-4 h-60" /> : (
@@ -133,5 +112,36 @@ export default function PatientSection() {
         </div>
       </div>
     </PatientCtx.Provider>
+  );
+}
+
+/** The patient record's left menu (Practo's): shared by clinic patients and Practo-archive patients. */
+export function PatientMenu({ section, hrefFor, isEnabled, disabledHint }) {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <nav className={cx('shrink-0 border-r border-[#d8d8d8] bg-white transition-[width]', collapsed ? 'w-[46px]' : 'w-[46px] md:w-[220px]')}>
+      <button onClick={() => setCollapsed((c) => !c)} aria-label="Collapse menu" className="hidden md:flex w-full justify-end px-3 pt-2 text-[#777]">
+        {collapsed ? <FiChevronsRight /> : <FiChevronsLeft />}
+      </button>
+      {NAV.map(([heading, items]) => (
+        <div key={heading} className="mb-2">
+          <p className={cx('px-3 pt-2 pb-1 text-[12px] font-semibold text-[#1a73a8]', collapsed && 'md:hidden', 'hidden md:block')}>{heading}</p>
+          {items.map((item) => {
+            const [slug, label, Icon] = item;
+            const text = <span className={cx('truncate', collapsed ? 'hidden' : 'hidden md:inline')}>{label}</span>;
+            return isEnabled(item) ? (
+              <NavLink key={slug} to={hrefFor(slug)} title={label}
+                className={() => cx('flex items-center gap-3 px-3 py-[7px] text-[13.5px]', section === slug ? 'bg-[#1a7fb5] text-white font-medium' : 'text-[#333] hover:bg-[#f1f6fa]')}>
+                <Icon className="w-4 h-4 shrink-0" />{text}
+              </NavLink>
+            ) : (
+              <span key={slug} title={`${label}: ${disabledHint}`} className="flex items-center gap-3 px-3 py-[7px] text-[13.5px] text-[#aaa] cursor-not-allowed">
+                <Icon className="w-4 h-4 shrink-0" />{text}
+              </span>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
   );
 }

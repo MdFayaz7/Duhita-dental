@@ -245,6 +245,7 @@ TEETH = {q * 10 + n for q in (1, 2, 3, 4) for n in range(1, 9)} | {q * 10 + n fo
 
 class ProcedureIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
+    category: str | None = Field(default=None, max_length=60)
     cost: Money = Decimal(0)
     active: bool = True
 
@@ -430,6 +431,18 @@ class EmrTermIn(BaseModel):
 
 class BillTreatmentsIn(BaseModel):
     ids: list[int] = Field(min_length=1, max_length=100)
+
+
+class PrintoutIn(BaseModel):
+    """Letterhead and footer on printed invoices, receipts, prescriptions and case sheets."""
+    clinic_name: str = Field(min_length=2, max_length=120)
+    address: str = Field(default="", max_length=300)
+    phone: str = Field(default="", max_length=60)
+    email: str = Field(default="", max_length=120)
+    website: str = Field(default="", max_length=120)
+    registration: str = Field(default="", max_length=120)  # e.g. GSTIN / clinic registration no.
+    footer: str = Field(default="", max_length=300)
+    show_logo: bool = True
 
 
 class ShareIn(BaseModel):

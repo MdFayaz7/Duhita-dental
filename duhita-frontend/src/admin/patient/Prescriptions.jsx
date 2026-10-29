@@ -3,11 +3,11 @@ import { FiEdit2, FiPrinter, FiTrash2, FiX } from 'react-icons/fi';
 import { api } from '../api';
 import { Button, cx, todayIso, useConfirm, useToast } from '../ui';
 import { longDate } from '../billingUi';
-import { DoctorSelect, TermPicker } from './Clinical';
+import { DoctorSelect } from './Clinical';
+import { DrugPanel, FOOD } from './Drugs';
 import { AddButton, DayGroups, MoreButton, SectionBar, Signed, escapeHtml, printHtml, smallInput, usePaged, usePatientCtx } from './shared';
 
-const FOOD = { before: 'Before food', after: 'After food', with: 'With food' };
-const blankItem = (drug = '', data = {}) => ({ drug, strength: data.strength || '', dose: data.dose || '1', frequency: data.frequency || '1-0-1', food: data.food || 'after', days: data.days || 5, instructions: data.instructions || '' });
+const blankItem = (drug = '', data = {}) => ({ drug, strength: data.strength && !drug.endsWith(data.strength) ? data.strength : '', dose: data.dose || '1', frequency: data.frequency || '1-0-1', food: data.food || 'after', days: data.days || 5, instructions: data.instructions || '' });
 const itemText = (i) => [i.strength, i.dose && `${i.dose} unit`, i.frequency, FOOD[i.food], i.days && `${i.days} days`].filter(Boolean).join(' · ');
 
 export default function Prescriptions() {
@@ -69,12 +69,8 @@ function RxForm({ row, onCancel, onSave }) {
   const [notes, setNotes] = useState(row.notes || '');
   const [date, setDate] = useState(row.date || todayIso());
   const [doctor, setDoctor] = useState(row.doctor_id ? String(row.doctor_id) : '');
-  const [tab, setTab] = useState('drug');
   const upd = (n, ch) => setItems((xs) => xs.map((x, i) => (i === n ? { ...x, ...ch } : x)));
-  const pick = (name, term) => {
-    if (tab === 'rx_template') return setItems((xs) => [...xs, ...(term?.data?.items || [])]);
-    setItems((xs) => [...xs, blankItem(name, term?.data)]);
-  };
+  const pick = (name, term) => setItems((xs) => [...xs, blankItem(name, term?.data)]);
   const saveTemplate = async () => {
     const name = window.prompt('Template name');
     if (!name?.trim() || !items.length) return;
@@ -95,7 +91,7 @@ function RxForm({ row, onCancel, onSave }) {
         <Button size="sm" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button size="sm" onClick={submit} className="!bg-[#1a73e8] !border-[#1a73e8]">Save Prescription</Button>
       </SectionBar>
-      <div className="flex flex-col lg:flex-row bg-white">
+      <div className="flex min-h-[calc(100vh-150px)] flex-col lg:flex-row bg-white">
         <div className="flex-1 p-3 text-[13px]">
           <div className="flex justify-between border-b border-[#eee] pb-2">
             <span>Select a drug from the right. You can add multiple items.</span>
@@ -115,15 +111,7 @@ function RxForm({ row, onCancel, onSave }) {
           ))}
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Advice / notes" rows={3} className={cx(smallInput, 'mt-3 h-auto w-full py-2')} />
         </div>
-        <div>
-          <div className="flex gap-1 px-2 pt-2">
-            {[['drug', 'Drugs'], ['rx_template', 'Templates']].map(([k, l]) => (
-              <button key={k} onClick={() => setTab(k)} className={cx('px-3 py-1.5 text-[13px] border border-b-0', tab === k ? 'bg-white border-[#ddd]' : 'border-transparent text-[#555]')}>{l}</button>
-            ))}
-          </div>
-          <TermPicker key={tab} kind={tab} title={tab === 'drug' ? 'Drugs' : 'Templates'} onPick={pick}
-            render={(t) => (tab === 'rx_template' ? `${t.name} (${t.data?.items?.length || 0} drugs)` : t.name)} />
-        </div>
+        <DrugPanel onPick={(d) => pick(d.name, d)} onPickTemplate={(t) => setItems((xs) => [...xs, ...(t.data?.items || [])])} />
       </div>
     </>
   );

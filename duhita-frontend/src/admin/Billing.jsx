@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FiCreditCard, FiDownload, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi';
 import { api } from './api';
 import { PageHead } from './AdminLayout';
@@ -14,7 +14,8 @@ const TABS = [{ value: 'invoices', label: 'Invoices' }, { value: 'procedures', l
 const monthStart = () => `${todayIso().slice(0, 8)}01`;
 
 export default function Billing() {
-  const [tab, setTab] = useState('invoices');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState(params.get('tab') === 'procedures' ? 'procedures' : 'invoices');
   return (
     <>
       <PageHead title="Billing" subtitle="Invoices, payments received and the clinic’s procedure fees" />
@@ -135,7 +136,7 @@ function Procedures() {
   useEffect(() => { load(); }, []);
 
   const save = async (proc, changes) => {
-    const next = { name: proc.name, cost: proc.cost, active: proc.active, ...changes };
+    const next = { name: proc.name, cost: proc.cost, active: proc.active, category: proc.category ?? null, ...changes };
     setItems((list) => list.map((p) => (p.id === proc.id ? { ...p, ...next } : p)));
     try {
       await api.updateProcedure(proc.id, { ...next, cost: Number(next.cost || 0).toFixed(2) });
@@ -165,7 +166,7 @@ function Procedures() {
     load();
   };
 
-  const shown = (items || []).filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const shown = (items || []).filter((p) => `${p.name} ${p.category || ''}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
     <>
@@ -181,12 +182,16 @@ function Procedures() {
 
       <Panel className="mt-4 overflow-hidden">
         {!items ? <div className="p-5"><Skeleton className="h-40" /></div> : (
-          <Table head={['Procedure', 'Standard fee (INR)', 'In use', '']} minWidth={640}>
+          <Table head={['Procedure', 'Group', 'Standard fee (INR)', 'In use', '']} minWidth={760}>
             {shown.map((p) => (
               <tr key={p.id} className={cx('hover:bg-[#fafafa]', !p.active && 'opacity-55')}>
                 <td className="px-5 py-2">
                   <input defaultValue={p.name} onBlur={(e) => e.target.value.trim() !== p.name && e.target.value.trim().length >= 2 && save(p, { name: e.target.value.trim() })}
                     className="w-full max-w-[340px] h-[32px] rounded-[2px] border border-transparent hover:border-[#c8c8c8] focus:border-[var(--a-link)] px-2 uppercase text-[13.5px] outline-none" />
+                </td>
+                <td className="px-5 py-2">
+                  <input defaultValue={p.category || ''} onBlur={(e) => e.target.value.trim() !== (p.category || '') && save(p, { category: e.target.value.trim() || null })}
+                    placeholder="—" className="w-[170px] h-[32px] rounded-[2px] border border-transparent hover:border-[#c8c8c8] focus:border-[var(--a-link)] px-2 text-[13px] outline-none" />
                 </td>
                 <td className="px-5 py-2">
                   <input type="number" min="0" step="0.01" defaultValue={Number(p.cost)} onBlur={(e) => Number(e.target.value) !== Number(p.cost) && save(p, { cost: e.target.value })}

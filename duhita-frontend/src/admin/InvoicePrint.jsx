@@ -4,6 +4,7 @@ import { api, getToken } from './api';
 import { site } from '../data/site';
 import { inr, longDate } from './billingUi';
 import useSeo from '../hooks/useSeo';
+import { headerOf, setLetterhead } from './patient/shared';
 
 /** A4 invoice in the layout of Practo's printout. Opens the print dialog once loaded (Save as PDF from there). */
 export default function InvoicePrint() {
@@ -16,8 +17,9 @@ export default function InvoicePrint() {
 
   useEffect(() => {
     if (!getToken()) { navigate('/admin/login', { replace: true }); return; }
-    Promise.all([api.invoice(id), api.doctors()])
-      .then(([invoice, docs]) => {
+    Promise.all([api.invoice(id), api.doctors(), api.printout().catch(() => null)])
+      .then(([invoice, docs, printout]) => {
+        setLetterhead(printout);
         setInv(invoice);
         setDoctors(Object.fromEntries(docs.items.map((d) => [String(d.id), d.name])));
       })
@@ -34,6 +36,7 @@ export default function InvoicePrint() {
   if (!inv) return <p style={{ padding: 40, fontFamily: 'Arial', color: '#777' }}>Preparing invoice…</p>;
 
   const p = inv.patient;
+  const h = headerOf();
   const by = doctors[String(inv.doctor_id)];
   const hasDiscount = Number(inv.discount) > 0;
   const hasTax = Number(inv.tax) > 0;
@@ -69,15 +72,15 @@ export default function InvoicePrint() {
       <div className="sheet">
         <header style={{ textAlign: 'center', borderBottom: '2px solid #222', paddingBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-            <img src="/images/brand/duhita-logo-sm.png" alt="" style={{ height: 46 }} />
-            <h1 style={{ margin: 0, fontSize: 19, letterSpacing: '.04em', fontWeight: 700 }}>{site.fullName.toUpperCase()}</h1>
+            {h.logo && <img src="/images/brand/duhita-logo-sm.png" alt="" style={{ height: 46 }} />}
+            <h1 style={{ margin: 0, fontSize: 19, letterSpacing: '.04em', fontWeight: 700 }}>{h.name.toUpperCase()}</h1>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, marginTop: 8, textAlign: 'left', fontSize: 11.5, color: '#444' }}>
-            <div>{site.addressLines.map((l) => <div key={l}>{l}</div>)}</div>
+            <div style={{ maxWidth: 360 }}>{h.address}{h.registration && <div>{h.registration}</div>}</div>
             <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-              <div>Phone: {site.phoneDisplay}</div>
-              <div>Email: {site.email}</div>
-              <div>Website: duhitadental.com</div>
+              {h.phone && <div>Phone: {h.phone}</div>}
+              {h.email && <div>Email: {h.email}</div>}
+              <div>Website: {h.website}</div>
             </div>
           </div>
         </header>
@@ -161,7 +164,7 @@ export default function InvoicePrint() {
 
         <footer style={{ marginTop: 'auto', paddingTop: 24, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#666' }}>
           <span>Generated On: {longDate(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }))}</span>
-          <span>Thank you for choosing {site.name}</span>
+          <span>{h.footer || `Thank you for choosing ${site.name}`}</span>
         </footer>
       </div>
     </div>

@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
 import {
-  FiCheckCircle, FiChevronDown, FiClock, FiCreditCard, FiDollarSign, FiFileText, FiList, FiPrinter, FiUser, FiUsers,
+  FiCheckCircle, FiChevronDown, FiCreditCard, FiFileText, FiPrinter, FiUser, FiUsers,
 } from 'react-icons/fi';
 import { api } from '../api';
 import { Button, EmptyState, ErrorNote, Field, Modal, Skeleton, cx, inputClass, useConfirm, useToast } from '../ui';
 import { inr, longDate, modeLabel } from '../billingUi';
-import { SectionBar, escapeHtml as esc, printHtml } from './shared';
+import { SectionBar, escapeHtml as esc, loadLetterhead, printHtml } from './shared';
+import { PatientMenu } from './PatientSection';
+import PatientSettings from './PatientSettings';
 
-const NAV = [
-  ['Patient', [['profile', 'Profile', FiUser]]],
-  ['EMR', [['treatments', 'Completed Procedures', FiCheckCircle], ['timeline', 'Timeline', FiClock]]],
-  ['Billing', [['invoices', 'Invoices', FiDollarSign], ['payments', 'Payments', FiCreditCard], ['ledger', 'Ledger', FiList]]],
-];
+// Sections Practo's exports have data for; the rest of the clinic menu shows greyed out.
+const PRACTO_SECTIONS = new Set(['profile', 'completed-procedures', 'timeline', 'invoices', 'payments', 'ledger', 'past-bills']);
 const disc = (r) => (Number(r.discount) ? `${inr(r.discount)}${r.discount_type === 'NUMBER' ? '' : '%'}` : '0.00');
 const day = (d) => (d ? longDate(d) : '—');
 
@@ -31,7 +30,9 @@ function bills(lines) {
 
 /** One patient's history as exported from Practo — read only, in the same layout as a clinic patient. */
 export default function PractoRecord() {
-  const { number, section = 'treatments' } = useParams();
+  const { number, section: raw = 'completed-procedures' } = useParams();
+  const section = raw === 'treatments' ? 'completed-procedures' : raw;
+  useEffect(() => { loadLetterhead(); }, []);
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null); // { kind, row }
@@ -56,29 +57,19 @@ export default function PractoRecord() {
         <span className="text-[#1a5fa0]">{[p.gender, p.age != null && `${p.age} Years`].filter(Boolean).join(', ')}</span>
         <span className="text-[#1a5fa0]">{p.number.startsWith('NA-') ? '(no Practo number)' : `(Practo # ${p.number})`}</span>
         {p.mobile && <span className="hidden sm:inline text-[#777]">+91 {p.mobile}</span>}
-        <span className="ml-auto flex gap-5 py-1">
+        <span className="ml-auto flex items-center gap-5 py-1">
           <Money label="Billed" v={d.summary.billed} /><Money label="Paid" v={d.summary.paid} tone="text-[#137a1e]" />
           <Money label="Due" v={d.summary.due} tone={Number(d.summary.due) > 0 ? 'text-[#d93a46]' : ''} />
+          <PatientSettings />
         </span>
       </div>
       <div className="flex min-h-[calc(100vh-104px)]">
-        <nav className="w-[46px] md:w-[220px] shrink-0 border-r border-[#d8d8d8] bg-white pt-2">
-          {NAV.map(([heading, items]) => (
-            <div key={heading} className="mb-2">
-              <p className="hidden md:block px-3 pt-2 pb-1 text-[12px] font-semibold text-[#1a73a8]">{heading}</p>
-              {items.map(([slug, label, Icon]) => (
-                <NavLink key={slug} to={`/admin/patients/practo/${number}/${slug}`} title={label}
-                  className={cx('flex items-center gap-3 px-3 py-[7px] text-[13.5px]', section === slug ? 'bg-[#1a7fb5] text-white font-medium' : 'text-[#333] hover:bg-[#f1f6fa]')}>
-                  <Icon className="w-4 h-4 shrink-0" /><span className="hidden md:inline truncate">{label}</span>
-                </NavLink>
-              ))}
-            </div>
-          ))}
-          <p className="hidden md:block px-3 pt-3 text-[11.5px] text-[#888]">Imported from Practo · read only</p>
-        </nav>
+        <PatientMenu section={section} hrefFor={(slug) => `/admin/patients/practo/${number}/${slug}`}
+          isEnabled={([slug]) => PRACTO_SECTIONS.has(slug)} disabledHint="not in the Practo export" />
         <main className="min-w-0 flex-1 bg-[#e9e9e9]">
           {section === 'profile' && <Profile {...ctx} />}
-          {section === 'treatments' && <Procedures {...ctx} />}
+          {section === 'completed-procedures' && <Procedures {...ctx} />}
+          {section === 'past-bills' && <Invoices {...ctx} past />}
           {section === 'timeline' && <Timeline {...ctx} />}
           {section === 'invoices' && <Invoices {...ctx} />}
           {section === 'payments' && <Payments {...ctx} />}
@@ -185,11 +176,13 @@ function printInvoice(b, d, who) {
     </table><p class="muted" style="margin-top:30px">Imported from Practo records.</p>`);
 }
 
-function Invoices({ d, who, invoiceBills, act }) {
+function Invoices({ d, who, invoiceBills, act, past }) {
+  // Past Bills = cancelled or fully paid bills.
+  if (past) invoiceBills = invoiceBills.filter((b) => b.cancelled || (b.number && paidOn(d, b.number) >= b.total));
   const th = 'px-2 py-2 text-[10.5px] font-semibold uppercase text-[#333]';
   return (
     <>
-      <SectionBar title="Invoices" />
+      <SectionBar title={past ? 'Past Bills' : 'Invoices'} />
       {!invoiceBills.length ? <EmptyState title="No invoices in the Practo export." /> : <ByDate items={[...invoiceBills].sort((a, b) => (a.date < b.date ? 1 : -1))} render={(b) => {
         const paid = paidOn(d, b.number);
         return (
@@ -495,15 +488,29 @@ function Timeline({ d, p, who, invoiceBills }) {
   );
 }
 
+/** Same layout as a clinic patient's profile, filled from Practo (read only). */
 function Profile({ p }) {
-  const rows = [['Practo number', p.number.startsWith('NA-') ? 'Not given in Practo' : p.number], ['Name', p.name], ['Mobile', p.mobile], ['Gender', p.gender], ['Age', p.age],
-    ['Date of birth', p.dob && longDate(p.dob)], ['Email', p.email], ['Address', p.address], ...Object.entries(p.details || {})];
+  const d = p.details || {};
+  const fields = [
+    ['Name', p.name], ['Mobile', p.mobile], ['Other phone', d['Contact Number'] || d['Secondary Mobile']], ['Email', p.email], ['Age', p.age],
+    ['Date of birth', p.dob && longDate(p.dob)], ['Gender', p.gender], ['Blood group', d['Blood Group']], ['Address', [p.address, d.Locality, d.City, d.Pincode].filter(Boolean).join(', '), true],
+    ['Medical history', d['Medical History'], true], ['Referred by', d['Referred By']], ['Remarks', d.Remarks, true], ['Patient notes', d['Patient Notes'], true],
+  ];
+  const known = new Set(['Contact Number', 'Secondary Mobile', 'Blood Group', 'Locality', 'City', 'Pincode', 'Medical History', 'Referred By', 'Remarks', 'Patient Notes']);
+  const other = Object.entries(d).filter(([k, v]) => !known.has(k) && v);
   return (
     <>
       <SectionBar title="Profile" />
-      <dl className="grid gap-x-6 gap-y-2 bg-white p-4 text-[13.5px] sm:grid-cols-[180px_1fr]">
-        {rows.filter(([, v]) => v != null && v !== '').map(([k, v]) => <div key={k} className="contents"><dt className="text-[#777]">{k}</dt><dd>{String(v)}</dd></div>)}
-      </dl>
+      <div className="grid gap-4 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[...fields, ...other.map(([k, v]) => [k, v])].map(([label, value, wide]) => (
+          <Field key={label} label={label} className={wide ? 'sm:col-span-2 lg:col-span-3' : ''}>
+            <input readOnly value={value ?? ''} className={cx(inputClass, 'bg-[#fafafa]')} />
+          </Field>
+        ))}
+        <p className="sm:col-span-2 lg:col-span-3 text-[13px] text-[#666]">
+          {p.number.startsWith('NA-') ? 'Practo exported this patient without a patient number.' : <>Practo patient number <b>{p.number}</b></>} · imported from Practo
+        </p>
+      </div>
     </>
   );
 }

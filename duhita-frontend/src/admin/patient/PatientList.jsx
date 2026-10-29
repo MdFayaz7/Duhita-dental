@@ -21,7 +21,9 @@ export default function PatientList() {
   const practo = group === 'practo';
   const [practoStats, setPractoStats] = useState(null);
   const practoCount = practoStats?.patients;
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(params.get('q') || '');
+  // The search box in the top bar lands here as ?q=…
+  useEffect(() => { if (params.get('q') != null) setQ(params.get('q')); }, [params]);
   const [counts, setCounts] = useState(null);
   const [items, setItems] = useState(null);
   const [total, setTotal] = useState(0);

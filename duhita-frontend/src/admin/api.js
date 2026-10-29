@@ -136,6 +136,8 @@ export const api = {
   practoDelete: (kind, id) => request(`/api/practo/${kind}/${id}`, { method: 'DELETE' }),
   practoClear: () => request('/api/practo', { method: 'DELETE' }),
   practoImport: (form) => request('/api/practo/import', { method: 'POST', form }),
+  printout: () => request('/api/settings/printout'),
+  savePrintout: (body) => request('/api/settings/printout', { method: 'PUT', body }),
   patientGroups: () => request('/api/patients/groups'),
   addPatient: (body) => request('/api/patients', { method: 'POST', body, auth: false }),
   updatePatient: (patientId, body) => request(`/api/patients/${patientId}`, { method: 'PATCH', body }),
@@ -153,6 +155,7 @@ export const api = {
   emrFiles: (params = {}) => request(`/api/emr/files?${new URLSearchParams(params)}`),
   terms: (kind) => request(`/api/emr/terms?kind=${kind}`),
   addTerm: (body) => request('/api/emr/terms', { method: 'POST', body }),
+  updateTerm: (id, body) => request(`/api/emr/terms/${id}`, { method: 'PUT', body }),
   deleteTerm: (id) => request(`/api/emr/terms/${id}`, { method: 'DELETE' }),
 
   doctors: () => request('/api/doctors?include_inactive=true'),

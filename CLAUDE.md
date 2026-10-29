@@ -90,11 +90,19 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
 - Practo's four exports (patients, treatments, invoices, payments) live in separate `practo_*` tables keyed by Practo's own
   patient number, apart from the live patients. Upload them at Patients → Practo Patients → "Import Practo data"
   (`POST /api/practo/import`, `app/practo_archive.py`); each file replaces its table, so re-uploading is safe.
-  `/admin/patients/practo/<number>` shows that patient's Practo history (read only). Rows with a blank/unknown patient
+  `/admin/patients/practo/<number>/<section>` shows that patient's Practo history in the same menu as clinic patients
+  (sections without Practo data are greyed out); rows can be edited, cancelled or deleted from the ▾ menus. Rows with a blank/unknown patient
   number are matched by exact name only when exactly one Practo patient has that name.
 - The exports are real patient data: keep them in `practo-data/` (gitignored), never commit, paste or send them.
 - New patient IDs are `DDC<yymmdd><N>`, N restarting at 1 each month (`add_patient` in `patients_service.py`); older
   `DDyymm-nnnn` IDs stay valid.
+
+## Procedures, drugs, printout
+
+- The fee list (`procedures`, with a `category`) is the clinic's own price list (migration 0007, from "treatment prices list";
+  ranges use the lower fee). Old Practo catalogue entries are hidden (`active = false`), never deleted.
+- Patients → Settings ▾: add/edit drugs (`emr_terms` kind `drug`, with default dosage in `data`), procedures (Billing → fee
+  list), clinical-note pick lists, and the printout letterhead (`settings.printout`, used by every print / PDF).
 
 ## Billing
 
