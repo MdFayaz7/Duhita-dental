@@ -53,6 +53,11 @@ async def test_sharing_reaches_only_the_patients_own_app(admin, client):
     health = (await client.get("/api/app/me/health", headers=headers)).json()
     assert [i["drug"] for rx in health["prescriptions"] for i in rx["items"]] == ["Amoxicillin"]
 
+    # A procedure billed straight onto a bill shows as treatment done, alongside the bill itself.
+    await admin.post("/api/invoices", json={"patient_id": pid, "date": "2026-10-26", "items": [{"name": "Scaling", "unit_cost": 800, "date": "2026-10-26"}]})
+    health = (await client.get("/api/app/me/health", headers=headers)).json()
+    assert [t["name"] for t in health["procedures"]] == ["Scaling"] and health["invoices"][0]["items"] == ["Scaling"]
+
     assert (await admin.put(f"/api/patients/{pid}/share", json={"section": "prescriptions", "on": False})).json()["prescriptions"] is False
     assert "prescriptions" not in (await client.get("/api/app/me/health", headers=headers)).json()
 
@@ -63,3 +68,17 @@ async def test_payments_across_patients(admin):
     await admin.post(f"/api/invoices/{inv['id']}/payments", json={"amount": "200", "date": "2026-10-26"})
     res = (await admin.get("/api/payments?date_from=2026-10-01")).json()
     assert res["items"][0]["patient_name"] and res["items"][0]["invoice_number"] == inv["number"] and not res["more"]
+
+
+async def test_excel_export_with_chosen_columns(admin):
+    import io
+
+    import openpyxl
+    pid = (await admin.post("/api/patients", json=PATIENT)).json()["patient_id"]
+    keys = [c["key"] for c in (await admin.get("/api/export/columns?kind=clinic")).json()["columns"]]
+    assert {"patient_id", "phone", "due"} <= set(keys)
+    res = await admin.get("/api/export/patients?kind=clinic&columns=patient_id,phone")
+    rows = list(openpyxl.load_workbook(io.BytesIO(res.content)).active.iter_rows(values_only=True))
+    assert rows == [("Patient ID", "Mobile"), (pid, PATIENT["phone"])]
+    assert (await admin.get("/api/export/patients?kind=clinic&columns=password_hash")).status_code == 422
+    assert (await admin.get("/api/export/patients?kind=practo&columns=number,mobile")).status_code == 200

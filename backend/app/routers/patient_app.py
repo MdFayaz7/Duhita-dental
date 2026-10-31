@@ -18,7 +18,7 @@ from ..patients_service import IST, RecordForm, add_patient, add_record
 from ..security import create_patient_token, current_patient, hash_password, verify_password
 from ..sharing import share_flags
 from ..tables import (
-    Appointment, ClinicalNote, Doctor, Invoice, Payment, Patient, Prescription, Record, Treatment, VitalSign,
+    Appointment, ClinicalNote, Doctor, Invoice, InvoiceItem, Payment, Patient, Prescription, Record, Treatment, VitalSign,
 )
 from ..uploads import IMAGE_TYPES, delete_upload, save_upload
 
@@ -191,7 +191,14 @@ async def my_health(session: SessionDep, patient_id: str = Depends(current_patie
         out["prescriptions"] = await rows(Prescription)
     if share["treatments"]:
         out["plans"] = await rows(Treatment, Treatment.status == "planned")
-        out["procedures"] = await rows(Treatment, Treatment.status == "completed")
+        # Completed procedures = completed treatments + lines billed straight onto an invoice (as in the admin's view).
+        done = await rows(Treatment, Treatment.status == "completed")
+        billed = await session.scalars(
+            select(InvoiceItem).join(Invoice).where(Invoice.patient_id == pid, Invoice.status == "active",
+                                                    InvoiceItem.treatment_id.is_(None)).limit(100))
+        done += [{"id": f"bill-{x.id}", "name": x.name, "date": x.date.isoformat(), "teeth": x.teeth,
+                  "doctor": doctors.get(x.doctor_id)} for x in billed]
+        out["procedures"] = sorted(done, key=lambda t: str(t["date"]), reverse=True)
     if share["billing"]:
         invoices = await session.scalars(select(Invoice).where(Invoice.patient_id == pid, Invoice.status == "active")
                                          .order_by(Invoice.date.desc()).limit(100))

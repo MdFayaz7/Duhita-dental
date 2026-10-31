@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FiActivity, FiCalendar, FiCamera, FiCheckCircle, FiChevronLeft, FiClock, FiFile, FiFolder,
+  FiActivity, FiCalendar, FiCamera, FiCheckCircle, FiChevronLeft, FiClock, FiCreditCard, FiFile, FiFileText, FiFolder,
   FiHeart, FiImage, FiLogOut, FiTrash2, FiUser,
 } from 'react-icons/fi';
 import { Field, Chip, invalid } from '../components/Form';
@@ -9,7 +9,7 @@ import useSeo from '../hooks/useSeo';
 import { usePatientAuth } from '../lib/patientAuth';
 import {
   ApiError, bookAppointment, cancelAppointment, checkNumber, deleteRecord, fileUrl,
-  formatDate, formatSlot, getSlots, myAppointments, myRecords, removePhoto, todayIso,
+  formatDate, formatSlot, getSlots, myAppointments, myHealth, myRecords, removePhoto, todayIso,
   updateProfile, uploadPhoto,
 } from '../lib/patientApi';
 import { complaintChips } from '../data/patients';
@@ -200,7 +200,9 @@ function AuthPanel() {
 const MENU = [
   { id: 'book', label: 'Book a visit', icon: FiCalendar },
   { id: 'appointments', label: 'My appointments', icon: FiClock },
-  { id: 'record', label: 'My dental record', icon: FiActivity },
+  { id: 'record', label: 'Treatments', icon: FiActivity },
+  { id: 'prescriptions', label: 'Prescriptions', icon: FiFileText },
+  { id: 'bills', label: 'Bills & payments', icon: FiCreditCard },
   { id: 'medical', label: 'Medical history', icon: FiHeart },
   { id: 'records', label: 'Records & documents', icon: FiFolder },
   { id: 'details', label: 'Personal details', icon: FiUser },
@@ -222,12 +224,14 @@ function Dashboard() {
   const [view, setView] = useState('menu');
   const [appointments, setAppointments] = useState(null);
   const [records, setRecords] = useState(null);
+  const [health, setHealth] = useState(null);
   const [editingDetails, setEditingDetails] = useState(false);
   const [editingMedical, setEditingMedical] = useState(false);
 
   const load = () => {
     myAppointments(token).then(setAppointments).catch(() => setAppointments({ upcoming: [], past: [] }));
     myRecords(token).then((d) => setRecords(d.items)).catch(() => setRecords([]));
+    myHealth(token).then(setHealth).catch(() => setHealth({}));
   };
 
   useLiveEvents((event) => {
@@ -338,24 +342,84 @@ function Dashboard() {
 
         {view === 'record' && (
           <div className="reveal">
-            <SectionHeader title="My dental record" onBack={back} />
-            {!appointments ? (
-              <Loading />
-            ) : visits.length === 0 ? (
-              <p className="card p-6 text-[14px]">Your treatment history appears here after your first completed visit.</p>
-            ) : (
-              <div className="card p-6 sm:p-7">
-                {visits.map((v, i) => (
-                  <div key={v.id} className={`flex gap-3 ${i > 0 ? 'pt-4 mt-4 border-t border-line' : ''}`}>
-                    <span className="w-2 h-2 rounded-full bg-slate mt-2 shrink-0" />
-                    <div>
-                      <p className="text-[14.5px] font-semibold text-ink">{v.reason || 'Dental visit'}</p>
-                      <p className="text-[13px] text-body mt-0.5">{formatDate(v.date, true)} · {formatSlot(v.slot)}{v.doctor ? ` · ${v.doctor}` : ''}</p>
-                      {v.notes && <p className="text-[13px] text-body mt-1">{v.notes}</p>}
-                    </div>
+            <SectionHeader title="Treatments" onBack={back} />
+            {!health || !appointments ? <Loading /> : (
+              <div className="grid gap-4">
+                <HealthBlock title="Treatment plan" rows={health.plans} render={(t) => (
+                  <Entry key={t.id} main={t.name} side={inr(t.total)} sub={[formatDate(t.date, true), teeth(t.teeth), t.doctor].filter(Boolean).join(' · ')} />
+                )} />
+                <HealthBlock title="Treatment done" rows={health.procedures} render={(t) => (
+                  <Entry key={t.id} main={t.name} sub={[formatDate(t.date, true), teeth(t.teeth), t.doctor].filter(Boolean).join(' · ')} />
+                )} />
+                <HealthBlock title="Doctor's notes" rows={health.notes} render={(n) => (
+                  <Entry key={n.id} main={[...(n.complaints || []), ...(n.diagnoses || [])].join(', ') || (n.notes || []).join(', ') || 'Visit notes'}
+                    sub={[formatDate(n.date, true), n.doctor, n.follow_up && `Follow-up ${formatDate(n.follow_up, true)}`].filter(Boolean).join(' · ')} />
+                )} />
+                <HealthBlock title="Visits" rows={visits} render={(v) => (
+                  <Entry key={v.id} main={v.reason || 'Dental visit'} sub={[formatDate(v.date, true), formatSlot(v.slot), v.doctor].filter(Boolean).join(' · ')} />
+                )} />
+                {!health.plans?.length && !health.procedures?.length && !health.notes?.length && !visits.length && (
+                  <p className="card p-6 text-[14px]">Your treatment plan and the treatment you have had appear here after your first visit.</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {view === 'prescriptions' && (
+          <div className="reveal">
+            <SectionHeader title="Prescriptions" onBack={back} />
+            {!health ? <Loading /> : health.prescriptions?.length ? (
+              <div className="grid gap-4">
+                {health.prescriptions.map((rx) => (
+                  <div key={rx.id} className="card p-5 sm:p-6">
+                    <p className="text-[12px] font-bold uppercase tracking-wide text-stone">{formatDate(rx.date, true)}{rx.doctor ? ` · ${rx.doctor}` : ''}</p>
+                    <ol className="mt-3 grid gap-2.5">
+                      {rx.items.map((i, n) => (
+                        <li key={n} className="flex gap-3">
+                          <span className="w-6 h-6 shrink-0 rounded-full bg-mist text-slate text-[12px] font-bold grid place-items-center">{n + 1}</span>
+                          <span>
+                            <span className="block text-[14.5px] font-semibold text-ink">{i.drug}{i.strength ? ` ${i.strength}` : ''}</span>
+                            <span className="block text-[13px]">{[i.frequency, FOOD[i.food], i.days && `${i.days} days`, i.instructions].filter(Boolean).join(' · ')}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                    {rx.notes && <p className="mt-3 pt-3 border-t border-line text-[13px]">{rx.notes}</p>}
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="card p-6 text-[14px]">Prescriptions from the clinic appear here after your visit.</p>
+            )}
+          </div>
+        )}
+
+        {view === 'bills' && (
+          <div className="reveal">
+            <SectionHeader title="Bills & payments" onBack={back} />
+            {!health ? <Loading /> : health.invoices?.length || health.payments?.length ? (
+              <div className="grid gap-4">
+                {health.invoices?.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3">
+                    {[['Billed', sum(health.invoices, 'total')], ['Paid', sum(health.invoices, 'paid')], ['Due', sum(health.invoices, 'due')]].map(([k, v]) => (
+                      <div key={k} className="card p-4 text-center">
+                        <span className="block text-[11.5px] font-bold uppercase tracking-wide text-stone">{k}</span>
+                        <span className={`block mt-1 text-[17px] font-semibold ${k === 'Due' && v > 0 ? 'text-[#b42318]' : 'text-ink'}`}>{inr(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <HealthBlock title="Bills" rows={health.invoices} render={(i) => (
+                  <Entry key={i.id} main={`Bill #${i.number}`} side={inr(i.total)}
+                    sub={[formatDate(i.date, true), i.items.join(', '), Number(i.due) > 0 ? `Due ${inr(i.due)}` : 'Paid'].filter(Boolean).join(' · ')} />
+                )} />
+                <HealthBlock title="Payments" rows={health.payments} render={(p) => (
+                  <Entry key={p.id} main={inr(p.amount)} sub={[formatDate(p.date, true), p.mode && p.mode.toUpperCase()].filter(Boolean).join(' · ')} />
+                )} />
+              </div>
+            ) : (
+              <p className="card p-6 text-[14px]">Your bills and payments appear here after your visit.</p>
             )}
           </div>
         )}
@@ -426,6 +490,33 @@ function Dashboard() {
         )}
       </div>
     </section>
+  );
+}
+
+const FOOD = { before: 'Before food', after: 'After food' };
+const inr = (v) => `₹${Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+const sum = (rows, key) => rows.reduce((t, r) => t + Number(r[key] || 0), 0);
+const teeth = (t) => (t?.length ? `Teeth ${t.join(', ')}` : '');
+
+function HealthBlock({ title, rows, render }) {
+  if (!rows?.length) return null;
+  return (
+    <div className="card p-5 sm:p-6">
+      <h3 className="text-[18px] text-ink">{title}</h3>
+      <div className="mt-2 divide-y divide-line">{rows.map(render)}</div>
+    </div>
+  );
+}
+
+function Entry({ main, sub, side }) {
+  return (
+    <div className="py-3 flex items-start gap-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-[14.5px] font-semibold text-ink">{main}</p>
+        {sub && <p className="text-[13px] mt-0.5">{sub}</p>}
+      </div>
+      {side && <span className="text-[14px] font-semibold text-ink shrink-0">{side}</span>}
+    </div>
   );
 }
 

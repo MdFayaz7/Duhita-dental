@@ -65,6 +65,8 @@ export const removePhoto = (token) => call('/api/app/me/photo', { token, method:
 // ---------------------------------------------------------------- records
 
 export const myRecords = (token) => call('/api/app/me/records', { token });
+/** The clinic's record the clinic shares: prescriptions, treatment plan/done, notes, vitals, bills and payments. */
+export const myHealth = (token) => call('/api/app/me/health', { token });
 export const addRecord = (token, { kind, title, notes, date, file }) => {
   const form = new FormData();
   form.append('kind', kind);
