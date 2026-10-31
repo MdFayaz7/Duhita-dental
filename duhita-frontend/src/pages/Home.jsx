@@ -105,8 +105,8 @@ function Intro() {
         </div>
         <div className="reveal space-y-4 leading-relaxed">
           <p>
-            {site.name} has been caring for families in Vijayawada since 1997. Founded by {doctor.name}, {doctor.credentials} —
-            an endodontist and implantologist with over {doctor.years} years of experience — the clinic brings seven dental
+            {site.fullName} is a multispeciality dental hospital that has been caring for families in Vijayawada since 1997. Founded by {doctor.name}, {doctor.credentials} —
+            an endodontist and implantologist with over {doctor.years} years of experience — the hospital brings seven dental
             specialities under one roof near Benz Circle, so check-ups, root canals, implants, braces, gum treatment, children’s
             dentistry and oral surgery are all planned and carried out in one place.
           </p>
@@ -205,8 +205,8 @@ function HomeFaqs() {
 
 export default function Home() {
   useSeo(
-    'Duhita Dental | Best Dental Clinic in Vijayawada, Benz Circle',
-    'Duhita Dental: multispeciality dental clinic near Benz Circle, Vijayawada, since 1997 — implants, root canal, braces, aligners, kids dentistry and gum care. Call 0866 247 4066.',
+    'Duhita Dental | Best Dental Hospital in Vijayawada, Benz Circle',
+    'Duhita Dental: multispeciality dental hospital near Benz Circle, Vijayawada, since 1997 — implants, root canal, braces, kids dentistry and gum care. Call 0866 247 4066.',
     { image: '/images/hero-smile.jpg' }
   );
   return (
