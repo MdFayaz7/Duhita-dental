@@ -51,7 +51,7 @@ export const doctor = {
 
 export const stats = [
   { value: '1997', label: 'Caring for Vijayawada since' },
-  { value: '10,000+', label: 'Patients treated' },
+  { value: '200,000+', label: 'Patients treated' },
   { value: '7', label: 'Dental specialities under one roof' },
   { value: '32+', label: 'Years of clinical experience' },
 ];

@@ -44,7 +44,8 @@ function Hero() {
           </h1>
           <ul className="mt-3.5 sm:mt-8 flex flex-wrap gap-x-5 gap-y-0.5 text-[13px] sm:text-[14px] text-white/90">
             <li><strong className="font-semibold text-white">32+</strong> years of experience</li>
-            <li><strong className="font-semibold text-white">10,000+</strong> patients treated</li>
+            <li><strong className="font-semibold text-white">200,000+</strong> patients treated</li>
+            <li><strong className="font-semibold text-white">30,000+</strong> implants placed</li>
             <li><strong className="font-semibold text-white">7</strong> specialities</li>
           </ul>
           <ul className="mt-4 sm:mt-7 flex items-center gap-2.5 sm:gap-3" aria-label="Follow Duhita Dental">

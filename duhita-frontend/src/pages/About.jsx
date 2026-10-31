@@ -11,7 +11,7 @@ const milestones = [
   { year: '1997', text: 'Dr. Nalluru Sasidhar opens Duhita Dental in Vijayawada with a single chair and a promise of honest, gentle care.' },
   { year: '2008', text: 'The clinic grows into a multispeciality centre, adding endodontics, orthodontics, prosthodontics and kids dentistry.' },
   { year: '2016', text: 'Digital X-rays and rotary root canal systems are introduced across every treatment room.' },
-  { year: 'Today', text: 'More than 10,000 patients treated and hundreds of implants placed — with the same personal attention as day one.' },
+  { year: 'Today', text: 'More than 200,000 patients treated and 30,000+ implants placed — with the same personal attention as day one.' },
 ];
 
 export default function About() {

@@ -27,7 +27,7 @@ export const clinicInfo = {
   },
   stats: [
     { value: '32+', label: 'Years of care' },
-    { value: '10,000+', label: 'Patients treated' },
+    { value: '200,000+', label: 'Patients treated' },
     { value: '7', label: 'Specialities' },
   ],
 };
