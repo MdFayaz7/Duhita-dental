@@ -9,7 +9,7 @@ export default function Logo({ light = false, size = 'md' }) {
           className={`no-zoom ${img} w-auto`} />
       </span>
       <span className="leading-none">
-        <span className={`block font-display text-[16px] min-[380px]:text-[19px] sm:text-[21px] md:text-[23px] tracking-wide uppercase ${light ? 'text-white' : 'text-ink'}`}>Duhita Dental</span>
+        <span className={`block font-display text-[16px] min-[380px]:text-[19px] sm:text-[21px] md:text-[23px] tracking-wide uppercase [-webkit-text-stroke:0.45px_currentColor] ${light ? 'text-white' : 'text-[#14171c]'}`}>Duhita Dental</span>
         <span className={`hidden min-[380px]:block mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] md:text-[10.5px] tracking-[0.16em] uppercase ${light ? 'text-white/70' : 'text-stone'}`}>
           Multispeciality Dental Centre
         </span>

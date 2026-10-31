@@ -61,7 +61,7 @@ export default function Layout() {
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] bg-white p-2">Skip to content</a>
       <Header />
       <main id="main"><Outlet /></main>
-      {!isHome && pathname !== '/assistant' && <Footer />}
+      {pathname !== '/assistant' && <Footer />}
       {pathname !== '/assistant' && (
         <div className={`fixed right-4 lg:bottom-5 lg:right-5 z-40 flex flex-col items-end gap-3 ${isHome ? 'bottom-24' : 'bottom-4'}`}
           style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
