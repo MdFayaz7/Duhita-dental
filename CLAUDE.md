@@ -106,6 +106,8 @@ On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `htt
   (sections without Practo data are greyed out); rows can be edited, cancelled or deleted from the ▾ menus. Rows with a blank/unknown patient
   number are matched by exact name only when exactly one Practo patient has that name.
 - The exports are real patient data: keep them in `practo-data/` (gitignored), never commit, paste or send them.
+- Patients → Export: Excel (.xlsx) of all clinic or Practo patients with admin-picked columns (`routers/export.py`,
+  `GET /api/export/columns|patients?kind=clinic|practo`); Practo's extra export columns are offered from `practo_patients.data`.
 - New patient IDs are `DDC<yymmdd><N>`, N restarting at 1 each month (`add_patient` in `patients_service.py`); older
   `DDyymm-nnnn` IDs stay valid.
 

@@ -88,6 +88,7 @@ export default function PatientList() {
         <span className="ml-auto" />
         {practo && <Button size="sm" variant="secondary" onClick={() => setModal('practo')}>Import Practo data</Button>}
         {practo && practoCount > 0 && <Button size="sm" variant="danger" onClick={clearPracto}>Delete Practo data</Button>}
+        <Button size="sm" variant="secondary" onClick={() => setModal('export')}>Export</Button>
         <Button size="sm" variant="secondary" onClick={() => setModal('label')}>Print Label</Button>
         <Button size="sm" variant="secondary" onClick={() => setModal('merge')}>Merge Patients</Button>
         <Button size="sm" className="!bg-[#1a73e8] !border-[#1a73e8]" onClick={() => setModal('add')}>Add New Patient</Button>
@@ -143,6 +144,7 @@ export default function PatientList() {
       <AddPatient open={modal === 'add'} onClose={() => setModal(null)} onSaved={(id) => navigate(`/admin/patients/${id}`)} />
       <MergePatients open={modal === 'merge'} onClose={() => setModal(null)} onDone={() => { setModal(null); load(0); loadCounts(); }} />
       <PrintLabel open={modal === 'label'} onClose={() => setModal(null)} />
+      <ExportPatients open={modal === 'export'} kind={practo ? 'practo' : 'clinic'} onClose={() => setModal(null)} />
       <PractoImport open={modal === 'practo'} onClose={() => setModal(null)} onDone={() => { setModal(null); pick('practo'); loadCounts(); }} />
     </>
   );
@@ -235,6 +237,70 @@ function PrintLabel({ open, onClose }) {
 }
 
 const BLANK = { name: '', phone: '', age: '', sex: 'Female', address: '', email: '', complaint: '' };
+
+const EXPORT_KEY = (kind) => `duhita.export.${kind}`;
+
+/** Practo-style export: tick the columns you want (or all) and download the whole list as an Excel sheet. */
+function ExportPatients({ open, kind, onClose }) {
+  const toast = useToast();
+  const [cols, setCols] = useState(null);
+  const [picked, setPicked] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setCols(null); setError('');
+    api.exportColumns(kind).then(({ columns }) => {
+      setCols(columns);
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(EXPORT_KEY(kind))); } catch { /* none saved */ }
+      const keys = columns.map((c) => c.key);
+      setPicked(saved?.filter((k) => keys.includes(k)).length ? saved.filter((k) => keys.includes(k)) : keys);
+    }).catch((e) => setError(e.message));
+  }, [open, kind]);
+
+  const all = cols && picked.length === cols.length;
+  const toggle = (key) => setPicked((p) => (p.includes(key) ? p.filter((k) => k !== key) : [...p, key]));
+  const download = async () => {
+    setBusy(true); setError('');
+    const ordered = cols.map((c) => c.key).filter((k) => picked.includes(k));
+    try {
+      await api.exportPatients(kind, ordered);
+      try { localStorage.setItem(EXPORT_KEY(kind), JSON.stringify(ordered)); } catch { /* private mode */ }
+      toast('Excel sheet downloaded');
+      onClose();
+    } catch (e) { setError(e.message); }
+    setBusy(false);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={kind === 'practo' ? 'Export Practo patients' : 'Export patients'}
+      subtitle="Choose the columns for the Excel sheet. Every patient in the list is exported.">
+      {error && <ErrorNote>{error}</ErrorNote>}
+      {!cols ? <Skeleton className="h-40" /> : (
+        <>
+          <label className="flex items-center gap-2 border-b border-[#e5e5e5] pb-2 text-[13px] font-semibold text-[#333]">
+            <input type="checkbox" checked={all} onChange={() => setPicked(all ? [] : cols.map((c) => c.key))} />
+            Select all ({picked.length}/{cols.length})
+          </label>
+          <div className="mt-2 grid max-h-[50vh] grid-cols-1 gap-x-4 gap-y-1.5 overflow-y-auto sm:grid-cols-2">
+            {cols.map((c) => (
+              <label key={c.key} className="flex items-center gap-2 text-[13px] text-[#333]">
+                <input type="checkbox" checked={picked.includes(c.key)} onChange={() => toggle(c.key)} />
+                {c.label}
+              </label>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button size="sm" variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button size="sm" disabled={!picked.length || busy} onClick={download}>{busy ? 'Exporting…' : 'Download Excel'}</Button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
 
 export function AddPatient({ open, onClose, onSaved }) {
   const toast = useToast();

@@ -14,7 +14,7 @@ from . import events, whatsapp
 from .config import settings
 from .db import engine
 from .routers import (
-    appointments, auth, billing, calendar, doctors, emr, feedback, files, gallery, patient_app, patients, patients_import, practo,
+    appointments, auth, billing, calendar, doctors, emr, export, feedback, files, gallery, patient_app, patients, patients_import, practo,
     research, schedule, stats,
 )
 from .routers import whatsapp as whatsapp_router
@@ -70,7 +70,7 @@ async def log_rejected_origins(request: Request, call_next):
 
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir, check_dir=False), name="uploads")
 
-for router in (events, auth, patients_import, practo, billing, emr, patients, calendar, appointments, schedule, doctors, research, gallery, feedback, files, stats,
+for router in (events, auth, export, patients_import, practo, billing, emr, patients, calendar, appointments, schedule, doctors, research, gallery, feedback, files, stats,
                patient_app, whatsapp_router):
     app.include_router(router.router)
 

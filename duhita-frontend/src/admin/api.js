@@ -130,6 +130,17 @@ export const api = {
   patientTimeline: (patientId) => request(`/api/patients/${patientId}/timeline`),
 
   practoSummary: () => request('/api/practo/summary'),
+  exportColumns: (kind) => request(`/api/export/columns?kind=${kind}`),
+  /** Downloads the patient list as .xlsx with the chosen columns, in that order. */
+  exportPatients: async (kind, columns) => {
+    const res = await fetch(`${BASE}/api/export/patients?${new URLSearchParams({ kind, columns: columns.join(',') })}`,
+      { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) throw new ApiError(`Export failed (${res.status})`, res.status);
+    const name = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'patients.xlsx';
+    const href = URL.createObjectURL(await res.blob());
+    Object.assign(document.createElement('a'), { href, download: name }).click();
+    setTimeout(() => URL.revokeObjectURL(href), 1000);
+  },
   practoPatients: (params = {}) => request(`/api/practo/patients?${new URLSearchParams(params)}`),
   practoPatient: (number) => request(`/api/practo/patients/${encodeURIComponent(number)}`),
   practoEdit: (kind, id, body) => request(`/api/practo/${kind}/${id}`, { method: 'PATCH', body }),
