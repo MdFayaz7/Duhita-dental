@@ -75,17 +75,21 @@ export default function HeroMedia({ alt }) {
   return (
     <div ref={boxRef} className="absolute inset-0 -z-10 overflow-hidden">
       <div className="hero-media absolute" style={stage || { inset: 0 }}>
+        {/* The browser picks the photo by media query, so the prerendered markup is the same for every
+            screen and phones load the portrait straight away (React can't swap an image's src on hydration). */}
         <picture>
-          <source srcSet={photo.webp} type="image/webp" />
+          <source media="(max-width: 767px)" srcSet={PORTRAIT.webp} type="image/webp" />
+          <source media="(max-width: 767px)" srcSet={PORTRAIT.jpg} />
+          <source srcSet={LANDSCAPE.webp} type="image/webp" />
           <img
-            src={photo.jpg}
+            src={LANDSCAPE.jpg}
             alt={alt}
-            width={photo.w}
-            height={photo.h}
+            width={LANDSCAPE.w}
+            height={LANDSCAPE.h}
             loading="eager"
             decoding="sync"
             fetchPriority="high"
-            className="no-zoom block w-full h-full object-cover"
+            className="no-zoom block w-full h-full object-cover object-[50%_42%] md:object-[76%_50%]"
           />
         </picture>
 
