@@ -191,7 +191,7 @@ function HomeFaqs() {
         <div className="reveal">
           <h2 id="faq-heading" className="text-[27px] sm:text-[33px] md:text-[44px]">Common Questions</h2>
           <p className="mt-4 leading-relaxed">
-            Serving patients from {site.areas.join(', ')} and across Vijayawada.
+            Serving patients from {site.areas.join(', ')} — across Vijayawada and nearby areas.
           </p>
           <Link to="/patient-info" className="mt-5 inline-flex items-center gap-2 text-[14px] text-ink font-medium">
             Patient guide &amp; more FAQs <FiArrowRight />

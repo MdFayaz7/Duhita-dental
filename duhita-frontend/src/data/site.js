@@ -106,6 +106,10 @@ export const patientTiles = [
 
 export const homeFaqs = [
   {
+    q: 'Which is the best dental hospital in or near Vijayawada for all treatments?',
+    a: 'Duhita Multispeciality Dental Centre near Benz Circle is a multispeciality dental hospital caring for patients since 1997, with seven specialities — root canals, implants, braces, gum care, kids dentistry, oral surgery and diagnosis — under one roof. Patients come from across Vijayawada and nearby areas such as Penamaluru, Poranki and Kanuru.',
+  },
+  {
     q: 'Where is Duhita Dental located in Vijayawada?',
     a: 'We are on the 1st floor of Shanthi Plaza, above the SBI NRI Branch in Gayatri Nagar, Krishna Nagar — a two-minute drive from Benz Circle.',
   },
