@@ -15,3 +15,18 @@ export function toMp3Base64(input) {
     ff.stdin.end(input);
   });
 }
+
+/** Raw 16-bit mono PCM (Gemini speech, 24 kHz) → mp3 base64, so the browser and the avatar's lip-sync play it as before. */
+export function pcmToMp3Base64(pcm, rate = 24000) {
+  return new Promise((resolve, reject) => {
+    const ff = spawn(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-f', 's16le', '-ar', String(rate), '-ac', '1', '-i', 'pipe:0', '-b:a', '64k', '-f', 'mp3', 'pipe:1']);
+    const chunks = [];
+    let err = '';
+    ff.stdout.on('data', (c) => chunks.push(c));
+    ff.stderr.on('data', (c) => (err += c));
+    ff.on('error', reject);
+    ff.on('close', (code) => (code === 0 ? resolve(Buffer.concat(chunks).toString('base64')) : reject(new Error(`ffmpeg: ${err.trim()}`))));
+    ff.stdin.on('error', () => {});
+    ff.stdin.end(pcm);
+  });
+}
