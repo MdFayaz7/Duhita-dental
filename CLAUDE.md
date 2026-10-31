@@ -28,6 +28,18 @@ through git, chat, or email.
 On the VPS itself, the backend's actual `CORS_ORIGINS` env var must include `https://duhitadental.com`
 (and the `www.` variant) or the website's API calls get CORS-blocked.
 
+## Website SEO / prerendering
+
+- `npm run build` = client build + SSR build of `src/entry-server.jsx` + `scripts/prerender.mjs`, which writes every public
+  route to `dist/<route>/index.html` (own title/description/canonical/OG/JSON-LD + body HTML) and generates `dist/sitemap.xml`,
+  `dist/404.html` and `dist/spa.html`. `src/main.jsx` hydrates prerendered pages.
+- **A new public page must be added to `routes` in `src/entry-server.jsx`** (services come from `data/services.js`
+  automatically) and must call `useSeo` — the build fails otherwise. Otherwise nginx serves it as a real 404.
+- nginx (`duhita-frontend/nginx.conf`): unknown URLs → 404 status, `/admin*` and `/account*` → `spa.html`, `www.` → 301 to
+  the bare domain. A new client-only (non-prerendered) section needs adding to that `location ~ ^/(admin|account)` rule.
+- Page code must stay renderable in Node: touch `window` / `document` / `localStorage` only inside effects or handlers, and
+  keep the first render identical on server and client (hydration).
+
 ## patient-app specifics
 
 - Fallback API/site URLs are hardcoded in `src/lib/api.ts`, `src/lib/clinicApi.ts`, and

@@ -51,67 +51,80 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 const Loading = () => <div className="min-h-[60vh]" aria-busy="true" />;
 
-export default function App() {
+/** Shared by the browser (BrowserRouter, below) and the build-time prerender (src/entry-server.jsx). */
+export function AppProviders({ children }) {
   return (
     <ErrorBoundary>
-      <PatientAuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<Loading />}>
-        <Routes>
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/print/invoice/:id" element={<AdminInvoicePrint />} />
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminOverview />} />
-            <Route path="appointments" element={<AdminCalendar />} />
-            <Route path="appointments/list" element={<AdminAppointments />} />
-            <Route path="schedule" element={<AdminSchedule />} />
-            <Route path="patients" element={<AdminPatientSection />} />
-            <Route path="patients/table" element={<AdminPatients />} />
-            <Route path="patients/import" element={<AdminImportPatients />} />
-            <Route path="patients/all/:section" element={<AdminPatientSection />} />
-            <Route path="patients/practo/:number" element={<AdminPractoRecord />} />
-            <Route path="patients/practo/:number/:section" element={<AdminPractoRecord />} />
-            <Route path="patients/:patientId" element={<AdminPatientSection />} />
-            <Route path="patients/:patientId/:section" element={<AdminPatientSection />} />
-            <Route path="patients/:patientId/invoices/new" element={<AdminInvoiceEditor />} />
-            <Route path="invoices/:invoiceId/edit" element={<AdminInvoiceEditor />} />
-            <Route path="billing" element={<AdminBilling />} />
-            <Route path="settings" element={<AdminSettings />} />
-            <Route path="doctors" element={<AdminDoctors />} />
-            <Route path="research" element={<AdminResearch />} />
-            <Route path="gallery/:category" element={<AdminGallery />} />
-            <Route path="feedback" element={<AdminFeedback />} />
-          </Route>
-
-          <Route element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="about" element={<About />} />
-            <Route path="about/dr-nalluru-sasidhar" element={<Doctor />} />
-            <Route path="about/clinic-gallery" element={<ClinicGallery />} />
-            <Route path="about/reviews" element={<Reviews />} />
-            <Route path="about/our-research" element={<Research />} />
-            <Route path="services" element={<Services />} />
-            <Route path="services/community-dentistry" element={<CommunityDentistry />} />
-            <Route path="services/community-service" element={<Navigate to="/services/community-dentistry" replace />} />
-            <Route path="services/:category" element={<ServiceCategory />} />
-            <Route path="services/:category/:treatment" element={<Treatment />} />
-            <Route path="patient-info" element={<PatientInfo />} />
-            <Route path="contact" element={<Contact />} />
-            <Route path="patients/register" element={<Register />} />
-            <Route path="patients/book-appointment" element={<BookAppointment />} />
-            <Route path="home-service" element={<HomeService />} />
-            <Route path="account" element={<Account />} />
-            <Route path="assistant" element={<Assistant />} />
-            <Route path="privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="terms-conditions" element={<TermsConditions />} />
-            <Route path="medical-disclaimer" element={<MedicalDisclaimer />} />
-            <Route path="appointment-policy" element={<AppointmentPolicy />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </Suspense>
-        </BrowserRouter>
-      </PatientAuthProvider>
+      <PatientAuthProvider>{children}</PatientAuthProvider>
     </ErrorBoundary>
+  );
+}
+
+export function AppRoutes() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Routes>
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/print/invoice/:id" element={<AdminInvoicePrint />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminOverview />} />
+          <Route path="appointments" element={<AdminCalendar />} />
+          <Route path="appointments/list" element={<AdminAppointments />} />
+          <Route path="schedule" element={<AdminSchedule />} />
+          <Route path="patients" element={<AdminPatientSection />} />
+          <Route path="patients/table" element={<AdminPatients />} />
+          <Route path="patients/import" element={<AdminImportPatients />} />
+          <Route path="patients/all/:section" element={<AdminPatientSection />} />
+          <Route path="patients/practo/:number" element={<AdminPractoRecord />} />
+          <Route path="patients/practo/:number/:section" element={<AdminPractoRecord />} />
+          <Route path="patients/:patientId" element={<AdminPatientSection />} />
+          <Route path="patients/:patientId/:section" element={<AdminPatientSection />} />
+          <Route path="patients/:patientId/invoices/new" element={<AdminInvoiceEditor />} />
+          <Route path="invoices/:invoiceId/edit" element={<AdminInvoiceEditor />} />
+          <Route path="billing" element={<AdminBilling />} />
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="doctors" element={<AdminDoctors />} />
+          <Route path="research" element={<AdminResearch />} />
+          <Route path="gallery/:category" element={<AdminGallery />} />
+          <Route path="feedback" element={<AdminFeedback />} />
+        </Route>
+
+        <Route element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="about" element={<About />} />
+          <Route path="about/dr-nalluru-sasidhar" element={<Doctor />} />
+          <Route path="about/clinic-gallery" element={<ClinicGallery />} />
+          <Route path="about/reviews" element={<Reviews />} />
+          <Route path="about/our-research" element={<Research />} />
+          <Route path="services" element={<Services />} />
+          <Route path="services/community-dentistry" element={<CommunityDentistry />} />
+          <Route path="services/community-service" element={<Navigate to="/services/community-dentistry" replace />} />
+          <Route path="services/:category" element={<ServiceCategory />} />
+          <Route path="services/:category/:treatment" element={<Treatment />} />
+          <Route path="patient-info" element={<PatientInfo />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="patients/register" element={<Register />} />
+          <Route path="patients/book-appointment" element={<BookAppointment />} />
+          <Route path="home-service" element={<HomeService />} />
+          <Route path="account" element={<Account />} />
+          <Route path="assistant" element={<Assistant />} />
+          <Route path="privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="terms-conditions" element={<TermsConditions />} />
+          <Route path="medical-disclaimer" element={<MedicalDisclaimer />} />
+          <Route path="appointment-policy" element={<AppointmentPolicy />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+    </Suspense>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProviders>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AppProviders>
   );
 }

@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom';
-import { FiPhone, FiUserPlus, FiCalendar, FiHome } from 'react-icons/fi';
+import { FiPhone, FiUserPlus, FiCalendar, FiHome, FiArrowRight } from 'react-icons/fi';
 import { FaFacebookF, FaInstagram, FaWhatsapp } from 'react-icons/fa';
 import { GoogleG } from '../components/GoogleReviews';
 import useSeo from '../hooks/useSeo';
 import HeroMedia from '../components/HeroMedia';
-import { site } from '../data/site';
+import Icon from '../components/Icons';
+import Faq from '../components/Faq';
+import OurDoctors from '../components/OurDoctors';
+import ContactSection from '../components/ContactSection';
+import { site, doctor, whyChoose, homeFaqs } from '../data/site';
+import { categories, featured } from '../data/services';
+import { googlePlace } from '../data/reviews';
 
 const heroActions = [
   { icon: FiPhone, label: site.phoneDisplay, short: 'Call Us', href: `tel:${site.phone}` },
@@ -81,11 +87,137 @@ function Hero() {
   );
 }
 
+// Below the hero: the text search engines and AI answers read to understand who the clinic is,
+// what it treats and where it is — every fact comes from src/data, so it stays in step with the rest of the site.
+function Intro() {
+  return (
+    <section className="section-y bg-white" aria-labelledby="intro-heading">
+      <div className="container-x grid gap-8 lg:grid-cols-2 lg:gap-20 items-start">
+        <div className="reveal">
+          <h2 id="intro-heading" className="text-[27px] sm:text-[33px] md:text-[44px] leading-[1.1]">
+            {site.fullName}, Vijayawada
+          </h2>
+          <p className="mt-4 text-[14.5px]">
+            <a href={googlePlace.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-ink font-medium">
+              <GoogleG className="w-4 h-4" /> {googlePlace.rating}★ from {googlePlace.total}+ Google reviews
+            </a>
+          </p>
+        </div>
+        <div className="reveal space-y-4 leading-relaxed">
+          <p>
+            {site.name} has been caring for families in Vijayawada since 1997. Founded by {doctor.name}, {doctor.credentials} —
+            an endodontist and implantologist with over {doctor.years} years of experience — the clinic brings seven dental
+            specialities under one roof near Benz Circle, so check-ups, root canals, implants, braces, gum treatment, children’s
+            dentistry and oral surgery are all planned and carried out in one place.
+          </p>
+          <p>
+            Every treatment starts with a careful diagnosis, digital X-rays where needed and a written estimate before anything
+            begins. Morning and evening appointments run Monday to Saturday, and home visits are available for senior citizens
+            and bedridden patients.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeaturedTreatments() {
+  return (
+    <section className="section-y bg-ivory" aria-labelledby="treatments-heading">
+      <div className="container-x">
+        <div className="max-w-2xl reveal">
+          <h2 id="treatments-heading" className="text-[27px] sm:text-[33px] md:text-[44px]">Popular Dental Treatments</h2>
+          <p className="mt-4 leading-relaxed">
+            The treatments patients in Vijayawada ask us about most — each one led by a specialist.
+          </p>
+        </div>
+        <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {featured.map(({ category, treatment }) => (
+            <article key={treatment.slug} className="reveal card card-hover flex flex-col">
+              <Link to={`/services/${category.slug}/${treatment.slug}`} className="block aspect-[16/10] img-well p-3">
+                <img src={treatment.image} alt={`${treatment.title} at Duhita Dental, Vijayawada`}
+                  className="w-full h-full object-contain" loading="lazy" decoding="async" />
+              </Link>
+              <div className="p-5 sm:p-6 flex flex-col flex-1">
+                <p className="text-[13px]">{category.name}</p>
+                <h3 className="text-[21px] sm:text-[23px] mt-1 leading-snug">
+                  <Link to={`/services/${category.slug}/${treatment.slug}`}>{treatment.title}</Link>
+                </h3>
+                <p className="mt-3 text-[14.5px] leading-relaxed flex-1">{treatment.excerpt}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+        <ul className="mt-8 flex flex-wrap gap-2 reveal" aria-label="All specialities">
+          {categories.map((c) => (
+            <li key={c.slug}>
+              <Link to={`/services/${c.slug}`} className="inline-flex rounded-full border border-line bg-white px-4 py-2 text-[14px] text-ink hover:text-slate">
+                {c.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <Link to="/services" className="btn btn-outline mt-6 inline-flex items-center gap-2">
+          View all treatments <FiArrowRight />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function WhyChoose() {
+  return (
+    <section className="section-y bg-white" aria-labelledby="why-heading">
+      <div className="container-x">
+        <h2 id="why-heading" className="text-[27px] sm:text-[33px] md:text-[44px] reveal max-w-xl">Why Patients Choose Duhita Dental</h2>
+        <div className="mt-8 sm:mt-10 grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {whyChoose.map((w) => (
+            <div key={w.title} className="reveal card p-5 sm:p-8">
+              <Icon name={w.icon} className="w-10 h-10 text-slate" />
+              <h3 className="text-[21px] sm:text-[24px] mt-4 sm:mt-5">{w.title}</h3>
+              <p className="mt-3 text-[14.5px] leading-relaxed">{w.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HomeFaqs() {
+  return (
+    <section className="section-y bg-ivory" aria-labelledby="faq-heading">
+      <div className="container-x grid gap-8 lg:grid-cols-[1fr_1.4fr] lg:gap-20">
+        <div className="reveal">
+          <h2 id="faq-heading" className="text-[27px] sm:text-[33px] md:text-[44px]">Common Questions</h2>
+          <p className="mt-4 leading-relaxed">
+            Serving patients from {site.areas.join(', ')} and across Vijayawada.
+          </p>
+          <Link to="/patient-info" className="mt-5 inline-flex items-center gap-2 text-[14px] text-ink font-medium">
+            Patient guide &amp; more FAQs <FiArrowRight />
+          </Link>
+        </div>
+        <div className="reveal"><Faq items={homeFaqs} /></div>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   useSeo(
-    'Best Dental Clinic in Vijayawada | Duhita Multispeciality Dental Centre, Benz Circle',
-    'Trusted dentist in Benz Circle, Vijayawada since 1997. Dental implants, painless root canal, braces & aligners, kids dentistry, gum care and wisdom tooth removal, led by Dr. Nalluru Sasidhar, BDS, MDS (endodontist & implantologist). Call 0866 247 4066.',
+    'Duhita Dental | Best Dental Clinic in Vijayawada, Benz Circle',
+    'Duhita Multispeciality Dental Centre, Benz Circle, Vijayawada — trusted since 1997. Dental implants, painless root canal, braces & aligners, kids dentistry, gum care and wisdom tooth removal, led by Dr. Nalluru Sasidhar, BDS, MDS. Call 0866 247 4066.',
     { image: '/images/hero-smile.jpg' }
   );
-  return <Hero />;
+  return (
+    <>
+      <Hero />
+      <Intro />
+      <FeaturedTreatments />
+      <WhyChoose />
+      <OurDoctors />
+      <HomeFaqs />
+      <ContactSection />
+    </>
+  );
 }

@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { ssrHead } from '../lib/ssrHead';
 
 const DOMAIN = 'https://duhitadental.com';
 const DEFAULT_IMAGE = `${DOMAIN}/images/hero-smile.jpg`;
@@ -39,19 +41,35 @@ function setSchemaScript(id, schemaObj) {
   script.textContent = JSON.stringify(schemaObj);
 }
 
+/** The values every page's <head> needs, shared by the browser effect and the build-time prerender. */
+function seoValues(title, description, pathname, { image = DEFAULT_IMAGE, type = 'website', noindex = false, schema = null, canonicalPath = null }) {
+  const path = canonicalPath || pathname;
+  const cleanPath = path === '/' ? '/' : path.replace(/\/+$/, '');
+  return {
+    title,
+    description,
+    type,
+    schema,
+    canonical: `${DOMAIN}${cleanPath}`,
+    image: image.startsWith('http') ? image : `${DOMAIN}${image.startsWith('/') ? '' : '/'}${image}`,
+    robots: noindex
+      ? 'noindex, nofollow'
+      : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+  };
+}
+
 /**
  * Enterprise SEO Hook
  * Dynamically updates Title, Description, Canonical tag, OpenGraph, Twitter Cards,
  * Robots indexing directive, and Schema markup on every page change.
+ * During the build-time prerender (scripts/prerender.mjs) effects don't run, so the
+ * same values are recorded in `ssrHead` and written into that page's static HTML.
  */
 export default function useSeo(title, description, options = {}) {
-  const {
-    image = DEFAULT_IMAGE,
-    type = 'website',
-    noindex = false,
-    schema = null,
-    canonicalPath = null,
-  } = options;
+  const { pathname } = useLocation();
+  const seo = seoValues(title, description, pathname, options);
+  if (import.meta.env.SSR) Object.assign(ssrHead, seo);
+  const { canonical: canonicalUrl, image: absImage, robots: robotsDirective, type, schema } = seo;
 
   useEffect(() => {
     // 1. Page Title
@@ -65,15 +83,9 @@ export default function useSeo(title, description, options = {}) {
     }
 
     // 3. Robots (Ensure Google never blocks public pages with unintended noindex)
-    const robotsDirective = noindex
-      ? 'noindex, nofollow'
-      : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
     setMetaTag('name', 'robots', robotsDirective);
 
     // 4. Canonical Tag
-    const pathname = canonicalPath || window.location.pathname;
-    const cleanPath = pathname === '/' ? '' : pathname.replace(/\/+$/, '');
-    const canonicalUrl = `${DOMAIN}${cleanPath}`;
     setCanonical(canonicalUrl);
 
     // 5. OpenGraph Tags (Facebook, WhatsApp, LinkedIn)
@@ -81,7 +93,6 @@ export default function useSeo(title, description, options = {}) {
     if (description) setMetaTag('property', 'og:description', description);
     setMetaTag('property', 'og:url', canonicalUrl);
     setMetaTag('property', 'og:type', type);
-    const absImage = image.startsWith('http') ? image : `${DOMAIN}${image.startsWith('/') ? '' : '/'}${image}`;
     setMetaTag('property', 'og:image', absImage);
     setMetaTag('property', 'og:image:secure_url', absImage);
 
@@ -102,5 +113,5 @@ export default function useSeo(title, description, options = {}) {
         if (s) s.remove();
       }
     };
-  }, [title, description, image, type, noindex, schema, canonicalPath]);
+  }, [title, description, absImage, type, robotsDirective, schema, canonicalUrl]);
 }
