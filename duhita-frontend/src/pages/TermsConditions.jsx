@@ -5,7 +5,7 @@ import { site } from '../data/site';
 
 export default function TermsConditions() {
   useSeo(
-    'Terms & Conditions | Duhita Multispeciality Dental Centre, Vijayawada',
+    'Terms & Conditions | Duhita Dental, Vijayawada',
     'Official terms and conditions for using the Duhita Dental website, patient registration portal, appointment request workflows, and digital services.',
     { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );

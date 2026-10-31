@@ -8,8 +8,8 @@ import { categories } from '../data/services';
 
 export default function Services() {
   useSeo(
-    'Dental Treatments in Vijayawada | Implants, RCT, Braces & More | Duhita Dental',
-    'Explore all dental treatments at Duhita Dental, Benz Circle, Vijayawada — endodontics, implants & prosthodontics, orthodontics, kids dentistry, gum care, oral surgery and oral diagnosis.',
+    'Dental Treatments in Vijayawada | Duhita Dental',
+    'All dental treatments at Duhita Dental, Benz Circle, Vijayawada — root canal, implants, braces, aligners, whitening, kids dentistry, gum care and oral surgery.',
     { image: '/images/services/prosthodontics/full%20mouth%20rehabitation.jpeg' }
   );
   return (

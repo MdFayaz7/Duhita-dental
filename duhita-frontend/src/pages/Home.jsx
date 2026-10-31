@@ -206,7 +206,7 @@ function HomeFaqs() {
 export default function Home() {
   useSeo(
     'Duhita Dental | Best Dental Clinic in Vijayawada, Benz Circle',
-    'Duhita Multispeciality Dental Centre, Benz Circle, Vijayawada — trusted since 1997. Dental implants, painless root canal, braces & aligners, kids dentistry, gum care and wisdom tooth removal, led by Dr. Nalluru Sasidhar, BDS, MDS. Call 0866 247 4066.',
+    'Duhita Dental: multispeciality dental clinic near Benz Circle, Vijayawada, since 1997 — implants, root canal, braces, aligners, kids dentistry and gum care. Call 0866 247 4066.',
     { image: '/images/hero-smile.jpg' }
   );
   return (

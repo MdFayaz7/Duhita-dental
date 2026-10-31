@@ -27,8 +27,8 @@ export default function Doctor() {
   };
 
   useSeo(
-    'Dr. Nalluru Sasidhar, BDS, MDS | Endodontist & Implantologist in Vijayawada',
-    `Meet Dr. Nalluru Sasidhar, BDS, MDS (Conservative Dentistry), endodontist and implantologist, founder of Duhita Dental, Vijayawada — ${doctor.years}+ years of experience in root canal treatment, dental implants and conservative dental care.`,
+    'Dr. Nalluru Sasidhar | Endodontist & Implantologist, Vijayawada',
+    `Dr. Nalluru Sasidhar, BDS, MDS (Conservative Dentistry) — endodontist, implantologist and founder of Duhita Dental, Vijayawada, with ${doctor.years}+ years of experience.`,
     {
       image: doctor.image,
       schema,

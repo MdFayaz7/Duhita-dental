@@ -24,7 +24,7 @@ const whoFor = [
 export default function HomeService() {
   useSeo(
     'Dental Home Visit Service in Vijayawada | Duhita Dental',
-    'Dental care at home in Vijayawada for senior citizens, bedridden and mobility-limited patients — check-ups, denture care and pain relief by Duhita Dental. Call to book a home visit.',
+    'Dental care at home in Vijayawada for senior citizens, bedridden and mobility-limited patients — check-ups, denture care and pain relief by Duhita Dental.',
     { image: '/images/services%20old/home-visit.jpg' }
   );
   const wa = `${site.whatsapp}?text=${encodeURIComponent('Hello Duhita Dental, I would like to request a dental home visit.')}`;

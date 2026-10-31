@@ -5,14 +5,18 @@ import ContactSection from '../components/ContactSection';
 import NotFound from './NotFound';
 import useSeo from '../hooks/useSeo';
 import { findCategory } from '../data/services';
+import { breadcrumbs } from '../lib/schema';
 
 export default function ServiceCategory() {
   const { category } = useParams();
   const c = findCategory(category);
   useSeo(
-    c ? `${c.name} in Vijayawada | Duhita Multispeciality Dental Centre` : 'Page not found | Duhita Dental',
+    c ? `${c.name} in Vijayawada | Duhita Dental` : 'Page not found | Duhita Dental',
     c ? `${c.short} Book at Duhita Dental, Benz Circle, Vijayawada.` : undefined,
-    { image: c?.image || undefined }
+    {
+      image: c?.image || undefined,
+      schema: c ? { '@context': 'https://schema.org', ...breadcrumbs([['Home', '/'], ['Services', '/services'], [c.name, `/services/${c.slug}`]]) } : null,
+    }
   );
   if (!c) return <NotFound />;
 
@@ -31,7 +35,7 @@ export default function ServiceCategory() {
         <div className="container-x grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:gap-20 items-start">
           <div className="reveal prose-duhita">
             <h2 className="!mt-0">About {c.name}</h2>
-            <p>{c.intro}</p>
+            {[].concat(c.intro).map((p) => <p key={p.slice(0, 24)}>{p}</p>)}
             <p>
               Not sure which treatment you need? Book a consultation — we will examine your teeth, take any necessary digital
               X-rays and explain every option clearly before you decide.

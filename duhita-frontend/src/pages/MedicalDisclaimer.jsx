@@ -5,7 +5,7 @@ import { site } from '../data/site';
 
 export default function MedicalDisclaimer() {
   useSeo(
-    'Medical & AI Disclaimer | Duhita Multispeciality Dental Centre, Vijayawada',
+    'Medical & AI Disclaimer | Duhita Dental, Vijayawada',
     'Official Medical Disclaimer and Artificial Intelligence disclosure regarding Duhita AI, informational boundaries, and clinical consultation standards.',
     { image: '/images/services/pedodontics/pedodontics.jpg' }
   );

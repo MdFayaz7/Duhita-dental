@@ -5,31 +5,48 @@ import MapSection from '../components/MapSection';
 import Faq from '../components/Faq';
 import NotFound from './NotFound';
 import useSeo from '../hooks/useSeo';
-import { findCategory, findTreatment } from '../data/services';
+import { findCategory, findTreatment, relatedTreatments } from '../data/services';
 import { site } from '../data/site';
+import { breadcrumbs } from '../lib/schema';
+
+// Search results cut titles off at about 60 characters: keep the treatment and city, shorten the brand when needed.
+const treatmentTitle = (name) => {
+  const full = `${name} in Vijayawada | Duhita Dental`;
+  return full.length <= 60 ? full : `${name} | Duhita Dental Vijayawada`;
+};
 
 export default function Treatment() {
   const { category, treatment } = useParams();
   const c = findCategory(category);
   const t = findTreatment(category, treatment);
 
+  const pageUrl = `https://duhitadental.com/services/${category}/${treatment}`;
   const schema = t ? {
     '@context': 'https://schema.org',
-    '@type': 'MedicalProcedure',
-    name: t.title,
-    description: t.excerpt,
-    image: `https://duhitadental.com${t.image}`,
-    provider: {
-      '@type': 'Dentist',
-      name: 'Duhita Multispeciality Dental Centre',
-      telephone: '+91-866-247-4066',
-      url: 'https://duhitadental.com',
-    },
+    '@graph': [
+      {
+        '@type': 'MedicalProcedure',
+        '@id': `${pageUrl}#procedure`,
+        name: t.title,
+        description: t.excerpt,
+        url: pageUrl,
+        image: `https://duhitadental.com${t.image}`,
+        bodyLocation: 'Mouth',
+        ...(t.sections.find((s) => s.steps) && { howPerformed: t.sections.find((s) => s.steps).steps.join(' ') }),
+        provider: { '@id': 'https://duhitadental.com/#dentist' },
+      },
+      breadcrumbs([
+        ['Home', '/'],
+        ['Services', '/services'],
+        [c.name, `/services/${c.slug}`],
+        [t.title, `/services/${c.slug}/${t.slug}`],
+      ]),
+    ],
   } : null;
 
   useSeo(
-    t ? `${t.title} in Vijayawada | Duhita Dental, Benz Circle` : 'Page not found | Duhita Dental',
-    t ? `${t.excerpt} Expert ${t.title.toLowerCase()} at Duhita Multispeciality Dental Centre, Vijayawada. Call ${site.phoneDisplay}.` : undefined,
+    t ? treatmentTitle(t.title) : 'Page not found | Duhita Dental',
+    t ? `${t.excerpt} Duhita Dental, Benz Circle, Vijayawada. Call ${site.phoneDisplay}.` : undefined,
     {
       image: t?.image || undefined,
       schema,
@@ -38,7 +55,7 @@ export default function Treatment() {
 
   if (!c || !t) return <NotFound />;
 
-  const others = c.treatments.filter((x) => x.slug !== t.slug);
+  const others = relatedTreatments(c.slug, t.slug);
 
   return (
     <>
@@ -60,14 +77,29 @@ export default function Treatment() {
         <div className="container-x grid gap-10 lg:grid-cols-[1fr_320px] lg:gap-20 items-start">
           <article className="prose-duhita max-w-3xl">
             {t.intro.map((p) => <p key={p.slice(0, 20)} className="text-[16px] sm:text-[17px]">{p}</p>)}
+            {t.glance?.length > 0 && (
+              <div className="not-prose card bg-ivory p-5 sm:p-6 my-7">
+                <h2 className="text-[20px] sm:text-[22px]">{t.title} at a glance</h2>
+                <dl className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                  {t.glance.map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-[13px]">{label}</dt>
+                      <dd className="text-[15px] text-ink font-medium">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
             <figure className="my-7 sm:my-10 card img-well p-3 flex justify-center">
               <img src={t.image} alt={`${t.title} at Duhita Dental Vijayawada`} loading="lazy" decoding="async" className="max-h-[320px] sm:max-h-[520px] w-auto max-w-full object-contain" />
             </figure>
             {t.sections.map((s) => (
               <div key={s.h}>
                 <h2>{s.h}</h2>
-                {s.p && <p>{s.p}</p>}
+                {[].concat(s.p || []).map((p) => <p key={p.slice(0, 24)}>{p}</p>)}
+                {s.steps && <ol>{s.steps.map((li) => <li key={li}>{li}</li>)}</ol>}
                 {s.list && <ul>{s.list.map((li) => <li key={li}>{li}</li>)}</ul>}
+                {s.after && <p>{s.after}</p>}
               </div>
             ))}
             <h2>{t.title} at Duhita Dental</h2>
@@ -97,8 +129,8 @@ export default function Treatment() {
               <div className="card p-6">
                 <h3 className="text-[22px]">Related Treatments</h3>
                 <ul className="mt-4 space-y-2.5">
-                  {others.map((o) => (
-                    <li key={o.slug}><Link to={`/services/${c.slug}/${o.slug}`} className="text-[14.5px] text-ink hover:text-slate">{o.title}</Link></li>
+                  {others.map(({ category: oc, treatment: o }) => (
+                    <li key={`${oc}/${o.slug}`}><Link to={`/services/${oc}/${o.slug}`} className="text-[14.5px] text-ink hover:text-slate">{o.title}</Link></li>
                   ))}
                 </ul>
               </div>

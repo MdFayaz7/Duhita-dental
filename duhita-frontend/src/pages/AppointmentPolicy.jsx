@@ -5,7 +5,7 @@ import { site } from '../data/site';
 
 export default function AppointmentPolicy() {
   useSeo(
-    'Appointment & Cancellation Policy | Duhita Multispeciality Dental Centre, Vijayawada',
+    'Appointment & Cancellation Policy | Duhita Dental',
     'Understand our appointment request workflow, manual clinic review process, confirmation terms, cancellation guidelines, and no-show policies.',
     { image: '/images/services/periodontics/deep%20cleaning%20.jpg.webp' }
   );

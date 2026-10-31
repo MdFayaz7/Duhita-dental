@@ -53,7 +53,7 @@ function validate(f) {
 export default function BookAppointment() {
   useSeo(
     'Book a Dental Appointment Online | Duhita Dental, Vijayawada',
-    'Book your dental appointment online at Duhita Multispeciality Dental Centre, Benz Circle, Vijayawada. Choose a date and time slot — morning or evening, Monday to Saturday.',
+    'Book a dental appointment online at Duhita Dental, Benz Circle, Vijayawada. Choose a morning or evening slot, Monday to Saturday.',
     { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );
   const { state } = useLocation();

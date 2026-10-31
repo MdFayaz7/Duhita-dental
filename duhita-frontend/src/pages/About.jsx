@@ -16,7 +16,7 @@ const milestones = [
 
 export default function About() {
   useSeo(
-    'About Duhita Dental | Trusted Dental Clinic in Vijayawada Since 1997',
+    'About Duhita Dental | Dental Clinic in Vijayawada Since 1997',
     'Learn about Duhita Multispeciality Dental Centre, Benz Circle, Vijayawada — a specialist-led family dental clinic caring for patients since 1997.',
     { image: '/images/services/oral_medicine_diagnosis/scan.jpeg' }
   );

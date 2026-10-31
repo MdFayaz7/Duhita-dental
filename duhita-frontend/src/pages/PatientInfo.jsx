@@ -67,7 +67,7 @@ export default function PatientInfo() {
   };
 
   useSeo(
-    'Patient Information | First Visit, Payments & Aftercare | Duhita Dental Vijayawada',
+    'Patient Guide: First Visit, Payments & Aftercare | Duhita Dental',
     'Everything you need before visiting Duhita Dental in Vijayawada — first visit guide, what to bring, payment options, aftercare instructions and FAQs.',
     {
       image: '/images/services/pedodontics/pedodontics.jpg',
